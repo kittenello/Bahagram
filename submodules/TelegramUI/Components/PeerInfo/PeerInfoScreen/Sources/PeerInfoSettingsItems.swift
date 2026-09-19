@@ -196,6 +196,9 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         }
     }
     
+    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "Bahogram", icon: PresentationResourcesSettings.appearance, action: {
+        interaction.openSettings(.bahogram)
+    }))
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 1, text: presentationData.strings.Settings_SavedMessages, icon: PresentationResourcesSettings.savedMessages, action: {
         interaction.openSettings(.savedMessages)
     }))
