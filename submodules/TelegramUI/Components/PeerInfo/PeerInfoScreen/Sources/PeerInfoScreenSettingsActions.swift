@@ -62,6 +62,8 @@ extension PeerInfoScreenNode {
                 isMyProfile: true,
                 profileGiftsContext: self.data?.profileGiftsContext
             ))
+        case .bahogram:
+            push(bahogramSettingsController(context: self.context))
         case .stories:
             push(PeerInfoStoryGridScreen(context: self.context, peerId: self.context.account.peerId, scope: .saved))
         case .savedMessages:
