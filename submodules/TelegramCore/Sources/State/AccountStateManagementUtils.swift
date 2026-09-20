@@ -4509,12 +4509,23 @@ func replayFinalState(
                 }
             case let .EditMessage(id, message):
                 var generatedEvent: (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)?
+                let bahogramHasStoredRevision: Bool
+                if let previousMessage = transaction.getMessage(id) {
+                    bahogramHasStoredRevision = bahogramStorePreviousMessageRevision(
+                        transaction: transaction,
+                        previousMessage: previousMessage,
+                        updatedText: message.text
+                    )
+                } else {
+                    bahogramHasStoredRevision = false
+                }
+
                 transaction.updateMessage(id, update: { previousMessage in
                     var updatedFlags = message.flags
                     var updatedLocalTags = message.localTags
                     var updatedAttributes = message.attributes
 
-                    if bahogramStorePreviousMessageRevision(transaction: transaction, previousMessage: previousMessage, updatedText: message.text) {
+                    if bahogramHasStoredRevision || previousMessage.localTags.contains(.bahogramHasEditHistory) {
                         updatedLocalTags.insert(.bahogramHasEditHistory)
                     }
                     if previousMessage.localTags.contains(.bahogramDeleted) {
