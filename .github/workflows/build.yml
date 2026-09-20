@@ -39,6 +39,14 @@ jobs:
           xcodebuild -version
           sw_vers
 
+      - name: Restore Bazel disk cache
+        uses: actions/cache@v4
+        with:
+          path: ~/telegram-bazel-cache
+          key: bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-${{ github.sha }}
+          restore-keys: |
+            bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-
+
       - name: Prepare canonical source path
         shell: bash
         run: |
@@ -67,6 +75,7 @@ jobs:
 
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
+            --cacheDir="$HOME/telegram-bazel-cache" \
             build \
             --configurationPath="build-system/appstore-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
@@ -82,7 +91,32 @@ jobs:
             exit 1
           fi
 
-          cp "$IPA_PATH" "$GITHUB_WORKSPACE/build-artifacts/Bahogram.ipa"
+          PACKAGE_DIR="$(mktemp -d)"
+          unzip -q "$IPA_PATH" -d "$PACKAGE_DIR"
+
+          APP_PATH="$(find "$PACKAGE_DIR/Payload" -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app bundle found inside IPA"
+            exit 1
+          fi
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.kittenello.bahogram" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Bahogram" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName Bahogram" "$APP_PATH/Info.plist"
+
+          # Extensions require App Groups / extra capabilities that free sideload
+          # certificates often do not provide. The Bazel build already disables
+          # them, but remove PlugIns defensively if one is present.
+          rm -rf "$APP_PATH/PlugIns"
+
+          (
+            cd "$PACKAGE_DIR"
+            zip -qry "$GITHUB_WORKSPACE/build-artifacts/Bahogram.ipa" Payload
+          )
+
+          echo "Final IPA identity:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_PATH/Info.plist"
           ls -lh "$GITHUB_WORKSPACE/build-artifacts/Bahogram.ipa"
 
       - name: Upload IPA
