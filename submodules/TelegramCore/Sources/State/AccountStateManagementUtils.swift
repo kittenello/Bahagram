@@ -4440,19 +4440,41 @@ func replayFinalState(
                     }
                 }
             case let .DeleteMessagesWithGlobalIds(ids):
-                var resourceIds: [MediaResourceId] = []
-                transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
-                    addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-                })
-                if !resourceIds.isEmpty {
-                    let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
+                var idsToDelete: [Int32] = []
+                for globalId in ids {
+                    if let messageId = transaction.messageIdsForGlobalIds([globalId]).first, bahogramPreserveDeletedMessage(transaction: transaction, messageId: messageId) {
+                        // Bahogram keeps this message as a local snapshot.
+                    } else {
+                        idsToDelete.append(globalId)
+                    }
                 }
-                deletedMessageIds.append(contentsOf: ids.map { .global($0) })
+
+                if !idsToDelete.isEmpty {
+                    var resourceIds: [MediaResourceId] = []
+                    transaction.deleteMessagesWithGlobalIds(idsToDelete, forEachMedia: { media in
+                        addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
+                    })
+                    if !resourceIds.isEmpty {
+                        let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
+                    }
+                    deletedMessageIds.append(contentsOf: idsToDelete.map { .global($0) })
+                }
             case let .DeleteMessages(ids):
-                _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
-                    addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
-                })
-                deletedMessageIds.append(contentsOf: ids.map { .messageId($0) })
+                var idsToDelete: [MessageId] = []
+                for id in ids {
+                    if bahogramPreserveDeletedMessage(transaction: transaction, messageId: id) {
+                        // Bahogram keeps this message as a local snapshot.
+                    } else {
+                        idsToDelete.append(id)
+                    }
+                }
+
+                if !idsToDelete.isEmpty {
+                    _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: idsToDelete, manualAddMessageThreadStatsDifference: { id, add, remove in
+                        addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
+                    })
+                    deletedMessageIds.append(contentsOf: idsToDelete.map { .messageId($0) })
+                }
             case let .UpdateMinAvailableMessage(id):
                 if let message = transaction.getMessage(id) {
                     updatePeerChatInclusionWithMinTimestamp(transaction: transaction, id: id.peerId, minTimestamp: message.timestamp, forceRootGroupIfNotExists: false)
@@ -4491,6 +4513,14 @@ func replayFinalState(
                     var updatedFlags = message.flags
                     var updatedLocalTags = message.localTags
                     var updatedAttributes = message.attributes
+
+                    if bahogramStorePreviousMessageRevision(transaction: transaction, previousMessage: previousMessage, updatedText: message.text) {
+                        updatedLocalTags.insert(.bahogramHasEditHistory)
+                    }
+                    if previousMessage.localTags.contains(.bahogramDeleted) {
+                        updatedLocalTags.insert(.bahogramDeleted)
+                    }
+
                     if previousMessage.localTags.contains(.OutgoingLiveLocation) {
                         updatedLocalTags.insert(.OutgoingLiveLocation)
                     }
