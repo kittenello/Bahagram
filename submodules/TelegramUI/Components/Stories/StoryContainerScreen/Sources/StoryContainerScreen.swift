@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import Display
 import ComponentFlow
@@ -2100,6 +2101,7 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
     
     private let context: AccountContext
     private var didAnimateIn: Bool = false
+    private var didSuggestBahogramGhost: Bool = false
     private var isDismissed: Bool = false
     
     private let focusedItemPromise = Promise<EngineStoryId?>()
@@ -2150,6 +2152,17 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        if !self.didSuggestBahogramGhost && BGSimpleSettings.shared.ghostSuggestForStories && !BGSimpleSettings.shared.ghostModeEnabled {
+            self.didSuggestBahogramGhost = true
+            self.present(textAlertController(context: self.context, title: "Режим призрака", text: "Включить режим призрака для просмотра сторис без отправки отметки о просмотре?", actions: [
+                TextAlertAction(type: .defaultAction, title: "Не сейчас", action: {}),
+                TextAlertAction(type: .genericAction, title: "Включить", action: {
+                    BGSimpleSettings.shared.ghostModeEnabled = true
+                    BGSimpleSettings.shared.ghostReadStories = false
+                })
+            ]), in: .window(.root))
+        }
         
         self.view.disablesInteractiveModalDismiss = true
         

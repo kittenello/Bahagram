@@ -16,11 +16,13 @@ import WebUI
 import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
+import BGSimpleSettings
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
 
 enum InfoSection: Int, CaseIterable {
+    case bahogram
     case unofficial
     case community
     case groupLocation
@@ -155,7 +157,9 @@ func infoItems(
             ))
         }
         
-        if let phone = user.phone {
+        let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectivePhone: String? = isMyProfile && BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : user.phone
+        if let phone = effectivePhone {
             let formattedPhone = formatPhoneNumber(context: context, number: phone)
             let label: String
             if formattedPhone.hasPrefix("+888 ") {
@@ -903,6 +907,33 @@ func infoItems(
         }
     }
     
+    if let peer = data.peer {
+        var itemId = 95000
+        if BGSimpleSettings.shared.showProfileId {
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: "\(peer.id.toInt64())", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            itemId += 1
+        }
+        if BGSimpleSettings.shared.showDc, let image = peer.smallProfileImage, let resource = image.resource as? CloudPeerPhotoSizeMediaResource {
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата-центр (DC)", text: "DC \(resource.datacenterId)", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            itemId += 1
+        }
+        if BGSimpleSettings.shared.showRegistrationDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата регистрации", text: registrationDate, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            itemId += 1
+        }
+        if BGSimpleSettings.shared.showChatCreationDate {
+            var timestamp: Int32?
+            switch peer {
+            case let .channel(channel): timestamp = channel.creationDate
+            case let .legacyGroup(group): timestamp = group.creationDate
+            default: break
+            }
+            if let timestamp {
+                items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата создания чата", text: stringForDate(timestamp: timestamp, strings: presentationData.strings), textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            }
+        }
+    }
+
     var result: [(AnyHashable, [PeerInfoScreenItem])] = []
     for section in InfoSection.allCases {
         if let sectionItems = items[section], !sectionItems.isEmpty {

@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -1979,6 +1980,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         if let subject = item.associatedData.subject, case .messageOptions = subject {
             needsShareButton = false
         }
+        if BGSimpleSettings.shared.hideShareButton {
+            needsShareButton = false
+        }
         
         /*if isInlinePage {
             needsShareButton = false
@@ -3954,7 +3958,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         } else if case .semanticallyMerged = updatedMergedTop {
             forceBackgroundSide = true
         }
-        let mergeType = ChatMessageBackgroundMergeType(top: updatedMergedTop == .fullyMerged, bottom: updatedMergedBottom == .fullyMerged, side: forceBackgroundSide)
+        let mergeType = ChatMessageBackgroundMergeType(top: updatedMergedTop == .fullyMerged, bottom: updatedMergedBottom == .fullyMerged || BGSimpleSettings.shared.removeMessageTails, side: forceBackgroundSide)
         let backgroundType: ChatMessageBackgroundType
         if hideBackground {
             backgroundType = .none

@@ -3,6 +3,7 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 import Emoji
+import BGSimpleSettings
 
 public enum EnqueueMessageGrouping {
     case none
@@ -678,6 +679,12 @@ public func resendMessages(account: Account, messageIds: [MessageId]) -> Signal<
 }
 
 func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId, messages: [(Bool, EnqueueMessage)], disableAutoremove: Bool = false, transformGroupingKeysWithPeerId: Bool = false) -> [MessageId?] {
+    if BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostReadOnAction {
+        let namespace: MessageId.Namespace = peerId.namespace == Namespaces.Peer.SecretChat ? Namespaces.Message.SecretIncoming : Namespaces.Message.Cloud
+        if let index = transaction.getTopPeerMessageIndex(peerId: peerId, namespace: namespace) {
+            let _ = transaction.applyInteractiveReadMaxIndex(index)
+        }
+    }
     /**
      * If it is a support account, mark messages as read here as they are
      * not marked as read when chat is opened.
@@ -704,6 +711,28 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
     var updatedMessages: [(Bool, EnqueueMessage)] = []
     outer: for (transformedMedia, message) in messages {
         var updatedMessage = message
+        if BGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = updatedMessage, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtected() == false || sourceMessage.flags.contains(.CopyProtected) {
+            var copiedAttributes = sourceMessage.attributes.filter { attribute in
+                return !(attribute is ReplyMessageAttribute) && !(attribute is ReplyThreadMessageAttribute) && !(attribute is ViewCountMessageAttribute) && !(attribute is ForwardCountMessageAttribute) && !(attribute is ReactionsMessageAttribute) && !(attribute is AutoclearTimeoutMessageAttribute) && !(attribute is AutoremoveTimeoutMessageAttribute)
+            }
+            copiedAttributes.append(contentsOf: forwardedAttributes.filter { !($0 is ForwardOptionsMessageAttribute) })
+            updatedMessage = .message(text: sourceMessage.text, attributes: copiedAttributes, inlineStickers: [:], mediaReference: sourceMessage.media.first.flatMap(AnyMediaReference.standalone), threadId: threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: sourceMessage.groupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: [])
+        }
+        let ghostSettings = BGSimpleSettings.shared
+        let shouldSendSilently = ghostSettings.ghostSendWithoutSound == 2 || (ghostSettings.ghostSendWithoutSound == 1 && ghostSettings.ghostModeEnabled)
+        let shouldSchedule = ghostSettings.ghostModeEnabled && ghostSettings.ghostUseScheduledMessages
+        if shouldSendSilently || shouldSchedule {
+            updatedMessage = updatedMessage.withUpdatedAttributes { current in
+                var current = current
+                if shouldSendSilently && !current.contains(where: { $0 is NotificationInfoMessageAttribute }) {
+                    current.append(NotificationInfoMessageAttribute(flags: .muted))
+                }
+                if shouldSchedule && !current.contains(where: { $0 is OutgoingScheduleInfoMessageAttribute }) {
+                    current.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + 12, repeatPeriod: nil))
+                }
+                return current
+            }
+        }
         if transformGroupingKeysWithPeerId {
             updatedMessage = updatedMessage.withUpdatedGroupingKey { groupingKey -> Int64? in
                 if let groupingKey = groupingKey {

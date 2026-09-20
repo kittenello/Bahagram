@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import TelegramCore
@@ -1516,5 +1517,18 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
 }
 
 public func shouldDisplayInlineDateReactions(message: EngineMessage, isPremium: Bool, forceInline: Bool) -> Bool {
-    return false
+    let mask = BGSimpleSettings.shared.hiddenReactions
+    if mask == 0 {
+        return false
+    }
+    if let channel = message.peers[message.id.peerId] as? TelegramChannel {
+        switch channel.info {
+        case .broadcast: return mask & 1 != 0
+        case .group: return mask & 2 != 0
+        }
+    } else if message.peers[message.id.peerId] is TelegramGroup {
+        return mask & 2 != 0
+    } else {
+        return mask & 4 != 0
+    }
 }

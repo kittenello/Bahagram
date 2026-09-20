@@ -192,6 +192,7 @@ swift_library(
         "//submodules/ShareItems/Impl:ShareItemsImpl",
         "//submodules/SettingsUI:SettingsUI",
         "//Bahogram/BGSettingsUI:BGSettingsUI",
+        "//Bahogram/BGSimpleSettings:BGSimpleSettings",
         "//submodules/UrlHandling:UrlHandling",
         "//submodules/HexColor:HexColor",
         "//submodules/QrCode:QrCode",

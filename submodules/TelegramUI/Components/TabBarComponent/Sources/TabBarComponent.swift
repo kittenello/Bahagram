@@ -14,6 +14,7 @@ import LiquidLens
 import AppBundle
 import SearchBarNode
 import TabSelectionRecognizer
+import BGSimpleSettings
 
 public final class NavigationSearchView: UIView {
     private struct Params: Equatable {
@@ -653,7 +654,7 @@ public final class TabBarComponent: Component {
             let _ = alphaTransition
 
             let innerInset: CGFloat = 4.0
-            let availableSize = CGSize(width: min(500.0, availableSize.width), height: availableSize.height)
+            let availableSize = CGSize(width: BGSimpleSettings.shared.wideTabBar ? availableSize.width : min(500.0, availableSize.width), height: availableSize.height)
             
             let previousComponent = self.component
             self.component = component

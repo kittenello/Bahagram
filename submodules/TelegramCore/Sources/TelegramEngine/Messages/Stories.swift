@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import SwiftSignalKit
 import Postbox
 import TelegramApi
@@ -2071,7 +2072,11 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 }
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
+    let suppressServerReceipt = BGSimpleSettings.shared.ghostModeEnabled && !BGSimpleSettings.shared.ghostReadStories
     if asPinned {
+        if suppressServerReceipt {
+            return .complete()
+        }
         return account.postbox.transaction { transaction -> Api.InputPeer? in
             return transaction.getPeer(peerId).flatMap(apiInputPeer)
         }
@@ -2102,7 +2107,9 @@ func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPi
             
             #if DEBUG && false
             #else
-            _internal_addSynchronizeViewStoriesOperation(peerId: peerId, storyId: id, transaction: transaction)
+            if !suppressServerReceipt {
+                _internal_addSynchronizeViewStoriesOperation(peerId: peerId, storyId: id, transaction: transaction)
+            }
             #endif
             
             return transaction.getPeer(peerId).flatMap(apiInputUser)
