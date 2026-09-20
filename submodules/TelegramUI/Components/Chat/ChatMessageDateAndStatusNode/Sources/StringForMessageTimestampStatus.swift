@@ -247,6 +247,17 @@ public func stringForMessageTimestampStatus(
             dateText = "\(authorTitle), \(dateText)"
         }
     }
+
+    var bahogramMarks: [String] = []
+    if message.localTags.contains(.bahogramDeleted) {
+        bahogramMarks.append("🗑")
+    }
+    if message.localTags.contains(.bahogramHasEditHistory) {
+        bahogramMarks.append("✎")
+    }
+    if !bahogramMarks.isEmpty {
+        dateText = "\(bahogramMarks.joined(separator: " ")) \(dateText)"
+    }
     
     return dateText
 }
