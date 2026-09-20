@@ -55,7 +55,7 @@ enum BGListEntry: ItemListNodeEntry {
         case let .info(_, _, text):
             return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
         case let .input(_, _, key, value, placeholder):
-            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), clearType: .always, tag: nil, sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) })
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), clearType: .always, tag: nil, sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
         }
     }
 }
