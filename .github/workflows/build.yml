@@ -14,6 +14,9 @@ jobs:
     name: Build iOS IPA
     runs-on: macos-26
     timeout-minutes: 360
+    env:
+      TG_API_ID: ${{ secrets.TG_API_ID }}
+      TG_API_HASH: ${{ secrets.TG_API_HASH }}
 
     steps:
       - name: Checkout
@@ -21,6 +24,24 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Validate Telegram API credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TG_API_ID:-}" ] || [ -z "${TG_API_HASH:-}" ]; then
+            echo "::error::Missing GitHub Secrets TG_API_ID and TG_API_HASH. Create your own Telegram API application at my.telegram.org and add both values under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if ! [[ "$TG_API_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::TG_API_ID must contain digits only."
+            exit 1
+          fi
+          if [ "${#TG_API_HASH}" -lt 16 ]; then
+            echo "::error::TG_API_HASH does not look valid."
+            exit 1
+          fi
+          echo "Telegram API credentials are configured."
 
       - name: Select required Xcode
         shell: bash
@@ -71,14 +92,35 @@ jobs:
 
           echo "Build number: $BUILD_NUMBER"
 
+          export CONFIG_PATH="$RUNNER_TEMP/bahogram-configuration.json"
+          python3 - <<'PY'
+          import json
+          import os
+
+          source = "build-system/bahogram-configuration.json"
+          destination = os.environ["CONFIG_PATH"]
+
+          with open(source, "r", encoding="utf-8") as file:
+              config = json.load(file)
+
+          config["bundle_id"] = "com.kittenello.bahogram"
+          config["api_id"] = os.environ["TG_API_ID"]
+          config["api_hash"] = os.environ["TG_API_HASH"]
+
+          with open(destination, "w", encoding="utf-8") as file:
+              json.dump(config, file, indent=2)
+              file.write("\n")
+          PY
+
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
 
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             --cacheDir="$HOME/telegram-bazel-cache" \
             build \
-            --configurationPath="build-system/appstore-configuration.json" \
+            --configurationPath="$CONFIG_PATH" \
             --codesigningInformationPath=build-system/fake-codesigning \
+            --disableProvisioningProfiles \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER"
 
