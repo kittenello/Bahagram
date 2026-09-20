@@ -17,7 +17,7 @@ extension PeerInfoScreenNode {
             let formattedPhoneNumber = formatPhoneNumber(context: self.context, number: value)
             let presentationData = self.presentationData
             let detailsUrl = "https://fragment.com/numbers"
-            self.controller?.present(textAlertController(context: self.context, title: formattedPhoneNumber, text: "Коллекционный номер телефона, визуально принадлежащий вашему профилю. Это локальное оформление Bahogram — реальный номер аккаунта не изменён.", actions: [
+            self.controller?.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: formattedPhoneNumber), text: NSAttributedString(string: "Коллекционный номер телефона, визуально принадлежащий вашему профилю. Это локальное оформление Bahogram — реальный номер аккаунта не изменён."), actions: [
                 TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_Cancel, action: {}),
                 TextAlertAction(type: .genericAction, title: "Копировать", action: {
                     UIPasteboard.general.string = formattedPhoneNumber
