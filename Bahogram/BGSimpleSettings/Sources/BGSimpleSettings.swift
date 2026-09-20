@@ -150,6 +150,6 @@ public final class BGSimpleSettings {
     public var infiniteRecentStickers: Bool { get { bool(Key.infiniteRecentStickers) } set { setBool(newValue, Key.infiniteRecentStickers) } }
     public var hiddenReactions: Int { get { integer(Key.hiddenReactions) } set { setInteger(newValue, Key.hiddenReactions) } }
     public var removeMessageTails: Bool { get { bool(Key.removeMessageTails) } set { setBool(newValue, Key.removeMessageTails) } }
-    public var hideShareButton: Bool { get { bool(Key.hideShareButton) } set { setBool(newValue, Key.hideShareButton) } }
+    public var hideShareButton: Bool { get { false } set { } }
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }
 }
