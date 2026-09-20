@@ -63,9 +63,9 @@ func bgChatsSettingsController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
     return bgController(context: context, title: "Чаты", entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
-        return [.header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"), .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true), .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true), .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"), .header(10, 1, "СООБЩЕНИЯ"), .info(11, 1, "Так будет выглядеть сообщение после применения настроек ниже."), .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true), .toggle(13, 1, "share", "Скрыть боковую кнопку «Поделиться»", s.hideShareButton, true), .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true)]
+        return [.header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"), .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true), .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true), .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"), .header(10, 1, "СООБЩЕНИЯ"), .info(11, 1, "Так будет выглядеть сообщение после применения настроек ниже."), .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true), .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true)]
     }, toggle: { key, value in
-        switch key { case "onlyAdded": s.onlyAddedStickers = value; case "recent": s.infiniteRecentStickers = value; case "tails": s.removeMessageTails = value; case "share": s.hideShareButton = value; case "replies": s.disableColoredReplies = value; default: break }
+        switch key { case "onlyAdded": s.onlyAddedStickers = value; case "recent": s.infiniteRecentStickers = value; case "tails": s.removeMessageTails = value; case "replies": s.disableColoredReplies = value; default: break }
     }, open: { $0 == "reactions" ? bgHiddenReactionsController(context: context) : nil })
 }
 
