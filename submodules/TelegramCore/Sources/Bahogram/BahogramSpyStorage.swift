@@ -17,32 +17,23 @@ private struct BahogramMessageRevisionList: Codable {
     var revisions: [BahogramMessageRevision]
 }
 
-private func bahogramMessageWithUpdatedLocalTags(_ message: Message, localTags: LocalMessageTags) -> Message {
-    return Message(
-        stableId: message.stableId,
-        stableVersion: message.stableVersion,
+private func bahogramMessageWithUpdatedLocalTags(_ message: Message, localTags: LocalMessageTags) -> StoreMessage {
+    return StoreMessage(
         id: message.id,
+        customStableId: nil,
         globallyUniqueId: message.globallyUniqueId,
         groupingKey: message.groupingKey,
-        groupInfo: message.groupInfo,
         threadId: message.threadId,
         timestamp: message.timestamp,
-        flags: message.flags,
+        flags: StoreMessageFlags(message.flags),
         tags: message.tags,
         globalTags: message.globalTags,
         localTags: localTags,
-        customTags: message.customTags,
-        forwardInfo: message.forwardInfo,
-        author: message.author,
+        forwardInfo: message.forwardInfo.flatMap(StoreMessageForwardInfo.init),
+        authorId: message.author?.id,
         text: message.text,
         attributes: message.attributes,
-        media: message.media,
-        peers: message.peers,
-        associatedMessages: message.associatedMessages,
-        associatedMessageIds: message.associatedMessageIds,
-        associatedMedia: message.associatedMedia,
-        associatedThreadInfo: message.associatedThreadInfo,
-        associatedStories: message.associatedStories
+        media: message.media
     )
 }
 
@@ -171,3 +162,4 @@ public func bahogramMessageRevisions(
             .revisions ?? []
     }
 }
+
