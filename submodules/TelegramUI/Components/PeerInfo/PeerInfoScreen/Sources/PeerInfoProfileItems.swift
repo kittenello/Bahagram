@@ -910,11 +910,26 @@ func infoItems(
     if let peer = data.peer {
         var itemId = 95000
         if BGSimpleSettings.shared.showProfileId {
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: "\(peer.id.toInt64())", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            let profileId = "\(peer.id.toInt64())"
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: profileId, textColor: .accent, action: { _, _ in
+                UIPasteboard.general.string = profileId
+            }, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1
         }
         if BGSimpleSettings.shared.showDc, let image = peer.smallProfileImage, let resource = image.resource as? CloudPeerPhotoSizeMediaResource {
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата-центр (DC)", text: "DC \(resource.datacenterId)", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            let dcFlag: String
+            switch resource.datacenterId {
+            case 1, 3:
+                dcFlag = "🇺🇸"
+            case 2, 4:
+                dcFlag = "🇳🇱"
+            case 5:
+                dcFlag = "🇸🇬"
+            default:
+                dcFlag = ""
+            }
+            let dcText = dcFlag.isEmpty ? "DC \(resource.datacenterId)" : "DC \(resource.datacenterId) \(dcFlag)"
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата-центр (DC)", text: dcText, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1
         }
         if BGSimpleSettings.shared.showRegistrationDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
