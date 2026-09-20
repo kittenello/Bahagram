@@ -2155,7 +2155,8 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
 
         if !self.didSuggestBahogramGhost && BGSimpleSettings.shared.ghostSuggestForStories && !BGSimpleSettings.shared.ghostModeEnabled {
             self.didSuggestBahogramGhost = true
-            self.present(textAlertController(context: self.context, title: "Режим призрака", text: "Включить режим призрака для просмотра сторис без отправки отметки о просмотре?", actions: [
+            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+            self.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: "Режим призрака"), text: NSAttributedString(string: "Включить режим призрака для просмотра сторис без отправки отметки о просмотре?"), actions: [
                 TextAlertAction(type: .defaultAction, title: "Не сейчас", action: {}),
                 TextAlertAction(type: .genericAction, title: "Включить", action: {
                     BGSimpleSettings.shared.ghostModeEnabled = true
