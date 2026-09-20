@@ -103,7 +103,11 @@ jobs:
           with open(source, "r", encoding="utf-8") as file:
               config = json.load(file)
 
-          config["bundle_id"] = "com.kittenello.bahogram"
+          # The repository's fake provisioning profile is issued for Telegram's
+          # build-time bundle id. Sideloadly will re-sign the final IPA, so we
+          # change the installed identity to com.kittenello.bahogram after Bazel
+          # has produced the application.
+          config["bundle_id"] = "ph.telegra.Telegraph"
           config["api_id"] = os.environ["TG_API_ID"]
           config["api_hash"] = os.environ["TG_API_HASH"]
 
@@ -120,7 +124,6 @@ jobs:
             build \
             --configurationPath="$CONFIG_PATH" \
             --codesigningInformationPath=build-system/fake-codesigning \
-            --disableProvisioningProfiles \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER"
 
