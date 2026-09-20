@@ -2163,6 +2163,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
             return false
         })
+        let hasBahogramEditHistory = message.localTags.contains(.bahogramHasEditHistory)
 
         if canViewAuthor {
             actions.insert(.custom(ChatMessageAuthorContextItem(context: context, message: message, action: { c, f, peer in
@@ -2306,6 +2307,48 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 actions.insert(.separator, at: 0)
             }
             actions.insert(.custom(ChatReadReportContextItem(context: context, message: message, hasReadReports: false, isEdit: true, stats: MessageReadStats(reactionCount: 0, peers: [], readTimestamps: [:]), action: nil), false), at: 0)
+        }
+
+        if hasBahogramEditHistory {
+            if !actions.isEmpty {
+                actions.insert(.separator, at: 0)
+            }
+            actions.insert(.action(ContextMenuActionItem(
+                text: "История правок",
+                icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor)
+                },
+                action: { c, _ in
+                    let _ = (bahogramMessageRevisions(postbox: context.account.postbox, messageId: message.id)
+                    |> deliverOnMainQueue).start(next: { revisions in
+                        c?.dismiss(completion: {
+                            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                            let visibleRevisions = revisions.suffix(20)
+                            var parts: [String] = []
+                            let firstIndex = max(1, revisions.count - visibleRevisions.count + 1)
+                            for (offset, revision) in visibleRevisions.enumerated() {
+                                let text = revision.text.isEmpty ? "‹пустое сообщение›" : revision.text
+                                parts.append("Версия \(firstIndex + offset):\n\(text)")
+                            }
+                            let currentText = message.text.isEmpty ? "‹пустое сообщение›" : message.text
+                            parts.append("Текущая версия:\n\(currentText)")
+
+                            let historyText = parts.joined(separator: "\n\n")
+                            controllerInteraction.presentController(
+                                textAlertController(
+                                    context: context,
+                                    title: "История правок",
+                                    text: historyText,
+                                    actions: [
+                                        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                                    ]
+                                ),
+                                nil
+                            )
+                        })
+                    })
+                }
+            )), at: 0)
         }
         
         if !actions.isEmpty, case .separator = actions[0] {
