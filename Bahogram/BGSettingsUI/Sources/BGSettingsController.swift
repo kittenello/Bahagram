@@ -4,6 +4,7 @@ import SwiftSignalKit
 import AccountContext
 import TelegramPresentationData
 import ItemListUI
+import PresentationDataUtils
 import BGSimpleSettings
 
 private final class BGSettingsArguments {
