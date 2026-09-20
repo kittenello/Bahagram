@@ -978,6 +978,10 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                     } else {
                         handleResolvedUrl(.settings(.path("")))
                     }
+                case "bg":
+                    if parsedUrl.pathComponents.last == "spy" {
+                        handleResolvedUrl(.settings(.path("bahogram/spy")))
+                    }
                 default:
                     break
                 }

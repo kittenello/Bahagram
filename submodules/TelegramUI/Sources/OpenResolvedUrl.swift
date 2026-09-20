@@ -19,6 +19,7 @@ import StickerPackPreviewUI
 import JoinLinkPreviewUI
 import LanguageLinkPreviewUI
 import SettingsUI
+import BGSettingsUI
 import UrlHandling
 import TelegramCallsUI
 import UndoUI
@@ -970,6 +971,10 @@ func openResolvedUrlImpl(
             switch section {
             case let .path(path):
                 if let navigationController {
+                    if path == "bahogram/spy" {
+                        navigationController.pushViewController(bgSpySettingsController(context: context))
+                        return
+                    }
                     if path.isEmpty {
                         if let rootController = context.sharedContext.mainWindow?.viewController as? TelegramRootController {
                             rootController.openSettings(edit: false)

@@ -210,6 +210,7 @@ public extension LocalMessageTags {
 
     // Local-only Bahogram state. These bits never leave Postbox and survive
     // application restarts together with the stored message.
+    static let bahogramSavedViewOnce = LocalMessageTags(rawValue: 1 << 28)
     static let bahogramDeleted = LocalMessageTags(rawValue: 1 << 29)
     static let bahogramHasEditHistory = LocalMessageTags(rawValue: 1 << 30)
 }

@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import TelegramApi
+import BGSimpleSettings
 
 
 public func tagsForStoreMessage(incoming: Bool, attributes: [MessageAttribute], media: [Media], textEntities: [MessageTextEntity]?, isPinned: Bool) -> (MessageTags, GlobalMessageTags) {
@@ -1229,6 +1230,7 @@ extension StoreMessage {
                 
                 let messageText = message
                 var medias: [Media] = []
+                var localTags: LocalMessageTags = []
                 
                 var consumableContent: (Bool, Bool)? = nil
                 
@@ -1240,6 +1242,9 @@ extension StoreMessage {
                         if let expirationTimer = expirationTimer, expirationTimer > 0 {
                             attributes.append(AutoclearTimeoutMessageAttribute(timeout: expirationTimer, countdownBeginTime: nil))
                             consumableContent = (true, false)
+                            if expirationTimer == viewOnceTimeout && BGSimpleSettings.shared.saveViewOnceMedia {
+                                localTags.insert(.bahogramSavedViewOnce)
+                            }
                         }
                         
                         if let nonPremium = nonPremium, nonPremium {
@@ -1272,6 +1277,9 @@ extension StoreMessage {
                 
                 if let ttlPeriod = ttlPeriod {
                     attributes.append(AutoremoveTimeoutMessageAttribute(timeout: ttlPeriod, countdownBeginTime: date))
+                    if ttlPeriod == viewOnceTimeout && BGSimpleSettings.shared.saveViewOnceMedia {
+                        localTags.insert(.bahogramSavedViewOnce)
+                    }
                 }
                 
                 if let postAuthor = postAuthor {
@@ -1478,11 +1486,19 @@ extension StoreMessage {
                 
                 let isPinned = (flags & (1 << 24)) != 0
                 
-                let (tags, globalTags) = tagsForStoreMessage(incoming: storeFlags.contains(.Incoming), attributes: attributes, media: medias, textEntities: entitiesAttribute?.entities, isPinned: isPinned)
+                let tagAttributes: [MessageAttribute]
+                if localTags.contains(.bahogramSavedViewOnce) {
+                    tagAttributes = attributes.filter { attribute in
+                        return !(attribute is AutoclearTimeoutMessageAttribute) && !(attribute is AutoremoveTimeoutMessageAttribute)
+                    }
+                } else {
+                    tagAttributes = attributes
+                }
+                let (tags, globalTags) = tagsForStoreMessage(incoming: storeFlags.contains(.Incoming), attributes: tagAttributes, media: medias, textEntities: entitiesAttribute?.entities, isPinned: isPinned)
                 
                 storeFlags.insert(.CanBeGroupedIntoFeed)
                 
-                self.init(id: MessageId(peerId: peerId, namespace: namespace, id: id), customStableId: nil, globallyUniqueId: nil, groupingKey: groupingId, threadId: threadId, timestamp: date, flags: storeFlags, tags: tags, globalTags: globalTags, localTags: [], forwardInfo: forwardInfo, authorId: authorId, text: messageText, attributes: attributes, media: medias)
+                self.init(id: MessageId(peerId: peerId, namespace: namespace, id: id), customStableId: nil, globallyUniqueId: nil, groupingKey: groupingId, threadId: threadId, timestamp: date, flags: storeFlags, tags: tags, globalTags: globalTags, localTags: localTags, forwardInfo: forwardInfo, authorId: authorId, text: messageText, attributes: attributes, media: medias)
             case .messageEmpty:
                 return nil
             case let .messageService(messageServiceData):

@@ -111,6 +111,9 @@ public extension Message {
     }
     
     var minAutoremoveOrClearTimeout: Int32? {
+        if self.localTags.contains(.bahogramSavedViewOnce) {
+            return nil
+        }
         var timeout: Int32?
         for attribute in self.attributes {
             if let attribute = attribute as? AutoremoveTimeoutMessageAttribute {

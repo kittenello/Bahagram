@@ -248,15 +248,16 @@ public func stringForMessageTimestampStatus(
         }
     }
 
-    var bahogramMarks: [String] = []
-    if message.localTags.contains(.bahogramDeleted) {
-        bahogramMarks.append("🗑")
-    }
     if message.localTags.contains(.bahogramHasEditHistory) {
-        bahogramMarks.append("✎")
+        dateText = "✎ \(dateText)"
     }
-    if !bahogramMarks.isEmpty {
-        dateText = "\(bahogramMarks.joined(separator: " ")) \(dateText)"
+    if message.localTags.contains(.bahogramSavedViewOnce) {
+        dateText = "1 просмотр · \(dateText)"
+    }
+    if message.localTags.contains(.bahogramDeleted) {
+        // Private-use marker. ChatMessageDateAndStatusNode replaces it with a
+        // tinted SF Symbols trash icon, so it does not render as a colored emoji.
+        dateText = "\u{E000}\(dateText)"
     }
     
     return dateText

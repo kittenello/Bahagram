@@ -4531,6 +4531,9 @@ func replayFinalState(
                     if previousMessage.localTags.contains(.bahogramDeleted) {
                         updatedLocalTags.insert(.bahogramDeleted)
                     }
+                    if previousMessage.localTags.contains(.bahogramSavedViewOnce) {
+                        updatedLocalTags.insert(.bahogramSavedViewOnce)
+                    }
 
                     if previousMessage.localTags.contains(.OutgoingLiveLocation) {
                         updatedLocalTags.insert(.OutgoingLiveLocation)

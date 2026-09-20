@@ -79,9 +79,6 @@ private func bahogramRevisionTimestamp(_ message: Message) -> Int32 {
 /// references stay available after reopening the chat and after an app restart.
 /// The marker is local-only and is never sent to Telegram.
 func bahogramPreserveDeletedMessage(transaction: Transaction, messageId: MessageId) -> Bool {
-    guard BGSimpleSettings.shared.saveDeletedMessages else {
-        return false
-    }
     guard messageId.namespace == Namespaces.Message.Cloud else {
         return false
     }
@@ -89,6 +86,9 @@ func bahogramPreserveDeletedMessage(transaction: Transaction, messageId: Message
         return false
     }
     guard let message = transaction.getMessage(messageId) else {
+        return false
+    }
+    guard BGSimpleSettings.shared.saveDeletedMessages || message.localTags.contains(.bahogramSavedViewOnce) else {
         return false
     }
 

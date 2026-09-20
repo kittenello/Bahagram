@@ -399,7 +399,7 @@ func messageMediaEditingOptions(message: EngineRawMessage) -> MessageMediaEditin
         return []
     }
     for attribute in message.attributes {
-        if attribute is AutoclearTimeoutMessageAttribute {
+        if attribute is AutoclearTimeoutMessageAttribute && !message.localTags.contains(.bahogramSavedViewOnce) {
             return []
         }
     }
