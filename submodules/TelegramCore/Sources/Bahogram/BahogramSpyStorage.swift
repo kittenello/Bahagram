@@ -17,6 +17,35 @@ private struct BahogramMessageRevisionList: Codable {
     var revisions: [BahogramMessageRevision]
 }
 
+private func bahogramMessageWithUpdatedLocalTags(_ message: Message, localTags: LocalMessageTags) -> Message {
+    return Message(
+        stableId: message.stableId,
+        stableVersion: message.stableVersion,
+        id: message.id,
+        globallyUniqueId: message.globallyUniqueId,
+        groupingKey: message.groupingKey,
+        groupInfo: message.groupInfo,
+        threadId: message.threadId,
+        timestamp: message.timestamp,
+        flags: message.flags,
+        tags: message.tags,
+        globalTags: message.globalTags,
+        localTags: localTags,
+        customTags: message.customTags,
+        forwardInfo: message.forwardInfo,
+        author: message.author,
+        text: message.text,
+        attributes: message.attributes,
+        media: message.media,
+        peers: message.peers,
+        associatedMessages: message.associatedMessages,
+        associatedMessageIds: message.associatedMessageIds,
+        associatedMedia: message.associatedMedia,
+        associatedThreadInfo: message.associatedThreadInfo,
+        associatedStories: message.associatedStories
+    )
+}
+
 private func bahogramRevisionCacheId(_ messageId: MessageId) -> ItemCacheEntryId {
     let key = ValueBoxKey(length: 16)
     key.setInt64(0, value: messageId.peerId.toInt64())
@@ -79,7 +108,7 @@ func bahogramPreserveDeletedMessage(transaction: Transaction, messageId: Message
     transaction.updateMessage(messageId, update: { currentMessage in
         var localTags = currentMessage.localTags
         localTags.insert(.bahogramDeleted)
-        return .update(currentMessage.withUpdatedLocalTags(localTags))
+        return .update(bahogramMessageWithUpdatedLocalTags(currentMessage, localTags: localTags))
     })
     return true
 }
