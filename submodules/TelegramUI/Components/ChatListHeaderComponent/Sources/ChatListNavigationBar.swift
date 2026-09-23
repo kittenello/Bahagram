@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -104,7 +105,7 @@ public final class ChatListNavigationBar: Component {
         self.primaryContent = primaryContent
         self.secondaryContent = secondaryContent
         self.secondaryTransition = secondaryTransition
-        self.storySubscriptions = storySubscriptions
+        self.storySubscriptions = BGSimpleSettings.shared.hideStories ? nil : storySubscriptions
         self.storiesIncludeHidden = storiesIncludeHidden
         self.uploadProgress = uploadProgress
         self.headerPanels = headerPanels

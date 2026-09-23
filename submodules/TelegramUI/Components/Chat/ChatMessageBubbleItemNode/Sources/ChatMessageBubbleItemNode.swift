@@ -3962,6 +3962,8 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         let backgroundType: ChatMessageBackgroundType
         if hideBackground {
             backgroundType = .none
+        } else if BGSimpleSettings.shared.removeMessageTails {
+            backgroundType = incoming ? .incoming(.Extracted) : .outgoing(.Extracted)
         } else if !incoming {
             backgroundType = .outgoing(mergeType)
         } else {

@@ -8,27 +8,9 @@ import AsyncDisplayKit
 import ContextUI
 import PhoneNumberFormat
 import UndoUI
-import BGSimpleSettings
 
 extension PeerInfoScreenNode {
     func openPhone(value: String, node: ASDisplayNode, gesture: ContextGesture?, progress: Promise<Bool>?) {
-        let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        if self.isMyProfile && BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty && value == visualPhone && gesture == nil {
-            let formattedPhoneNumber = formatPhoneNumber(context: self.context, number: value)
-            let presentationData = self.presentationData
-            let detailsUrl = "https://fragment.com/numbers"
-            self.controller?.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: formattedPhoneNumber), text: NSAttributedString(string: "Коллекционный номер телефона, визуально принадлежащий вашему профилю. Это локальное оформление Bahogram — реальный номер аккаунта не изменён."), actions: [
-                TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_Cancel, action: {}),
-                TextAlertAction(type: .genericAction, title: "Копировать", action: {
-                    UIPasteboard.general.string = formattedPhoneNumber
-                }),
-                TextAlertAction(type: .genericAction, title: "Подробнее", action: { [weak self] in
-                    guard let self else { return }
-                    self.context.sharedContext.openExternalUrl(context: self.context, urlContext: .generic, url: detailsUrl, forceExternal: true, presentationData: presentationData, navigationController: nil, dismissInput: {})
-                })
-            ]), in: .window(.root))
-            return
-        }
         guard let sourceNode = node as? ContextExtractedContentContainingNode else {
             return
         }

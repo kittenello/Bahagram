@@ -103,6 +103,29 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
 }
 
+public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemListSectionId, removeTails: Bool) -> ListViewItem {
+    let current = context.sharedContext.currentPresentationData.with { $0 }
+    var corners = current.chatBubbleCorners
+    corners.hasTails = !removeTails
+    return ThemeSettingsChatPreviewItem(
+        context: context,
+        systemStyle: .glass,
+        theme: current.theme,
+        componentTheme: current.theme,
+        strings: current.strings,
+        sectionId: sectionId,
+        fontSize: current.chatFontSize,
+        chatBubbleCorners: corners,
+        wallpaper: current.chatWallpaper,
+        dateTimeFormat: current.dateTimeFormat,
+        nameDisplayOrder: current.nameDisplayOrder,
+        messageItems: [
+            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", nameColor: .preset(.blue), backgroundEmojiId: nil),
+            ChatPreviewMessageItem(outgoing: true, reply: nil, text: "И исходящее сообщение", nameColor: .preset(.blue), backgroundEmojiId: nil)
+        ]
+    )
+}
+
 class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
     private var backgroundNode: WallpaperBackgroundNode?
     private let topStripeNode: ASDisplayNode

@@ -10,6 +10,7 @@ import StoryPeerListComponent
 import TelegramCore
 import MoreHeaderButton
 import GlassBackgroundComponent
+import BGSimpleSettings
 
 public final class HeaderNetworkStatusComponent: Component {
     public enum Content: Equatable {
@@ -166,7 +167,7 @@ public final class ChatListHeaderComponent: Component {
         self.secondaryTransition = secondaryTransition
         self.context = context
         self.networkStatus = networkStatus
-        self.storySubscriptions = storySubscriptions
+        self.storySubscriptions = BGSimpleSettings.shared.hideStories ? nil : storySubscriptions
         self.storiesIncludeHidden = storiesIncludeHidden
         self.storiesFraction = storiesFraction
         self.storiesUnlocked = storiesUnlocked

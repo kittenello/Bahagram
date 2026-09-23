@@ -1,19 +1,23 @@
 import Foundation
+import Darwin
 import Display
 import SwiftSignalKit
 import AccountContext
 import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
+import SettingsUI
 
 struct BGListState: Equatable { var revision: Int = 0 }
 
 final class BGListArguments {
+    let context: AccountContext
     let toggle: (String, Bool) -> Void
     let select: (String) -> Void
     let open: (String) -> Void
     let textUpdated: (String, String) -> Void
-    init(toggle: @escaping (String, Bool) -> Void, select: @escaping (String) -> Void, open: @escaping (String) -> Void, textUpdated: @escaping (String, String) -> Void) {
+    init(context: AccountContext, toggle: @escaping (String, Bool) -> Void, select: @escaping (String) -> Void, open: @escaping (String) -> Void, textUpdated: @escaping (String, String) -> Void) {
+        self.context = context
         self.toggle = toggle
         self.select = select
         self.open = open
@@ -28,15 +32,17 @@ enum BGListEntry: ItemListNodeEntry {
     case checkbox(Int32, Int32, String, String, Bool)
     case info(Int32, Int32, String)
     case input(Int32, Int32, String, String, String)
+    case messagePreview(Int32, Int32, Bool)
+    case appIcons(Int32, Int32)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _), let .appIcons(_, section): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _), let .appIcons(id, _): return id
         }
     }
     static func < (lhs: BGListEntry, rhs: BGListEntry) -> Bool { lhs.stableId < rhs.stableId }
@@ -56,11 +62,15 @@ enum BGListEntry: ItemListNodeEntry {
             return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
         case let .input(_, _, key, value, placeholder):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), clearType: .always, tag: nil, sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
+        case let .messagePreview(_, _, removeTails):
+            return bahogramMessagePreviewItem(context: arguments.context, sectionId: self.section, removeTails: removeTails)
+        case .appIcons:
+            return bahogramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
         }
     }
 }
 
-func bgController(context: AccountContext, title: String, entries: @escaping () -> [BGListEntry], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
+func bgController(context: AccountContext, title: String, entries: @escaping () -> [BGListEntry], restartRequiredKeys: Set<String> = [], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
     let initialState = BGListState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
@@ -72,7 +82,12 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
         })
     }
     var pushControllerImpl: ((ViewController) -> Void)?
-    let arguments = BGListArguments(toggle: { key, value in toggle(key, value); refresh() }, select: { key in select(key); refresh() }, open: { key in
+    var presentRestartAlertImpl: (() -> Void)?
+    let arguments = BGListArguments(context: context, toggle: { key, value in
+        toggle(key, value)
+        refresh()
+        if restartRequiredKeys.contains(key) { presentRestartAlertImpl?() }
+    }, select: { key in select(key); refresh() }, open: { key in
         if let controller = open(key) { pushControllerImpl?(controller) }
     }, textUpdated: { key, value in textUpdated(key, value) })
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
@@ -83,6 +98,13 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
     }
     let controller = ItemListController(context: context, state: signal)
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
+    presentRestartAlertImpl = { [weak controller] in
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        controller?.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: nil, text: NSAttributedString(string: "Чтобы применить изменения, нужно перезапустить клиент"), actions: [
+            TextAlertAction(type: .genericAction, title: "Позже", action: {}),
+            TextAlertAction(type: .defaultAction, title: "Перезапустить", action: { Darwin.exit(0) })
+        ]), in: .window(.root))
+    }
     return controller
 }
 

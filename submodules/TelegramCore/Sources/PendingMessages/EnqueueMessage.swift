@@ -570,14 +570,98 @@ private func opportunisticallyTransformOutgoingMedia(network: Network, postbox: 
     return combineLatest(signals)
 }
 
-public func enqueueMessages(account: Account, peerId: PeerId, messages: [EnqueueMessage]) -> Signal<[MessageId?], NoError> {
-    let signal: Signal<[(Bool, EnqueueMessage)], NoError>
-    if let transformOutgoingMessageMedia = account.transformOutgoingMessageMedia {
-        signal = opportunisticallyTransformOutgoingMedia(network: account.network, postbox: account.postbox, transformOutgoingMessageMedia: transformOutgoingMessageMedia, messages: messages, userInteractive: true)
+private struct PreparedProtectedForward {
+    let message: EnqueueMessage
+    let sourceMessage: Message?
+}
+
+private func localCopyOfProtectedMedia(account: Account, sourceMessage: Message, media: Media) -> Signal<AnyMediaReference?, NoError> {
+    let sourceResource: TelegramMediaResource
+    let contentType: MediaResourceUserContentType
+    let makeMedia: (LocalFileMediaResource) -> Media
+
+    if let file = media as? TelegramMediaFile {
+        sourceResource = file.resource
+        contentType = MediaResourceUserContentType(file: file)
+        makeMedia = { resource in
+            file.withUpdatedResource(resource).withUpdatedPartialReference(nil)
+        }
+    } else if let image = media as? TelegramMediaImage, let largest = image.representations.last {
+        sourceResource = largest.resource
+        contentType = .image
+        makeMedia = { resource in
+            var representations = image.representations
+            representations[representations.count - 1] = TelegramMediaImageRepresentation(dimensions: largest.dimensions, resource: resource, progressiveSizes: [], immediateThumbnailData: largest.immediateThumbnailData, hasVideo: false, isPersonal: largest.isPersonal, typeHint: largest.typeHint)
+            return TelegramMediaImage(imageId: image.imageId, representations: representations, videoRepresentations: [], immediateThumbnailData: image.immediateThumbnailData, emojiMarkup: image.emojiMarkup, reference: nil, partialReference: nil, flags: image.flags, video: nil)
+        }
     } else {
-        signal = .single(messages.map { (false, $0) })
+        return .single(.standalone(media: media))
     }
-    return signal
+
+    let mediaReference = AnyMediaReference.message(message: MessageReference(sourceMessage), media: media)
+    let resourceReference = MediaResourceReference.media(media: mediaReference, resource: sourceResource)
+    let localResource = LocalFileMediaResource(fileId: Int64.random(in: Int64.min ... Int64.max))
+
+    let result = Signal<AnyMediaReference?, NoError> { subscriber in
+        let fetchDisposable = (fetchedMediaResource(mediaBox: account.postbox.mediaBox, userLocation: .peer(sourceMessage.id.peerId), userContentType: contentType, reference: resourceReference)
+        |> `catch` { _ -> Signal<FetchResourceSourceType, NoError> in
+            return .single(.local)
+        }).start()
+        let dataDisposable = account.postbox.mediaBox.resourceData(sourceResource, option: .complete(waitUntilFetchStatus: true)).start(next: { data in
+            guard data.complete else { return }
+            account.postbox.mediaBox.copyResourceData(from: sourceResource.id, to: localResource.id, synchronous: true)
+            subscriber.putNext(.standalone(media: makeMedia(localResource)))
+            subscriber.putCompletion()
+        })
+        return ActionDisposable {
+            fetchDisposable.dispose()
+            dataDisposable.dispose()
+        }
+    }
+    return result
+    |> timeout(60.0, queue: Queue.concurrentDefaultQueue(), alternate: .single(.standalone(media: media)))
+}
+
+private func prepareProtectedForwardCopies(account: Account, messages: [EnqueueMessage]) -> Signal<[EnqueueMessage], NoError> {
+    return account.postbox.transaction { transaction -> [PreparedProtectedForward] in
+        return messages.map { message in
+            guard BGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = message, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtectedIgnoringBahogramSetting() else {
+                return PreparedProtectedForward(message: message, sourceMessage: nil)
+            }
+            var copiedAttributes = sourceMessage.attributes.filter { attribute in
+                return !(attribute is ReplyMessageAttribute) && !(attribute is ReplyThreadMessageAttribute) && !(attribute is ViewCountMessageAttribute) && !(attribute is ForwardCountMessageAttribute) && !(attribute is ReactionsMessageAttribute) && !(attribute is AutoclearTimeoutMessageAttribute) && !(attribute is AutoremoveTimeoutMessageAttribute)
+            }
+            copiedAttributes.append(contentsOf: forwardedAttributes.filter { !($0 is ForwardOptionsMessageAttribute) })
+            let copied = EnqueueMessage.message(text: sourceMessage.text, attributes: copiedAttributes, inlineStickers: [:], mediaReference: nil, threadId: threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: sourceMessage.groupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: [])
+            return PreparedProtectedForward(message: copied, sourceMessage: sourceMessage)
+        }
+    }
+    |> mapToSignal { prepared -> Signal<[EnqueueMessage], NoError> in
+        let signals: [Signal<EnqueueMessage, NoError>] = prepared.map { item in
+            guard let sourceMessage = item.sourceMessage, let media = sourceMessage.media.first else {
+                return .single(item.message)
+            }
+            return localCopyOfProtectedMedia(account: account, sourceMessage: sourceMessage, media: media)
+            |> map { mediaReference in
+                guard case let .message(text, attributes, inlineStickers, _, threadId, replyToMessageId, replyToStoryId, localGroupingKey, correlationId, bubbleUpEmojiOrStickersets) = item.message else {
+                    return item.message
+                }
+                return .message(text: text, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: threadId, replyToMessageId: replyToMessageId, replyToStoryId: replyToStoryId, localGroupingKey: localGroupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets)
+            }
+        }
+        return combineLatest(signals)
+    }
+}
+
+public func enqueueMessages(account: Account, peerId: PeerId, messages: [EnqueueMessage]) -> Signal<[MessageId?], NoError> {
+    return prepareProtectedForwardCopies(account: account, messages: messages)
+    |> mapToSignal { messages -> Signal<[(Bool, EnqueueMessage)], NoError> in
+        if let transformOutgoingMessageMedia = account.transformOutgoingMessageMedia {
+            return opportunisticallyTransformOutgoingMedia(network: account.network, postbox: account.postbox, transformOutgoingMessageMedia: transformOutgoingMessageMedia, messages: messages, userInteractive: true)
+        } else {
+            return .single(messages.map { (false, $0) })
+        }
+    }
     |> mapToSignal { messages -> Signal<[MessageId?], NoError> in
         return account.postbox.transaction { transaction -> ([MessageId?], [MessageId]) in
             var resultIds = Array<MessageId?>(repeating: nil, count: messages.count)

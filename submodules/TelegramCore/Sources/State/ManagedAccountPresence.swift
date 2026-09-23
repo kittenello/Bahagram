@@ -18,6 +18,7 @@ private final class AccountPresenceManagerImpl {
     private var onlineTimer: SignalKitTimer?
     private var offlineTimer: SignalKitTimer?
     private var settingsObserver: NSObjectProtocol?
+    private var offlineRequestObserver: NSObjectProtocol?
     
     private var wasOnline: Bool = false
     
@@ -51,6 +52,11 @@ private final class AccountPresenceManagerImpl {
                 self.updatePresence(self.wasOnline)
             }
         })
+        self.offlineRequestObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.requestOfflineNotification, object: BGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
+            self?.queue.async { [weak self] in
+                self?.requestOfflinePresence()
+            }
+        })
     }
     
     deinit {
@@ -61,6 +67,9 @@ private final class AccountPresenceManagerImpl {
         self.offlineTimer?.invalidate()
         if let settingsObserver = self.settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
+        }
+        if let offlineRequestObserver = self.offlineRequestObserver {
+            NotificationCenter.default.removeObserver(offlineRequestObserver)
         }
     }
 
@@ -97,7 +106,7 @@ private final class AccountPresenceManagerImpl {
             self.onlineTimer = nil
             let keepForcingOffline = ghost.ghostModeEnabled && ghost.ghostAutomaticOffline
             if keepForcingOffline && self.offlineTimer == nil {
-                let timer = SignalKitTimer(timeout: 3.0, repeat: true, completion: { [weak self] in
+                let timer = SignalKitTimer(timeout: 1.0, repeat: true, completion: { [weak self] in
                     self?.requestOfflinePresence()
                 }, queue: self.queue)
                 self.offlineTimer = timer

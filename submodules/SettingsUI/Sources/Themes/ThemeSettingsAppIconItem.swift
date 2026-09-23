@@ -8,6 +8,7 @@ import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
 import AppBundle
+import AccountContext
 
 private func generateBorderImage(theme: PresentationTheme, bordered: Bool, selected: Bool) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
@@ -90,6 +91,22 @@ class ThemeSettingsAppIconItem: ListViewItem, ItemListItem {
             }
         }
     }
+}
+
+public func bahogramAppIconItem(context: AccountContext, sectionId: ItemListSectionId, updated: @escaping () -> Void) -> ListViewItem {
+    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+    let icons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
+    let currentName: String?
+    if let alternateName = context.sharedContext.applicationBindings.getAlternateIconName() {
+        currentName = alternateName
+    } else {
+        currentName = icons.first(where: { $0.isDefault })?.name
+    }
+    return ThemeSettingsAppIconItem(theme: presentationData.theme, strings: presentationData.strings, systemStyle: .glass, sectionId: sectionId, icons: icons, isPremium: true, currentIconName: currentName, updated: { icon in
+        context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { _ in
+            updated()
+        })
+    })
 }
 
 private let badgeSize = CGSize(width: 24.0, height: 24.0)

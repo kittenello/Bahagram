@@ -24,6 +24,7 @@ import ConvertOpusToAAC
 import LocalAudioTranscription
 import TextSelectionNode
 import AudioTranscriptionPendingIndicatorComponent
+import BGSimpleSettings
 import UndoUI
 import TelegramNotices
 import ChatControllerInteraction
@@ -352,7 +353,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
             return
         }
         
-        if !context.isPremium, case .inProgress = self.audioTranscriptionState {
+        if !context.isPremium && BGSimpleSettings.shared.transcriptionBackend != .apple, case .inProgress = self.audioTranscriptionState {
             return
         }
         
@@ -360,7 +361,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
         
         let transcriptionText = self.forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(message))
-        if transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        if transcriptionText == nil && BGSimpleSettings.shared.transcriptionBackend != .apple && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !arguments.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -419,7 +420,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                if context.sharedContext.immediateExperimentalUISettings.localTranscription {
+                if context.sharedContext.immediateExperimentalUISettings.localTranscription || BGSimpleSettings.shared.transcriptionBackend == .apple {
                     let appLocale = presentationData.strings.baseLanguageCode
                     
                     let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
@@ -771,7 +772,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                     displayTranscribe = false
                 } else if arguments.message.id.peerId.namespace != Namespaces.Peer.SecretChat && !isViewOnceMessage && !arguments.presentationData.isPreview {
                     let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
-                    if arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                    if BGSimpleSettings.shared.transcriptionBackend == .apple || arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
                         displayTranscribe = true
                     } else if premiumConfiguration.audioTransciptionTrialCount > 0 {
                         if arguments.incoming {

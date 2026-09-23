@@ -6642,12 +6642,16 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 let (chatThemePreview, darkAppearancePreview) = chatThemeAndDarkAppearance
                 
                 var chatWallpaper = chatWallpaper
+                var chatTheme = chatTheme
+                if BGSimpleSettings.shared.disableCustomBackgrounds {
+                    chatWallpaper = nil
+                    chatTheme = nil
+                }
                 
                 let previousTheme = strongSelf.presentationData.theme
                 let previousStrings = strongSelf.presentationData.strings
                 let previousChatWallpaper = strongSelf.presentationData.chatWallpaper
                 
-                var chatTheme = chatTheme
                 if let chatThemePreview {
                     if !chatThemePreview.isEmpty {
                         if chatTheme?.id != chatThemePreview.id {
@@ -9015,10 +9019,15 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
             
             if commit || !isScheduledMessages {
-                self.commitPurposefulAction()
+                if !isGhostScheduledSend {
+                    self.commitPurposefulAction()
+                }
                 
                 let _ = (enqueueMessages(account: self.context.account, peerId: peerId, messages: self.transformEnqueueMessages(messages, postpone: postpone))
                 |> deliverOnMainQueue).startStandalone(next: { [weak self] _ in
+                    if isGhostScheduledSend {
+                        BGSimpleSettings.shared.requestGhostOffline()
+                    }
                     if let strongSelf = self, strongSelf.presentationInterfaceState.subject != .scheduledMessages {
                         strongSelf.chatDisplayNode.historyNode.scrollToEndOfHistory()
                     }

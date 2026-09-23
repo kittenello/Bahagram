@@ -3,6 +3,12 @@ import Foundation
 public final class BGSimpleSettings {
     public static let shared = BGSimpleSettings()
     public static let didChangeNotification = Notification.Name("bahogram.settings.didChange")
+    public static let requestOfflineNotification = Notification.Name("bahogram.ghost.requestOffline")
+
+    public enum TranscriptionBackend: String, CaseIterable {
+        case telegram
+        case apple
+    }
 
     private enum Key {
         static let saveDeletedMessages = "bahogram.spy.saveDeletedMessages"
@@ -35,6 +41,9 @@ public final class BGSimpleSettings {
         static let showChatCreationDate = "bahogram.appearance.showChatCreationDate"
         static let confirmCalls = "bahogram.appearance.confirmCalls"
         static let disableAds = "bahogram.appearance.disableAds"
+        static let hidePremiumStatuses = "bahogram.appearance.hidePremiumStatuses"
+        static let disableCustomBackgrounds = "bahogram.appearance.disableCustomBackgrounds"
+        static let hideStories = "bahogram.appearance.hideStories"
 
         static let onlyAddedStickers = "bahogram.chats.onlyAddedStickers"
         static let infiniteRecentStickers = "bahogram.chats.infiniteRecentStickers"
@@ -42,6 +51,8 @@ public final class BGSimpleSettings {
         static let removeMessageTails = "bahogram.chats.removeMessageTails"
         static let hideShareButton = "bahogram.chats.hideShareButton"
         static let disableColoredReplies = "bahogram.chats.disableColoredReplies"
+        static let showMessageSeconds = "bahogram.chats.showMessageSeconds"
+        static let transcriptionBackend = "bahogram.chats.transcriptionBackend"
     }
 
     private let defaults: UserDefaults
@@ -124,9 +135,22 @@ public final class BGSimpleSettings {
         NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
     }
     private func integer(_ key: String) -> Int { self.defaults.integer(forKey: key) }
-    private func setInteger(_ value: Int, _ key: String) { self.defaults.set(value, forKey: key) }
+    private func setInteger(_ value: Int, _ key: String) {
+        if self.defaults.object(forKey: key) != nil && self.defaults.integer(forKey: key) == value { return }
+        self.defaults.set(value, forKey: key)
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
     private func string(_ key: String) -> String { self.defaults.string(forKey: key) ?? "" }
-    private func setString(_ value: String, _ key: String) { self.defaults.set(value, forKey: key) }
+    private func setString(_ value: String, _ key: String) {
+        if self.defaults.string(forKey: key) == value { return }
+        self.defaults.set(value, forKey: key)
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
+
+    public func requestGhostOffline() {
+        guard self.ghostModeEnabled && self.ghostAutomaticOffline else { return }
+        NotificationCenter.default.post(name: BGSimpleSettings.requestOfflineNotification, object: self)
+    }
 
     public var ghostModeEnabled: Bool {
         get {
@@ -167,6 +191,9 @@ public final class BGSimpleSettings {
     public var showChatCreationDate: Bool { get { bool(Key.showChatCreationDate) } set { setBool(newValue, Key.showChatCreationDate) } }
     public var confirmCalls: Bool { get { bool(Key.confirmCalls) } set { setBool(newValue, Key.confirmCalls) } }
     public var disableAds: Bool { get { bool(Key.disableAds) } set { setBool(newValue, Key.disableAds) } }
+    public var hidePremiumStatuses: Bool { get { bool(Key.hidePremiumStatuses) } set { setBool(newValue, Key.hidePremiumStatuses) } }
+    public var disableCustomBackgrounds: Bool { get { bool(Key.disableCustomBackgrounds) } set { setBool(newValue, Key.disableCustomBackgrounds) } }
+    public var hideStories: Bool { get { bool(Key.hideStories) } set { setBool(newValue, Key.hideStories) } }
 
     public var onlyAddedStickers: Bool { get { bool(Key.onlyAddedStickers) } set { setBool(newValue, Key.onlyAddedStickers) } }
     public var infiniteRecentStickers: Bool { get { bool(Key.infiniteRecentStickers) } set { setBool(newValue, Key.infiniteRecentStickers) } }
@@ -174,4 +201,9 @@ public final class BGSimpleSettings {
     public var removeMessageTails: Bool { get { bool(Key.removeMessageTails) } set { setBool(newValue, Key.removeMessageTails) } }
     public var hideShareButton: Bool { get { false } set { } }
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }
+    public var showMessageSeconds: Bool { get { bool(Key.showMessageSeconds) } set { setBool(newValue, Key.showMessageSeconds) } }
+    public var transcriptionBackend: TranscriptionBackend {
+        get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .telegram }
+        set { setString(newValue.rawValue, Key.transcriptionBackend) }
+    }
 }
