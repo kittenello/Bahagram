@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import Postbox
 import SwiftSignalKit
@@ -1064,7 +1065,9 @@ extension ChatControllerImpl {
                 let _ = (strongSelf.shouldDivertMessagesToScheduled(messages: transformedMessages)
                 |> deliverOnMainQueue).start(next: { shouldDivert in
                     let signal: Signal<[MessageId?], NoError>
-                    var shouldOpenScheduledMessages = false
+                    var shouldFlushSendAction = false
+                    let isGhostScheduledSend = BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostUseScheduledMessages
+                    let divertedScheduleDelay: Int32 = isGhostScheduledSend ? 12 : 10 * 24 * 60 * 60
                     if forwardSourcePeerIds.count > 1 {
                         var forwardedMessages = forwardedMessages
                         if shouldDivert {
@@ -1073,12 +1076,12 @@ extension ChatControllerImpl {
                                     return message.withUpdatedAttributes { attributes in
                                         var attributes = attributes
                                         attributes.removeAll(where: { $0 is OutgoingScheduleInfoMessageAttribute })
-                                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + 10 * 24 * 60 * 60, repeatPeriod: nil))
+                                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + divertedScheduleDelay, repeatPeriod: nil))
                                         return attributes
                                     }
                                 }
                             }
-                            shouldOpenScheduledMessages = true
+                            shouldFlushSendAction = true
                         }
                         
                         var signals: [Signal<[MessageId?], NoError>] = []
@@ -1100,11 +1103,11 @@ extension ChatControllerImpl {
                                 return message.withUpdatedAttributes { attributes in
                                     var attributes = attributes
                                     attributes.removeAll(where: { $0 is OutgoingScheduleInfoMessageAttribute })
-                                    attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + 10 * 24 * 60 * 60, repeatPeriod: nil))
+                                    attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + divertedScheduleDelay, repeatPeriod: nil))
                                     return attributes
                                 }
                             }
-                            shouldOpenScheduledMessages = true
+                            shouldFlushSendAction = true
                         }
                         
                         signal = enqueueMessages(account: strongSelf.context.account, peerId: peerId, messages: transformedMessages)
@@ -1119,9 +1122,10 @@ extension ChatControllerImpl {
                         } else {
                             strongSelf.chatDisplayNode.historyNode.scrollToEndOfHistory()
                             
-                            if shouldOpenScheduledMessages {
+                            if shouldFlushSendAction {
                                 if let layoutActionOnViewTransitionAction = strongSelf.layoutActionOnViewTransitionAction {
                                     strongSelf.layoutActionOnViewTransitionAction = nil
+                                    strongSelf.chatDisplayNode.historyNode.layoutActionOnViewTransition = nil
                                     layoutActionOnViewTransitionAction()
                                 }
                             }

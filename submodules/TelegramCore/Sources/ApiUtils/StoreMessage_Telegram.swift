@@ -1242,7 +1242,7 @@ extension StoreMessage {
                         if let expirationTimer = expirationTimer, expirationTimer > 0 {
                             attributes.append(AutoclearTimeoutMessageAttribute(timeout: expirationTimer, countdownBeginTime: nil))
                             consumableContent = (true, false)
-                            if expirationTimer == viewOnceTimeout && BGSimpleSettings.shared.saveViewOnceMedia {
+                            if BGSimpleSettings.shared.saveViewOnceMedia && (expirationTimer <= 60 || expirationTimer == viewOnceTimeout) {
                                 localTags.insert(.bahogramSavedViewOnce)
                             }
                         }
@@ -1277,7 +1277,7 @@ extension StoreMessage {
                 
                 if let ttlPeriod = ttlPeriod {
                     attributes.append(AutoremoveTimeoutMessageAttribute(timeout: ttlPeriod, countdownBeginTime: date))
-                    if ttlPeriod == viewOnceTimeout && BGSimpleSettings.shared.saveViewOnceMedia {
+                    if BGSimpleSettings.shared.saveViewOnceMedia && ttlPeriod > 0 && (ttlPeriod <= 60 || ttlPeriod == viewOnceTimeout) {
                         localTags.insert(.bahogramSavedViewOnce)
                     }
                 }

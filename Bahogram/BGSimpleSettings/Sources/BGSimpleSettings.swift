@@ -2,6 +2,7 @@ import Foundation
 
 public final class BGSimpleSettings {
     public static let shared = BGSimpleSettings()
+    public static let didChangeNotification = Notification.Name("bahogram.settings.didChange")
 
     private enum Key {
         static let saveDeletedMessages = "bahogram.spy.saveDeletedMessages"
@@ -115,13 +116,34 @@ public final class BGSimpleSettings {
     }
 
     private func bool(_ key: String) -> Bool { self.defaults.bool(forKey: key) }
-    private func setBool(_ value: Bool, _ key: String) { self.defaults.set(value, forKey: key) }
+    private func setBool(_ value: Bool, _ key: String) {
+        if self.defaults.object(forKey: key) != nil && self.defaults.bool(forKey: key) == value {
+            return
+        }
+        self.defaults.set(value, forKey: key)
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
     private func integer(_ key: String) -> Int { self.defaults.integer(forKey: key) }
     private func setInteger(_ value: Int, _ key: String) { self.defaults.set(value, forKey: key) }
     private func string(_ key: String) -> String { self.defaults.string(forKey: key) ?? "" }
     private func setString(_ value: String, _ key: String) { self.defaults.set(value, forKey: key) }
 
-    public var ghostModeEnabled: Bool { get { bool(Key.ghostModeEnabled) } set { setBool(newValue, Key.ghostModeEnabled) } }
+    public var ghostModeEnabled: Bool {
+        get {
+            return bool(Key.ghostModeEnabled)
+        }
+        set {
+            // Match AyuGram's master toggle: enabling ghost mode immediately
+            // enables every privacy guard unless the user changes it afterwards.
+            // This also makes upgrading from the old permissive defaults safe.
+            ghostReadMessages = !newValue
+            ghostReadStories = !newValue
+            ghostSendOnline = !newValue
+            ghostSendTyping = !newValue
+            ghostAutomaticOffline = newValue
+            setBool(newValue, Key.ghostModeEnabled)
+        }
+    }
     public var ghostReadMessages: Bool { get { bool(Key.ghostReadMessages) } set { setBool(newValue, Key.ghostReadMessages) } }
     public var ghostReadStories: Bool { get { bool(Key.ghostReadStories) } set { setBool(newValue, Key.ghostReadStories) } }
     public var ghostSendOnline: Bool { get { bool(Key.ghostSendOnline) } set { setBool(newValue, Key.ghostSendOnline) } }

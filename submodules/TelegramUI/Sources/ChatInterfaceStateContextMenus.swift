@@ -38,6 +38,7 @@ import ChatMessageItemView
 import ChatMessageBubbleItemNode
 import AdsInfoScreen
 import AdsReportScreen
+import BGSimpleSettings
  
 private struct MessageContextMenuData {
     let starStatus: Bool?
@@ -1923,7 +1924,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
 
         if data.messageActions.options.contains(.forward) {
-            if !isCopyProtected {
+            if !isCopyProtected || BGSimpleSettings.shared.bypassForwardRestrictions {
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in

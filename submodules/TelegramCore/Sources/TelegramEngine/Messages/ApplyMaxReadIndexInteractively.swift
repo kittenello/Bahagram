@@ -2,6 +2,7 @@ import Foundation
 import Postbox
 import TelegramApi
 import SwiftSignalKit
+import BGSimpleSettings
 
 
 func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: AccountStateManager, index: MessageIndex) -> Signal<Void, NoError> {
@@ -11,6 +12,9 @@ func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: Ac
 }
     
 func _internal_applyMaxReadIndexInteractively(transaction: Transaction, stateManager: AccountStateManager, index: MessageIndex) {
+    if BGSimpleSettings.shared.ghostModeEnabled && !BGSimpleSettings.shared.ghostReadMessages {
+        return
+    }
     let messageIds = transaction.applyInteractiveReadMaxIndex(index)
     
     if let peer = transaction.getPeer(index.id.peerId), peer.isForumOrMonoForum {
@@ -192,6 +196,9 @@ func _internal_toggleForumThreadUnreadMarkInteractively(transaction: Transaction
 }
 
 func _internal_markForumThreadAsReadInteractively(transaction: Transaction, network: Network, viewTracker: AccountViewTracker, peerId: PeerId, threadId: Int64) {
+    if BGSimpleSettings.shared.ghostModeEnabled && !BGSimpleSettings.shared.ghostReadMessages {
+        return
+    }
     guard let peer = transaction.getPeer(peerId) else {
         return
     }

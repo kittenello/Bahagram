@@ -16,6 +16,8 @@ private final class AccountPresenceManagerImpl {
     private var shouldKeepOnlinePresenceDisposable: Disposable?
     private let currentRequestDisposable = MetaDisposable()
     private var onlineTimer: SignalKitTimer?
+    private var offlineTimer: SignalKitTimer?
+    private var settingsObserver: NSObjectProtocol?
     
     private var wasOnline: Bool = false
     
@@ -34,6 +36,21 @@ private final class AccountPresenceManagerImpl {
                 self.updatePresence(value)
             }
         })
+
+        self.settingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: BGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
+            guard let self else {
+                return
+            }
+            self.queue.async { [weak self] in
+                guard let self else {
+                    return
+                }
+                // UserDefaults changes are independent from the foreground
+                // signal. Re-evaluate immediately so enabling ghost mode while
+                // the app is active sends an offline packet right away.
+                self.updatePresence(self.wasOnline)
+            }
+        })
     }
     
     deinit {
@@ -41,6 +58,22 @@ private final class AccountPresenceManagerImpl {
         self.shouldKeepOnlinePresenceDisposable?.dispose()
         self.currentRequestDisposable.dispose()
         self.onlineTimer?.invalidate()
+        self.offlineTimer?.invalidate()
+        if let settingsObserver = self.settingsObserver {
+            NotificationCenter.default.removeObserver(settingsObserver)
+        }
+    }
+
+    private func requestOfflinePresence() {
+        let request = self.network.request(Api.functions.account.updateStatus(offline: .boolTrue))
+        self.isPerformingUpdate.set(true)
+        self.currentRequestDisposable.set((request
+        |> `catch` { _ -> Signal<Api.Bool, NoError> in
+            return .single(.boolFalse)
+        }
+        |> deliverOn(self.queue)).start(completed: { [weak self] in
+            self?.isPerformingUpdate.set(false)
+        }))
     }
     
     private func updatePresence(_ isOnline: Bool) {
@@ -48,6 +81,8 @@ private final class AccountPresenceManagerImpl {
         let effectiveOnline = isOnline && !(ghost.ghostModeEnabled && !ghost.ghostSendOnline)
         let request: Signal<Api.Bool, MTRpcError>
         if effectiveOnline {
+            self.offlineTimer?.invalidate()
+            self.offlineTimer = nil
             let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in
                 guard let strongSelf = self else {
                     return
@@ -60,6 +95,17 @@ private final class AccountPresenceManagerImpl {
         } else {
             self.onlineTimer?.invalidate()
             self.onlineTimer = nil
+            let keepForcingOffline = ghost.ghostModeEnabled && ghost.ghostAutomaticOffline
+            if keepForcingOffline && self.offlineTimer == nil {
+                let timer = SignalKitTimer(timeout: 3.0, repeat: true, completion: { [weak self] in
+                    self?.requestOfflinePresence()
+                }, queue: self.queue)
+                self.offlineTimer = timer
+                timer.start()
+            } else if !keepForcingOffline {
+                self.offlineTimer?.invalidate()
+                self.offlineTimer = nil
+            }
             request = self.network.request(Api.functions.account.updateStatus(offline: .boolTrue))
         }
         self.isPerformingUpdate.set(true)

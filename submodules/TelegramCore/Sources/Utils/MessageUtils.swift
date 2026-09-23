@@ -391,10 +391,7 @@ public extension Message {
         }
     }
     
-    func isCopyProtected() -> Bool {
-        if BGSimpleSettings.shared.bypassForwardRestrictions {
-            return false
-        }
+    func isCopyProtectedIgnoringBahogramSetting() -> Bool {
         if self.flags.contains(.CopyProtected) {
             return true
         } else if let group = self.peers[self.id.peerId] as? TelegramGroup, group.flags.contains(.copyProtectionEnabled) {
@@ -404,6 +401,13 @@ public extension Message {
         } else {
             return false
         }
+    }
+
+    func isCopyProtected() -> Bool {
+        if BGSimpleSettings.shared.bypassForwardRestrictions {
+            return false
+        }
+        return self.isCopyProtectedIgnoringBahogramSetting()
     }
     
     func isSensitiveContent(platform: String) -> Bool {

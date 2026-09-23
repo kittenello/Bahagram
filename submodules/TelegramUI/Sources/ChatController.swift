@@ -118,6 +118,7 @@ import WallpaperGridScreen
 import VideoMessageCameraScreen
 import TopMessageReactions
 import AudioWaveform
+import BGSimpleSettings
 import PeerNameColorScreen
 import ChatEmptyNode
 import ChatMediaInputStickerGridItem
@@ -8971,7 +8972,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func shouldDivertMessagesToScheduled(targetPeer: EnginePeer? = nil, messages: [EnqueueMessage]) -> Signal<Bool, NoError> {
-        return .single(false)
+        let settings = BGSimpleSettings.shared
+        return .single(settings.ghostModeEnabled && settings.ghostUseScheduledMessages)
     }
     
     func sendMessages(_ messages: [EnqueueMessage], media: Bool = false, postpone: Bool = false, commit: Bool = false) {
@@ -8992,17 +8994,19 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             
             var messages = messages
             var shouldOpenScheduledMessages = false
+            let isGhostScheduledSend = BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostUseScheduledMessages
             
             if shouldDivert {
+                let delay: Int32 = isGhostScheduledSend ? 12 : 10 * 24 * 60 * 60
                 messages = messages.map { message -> EnqueueMessage in
                     return message.withUpdatedAttributes { attributes in
                         var attributes = attributes
                         attributes.removeAll(where: { $0 is OutgoingScheduleInfoMessageAttribute })
-                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + 10 * 24 * 60 * 60, repeatPeriod: nil))
+                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + delay, repeatPeriod: nil))
                         return attributes
                     }
                 }
-                shouldOpenScheduledMessages = true
+                shouldOpenScheduledMessages = !isGhostScheduledSend
             }
             
             var isScheduledMessages = false
@@ -9024,14 +9028,17 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 
                 self.updateChatPresentationInterfaceState(interactive: true, { $0.updatedShowCommands(false) })
                 
-                if !isScheduledMessages && shouldOpenScheduledMessages {
+                if !isScheduledMessages && shouldDivert {
                     if let layoutActionOnViewTransitionAction = self.layoutActionOnViewTransitionAction {
                         self.layoutActionOnViewTransitionAction = nil
+                        self.chatDisplayNode.historyNode.layoutActionOnViewTransition = nil
                         layoutActionOnViewTransitionAction()
                     }
-                    
-                    self.openScheduledMessages(force: true, completion: { _ in
-                    })
+
+                    if shouldOpenScheduledMessages {
+                        self.openScheduledMessages(force: true, completion: { _ in
+                        })
+                    }
                 }
             } else {
                 self.presentScheduleTimePicker(style: media ? .media : .default, dismissByTapOutside: false, completion: { [weak self] result in
