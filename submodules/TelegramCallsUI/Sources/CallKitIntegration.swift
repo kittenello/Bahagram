@@ -158,7 +158,8 @@ class CallKitProviderDelegate: NSObject, CXProviderDelegate {
     }
     
     private static func providerConfiguration() -> CXProviderConfiguration {
-        let providerConfiguration = CXProviderConfiguration(localizedName: "Telegram")
+        let localizedAppName = getAppBundle().localizedInfoDictionary?["CFBundleDisplayName"] as? String ?? "Bahogram"
+        let providerConfiguration = CXProviderConfiguration(localizedName: localizedAppName)
         
         providerConfiguration.supportsVideo = true
         providerConfiguration.maximumCallsPerCallGroup = 1
