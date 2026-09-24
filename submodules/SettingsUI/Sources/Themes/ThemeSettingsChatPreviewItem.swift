@@ -103,10 +103,10 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
 }
 
-public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemListSectionId, removeTails: Bool) -> ListViewItem {
+public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemListSectionId) -> ListViewItem {
     let current = context.sharedContext.currentPresentationData.with { $0 }
-    var corners = current.chatBubbleCorners
-    corners.hasTails = !removeTails
+    // The bubbles apply the Bahogram tail/seconds/reply settings themselves, so keep the real corners (hasTails = false
+    // would also hide the time) and a non-blue reply author, which stays distinguishable from the accent when colors are off.
     return ThemeSettingsChatPreviewItem(
         context: context,
         systemStyle: .glass,
@@ -115,12 +115,12 @@ public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemL
         strings: current.strings,
         sectionId: sectionId,
         fontSize: current.chatFontSize,
-        chatBubbleCorners: corners,
+        chatBubbleCorners: current.chatBubbleCorners,
         wallpaper: current.chatWallpaper,
         dateTimeFormat: current.dateTimeFormat,
         nameDisplayOrder: current.nameDisplayOrder,
         messageItems: [
-            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", nameColor: .preset(.blue), backgroundEmojiId: nil),
+            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", nameColor: .preset(.red), backgroundEmojiId: nil),
             ChatPreviewMessageItem(outgoing: true, reply: nil, text: "И исходящее сообщение", nameColor: .preset(.blue), backgroundEmojiId: nil)
         ]
     )

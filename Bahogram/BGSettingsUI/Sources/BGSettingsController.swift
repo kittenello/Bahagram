@@ -32,17 +32,18 @@ enum BGListEntry: ItemListNodeEntry {
     case checkbox(Int32, Int32, String, String, Bool)
     case info(Int32, Int32, String)
     case input(Int32, Int32, String, String, String)
-    case messagePreview(Int32, Int32, Bool)
+    // The flags (tails, seconds, colored replies) are only a diff key: the bubbles read BGSimpleSettings at layout time.
+    case messagePreview(Int32, Int32, Bool, Bool, Bool)
     case appIcons(Int32, Int32)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _), let .appIcons(_, section): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _), let .appIcons(_, section): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _), let .appIcons(id, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _), let .appIcons(id, _): return id
         }
     }
     static func < (lhs: BGListEntry, rhs: BGListEntry) -> Bool { lhs.stableId < rhs.stableId }
@@ -62,8 +63,8 @@ enum BGListEntry: ItemListNodeEntry {
             return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
         case let .input(_, _, key, value, placeholder):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), clearType: .always, tag: nil, sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
-        case let .messagePreview(_, _, removeTails):
-            return bahogramMessagePreviewItem(context: arguments.context, sectionId: self.section, removeTails: removeTails)
+        case .messagePreview:
+            return bahogramMessagePreviewItem(context: arguments.context, sectionId: self.section)
         case .appIcons:
             return bahogramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
         }
@@ -97,6 +98,8 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
         return (controllerState, (listState, arguments))
     }
     let controller = ItemListController(context: context, state: signal)
+    // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
+    controller.alwaysSynchronous = true
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
     presentRestartAlertImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
