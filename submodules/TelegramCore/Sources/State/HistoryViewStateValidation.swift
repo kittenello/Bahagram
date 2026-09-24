@@ -890,7 +890,8 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                             if currentMessage.localTags.contains(.OutgoingLiveLocation) {
                                                 updatedLocalTags.insert(.OutgoingLiveLocation)
                                             }
-                                            return .update(message.withUpdatedLocalTags(updatedLocalTags))
+                                            // Bahogram: keep the saved view-once state that the server copy lacks.
+                                            return .update(bahogramPreservingSavedViewOnceMedia(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
                                         } else {
                                             var storeForwardInfo: StoreMessageForwardInfo?
                                             if let forwardInfo = currentMessage.forwardInfo {
@@ -1138,7 +1139,8 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                                         if currentMessage.localTags.contains(.OutgoingLiveLocation) {
                                             updatedLocalTags.insert(.OutgoingLiveLocation)
                                         }
-                                        return .update(message.withUpdatedLocalTags(updatedLocalTags))
+                                        // Bahogram: keep the saved view-once state that the server copy lacks.
+                                        return .update(bahogramPreservingSavedViewOnceMedia(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
                                     } else {
                                         var storeForwardInfo: StoreMessageForwardInfo?
                                         if let forwardInfo = currentMessage.forwardInfo {

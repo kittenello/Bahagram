@@ -53,7 +53,8 @@ func _internal_resetAccountState(postbox: Postbox, network: Network, accountPeer
                 }
                 
                 transaction.updateCurrentPeerNotificationSettings(fetchedChats.notificationSettings)
-                let _ = transaction.addMessages(fetchedChats.storeMessages, location: .UpperHistoryBlock)
+                // Bahogram: chat top messages may already be stored; keep saved view-once media.
+                let _ = transaction.addMessages(bahogramPreservingSavedViewOnceMedia(transaction: transaction, messages: fetchedChats.storeMessages), location: .UpperHistoryBlock)
                 let _ = transaction.addMessages(additionalMessages, location: .Random)
                 transaction.resetIncomingReadStates(fetchedChats.readStates)
                 

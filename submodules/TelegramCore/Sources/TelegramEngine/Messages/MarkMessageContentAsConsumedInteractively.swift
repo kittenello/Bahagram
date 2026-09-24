@@ -37,7 +37,9 @@ func _internal_markMessageContentAsConsumedInteractively(postbox: Postbox, messa
                                     }
                                 }
                             }
-                        } else {
+                        } else if !bahogramGhostModeBlocksContentReads() {
+                            // Bahogram: ghost mode does not report playback; the content
+                            // is still marked as consumed locally above.
                             addSynchronizeConsumeMessageContentsOperation(transaction: transaction, messageIds: [message.id])
                         }
                     }
@@ -47,8 +49,12 @@ func _internal_markMessageContentAsConsumedInteractively(postbox: Postbox, messa
                 }
             }
             
+            // Bahogram: a saved view-once message has to survive being played, so its
+            // self-destruct countdown is never started.
+            let keepsSavedViewOnce = bahogramKeepsSavedViewOnce(message)
+
             let timestamp = Int32(CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970)
-            for i in 0 ..< updatedAttributes.count {
+            for i in 0 ..< updatedAttributes.count where !keepsSavedViewOnce {
                 if let attribute = updatedAttributes[i] as? AutoremoveTimeoutMessageAttribute {
                     if attribute.countdownBeginTime == nil || attribute.countdownBeginTime == 0 {
                         var timeout = attribute.timeout

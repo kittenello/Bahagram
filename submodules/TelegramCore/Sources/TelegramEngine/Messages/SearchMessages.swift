@@ -844,11 +844,16 @@ func fetchRemoteMessage(accountPeerId: PeerId, postbox: Postbox, source: FetchMe
                 }
                 if let message = StoreMessage(apiMessage: message, accountPeerId: accountPeerId, peerIsForum: peerIsForum, namespace: id.namespace), case let .Id(updatedId) = message.id {
                     var addedExisting = false
-                    if transaction.getMessage(updatedId) != nil {
-                        transaction.updateMessage(updatedId, update: { _ in
-                            return .update(message)
+                    if let currentMessage = transaction.getMessage(updatedId) {
+                        // Bahogram: a saved view-once message keeps its stored media when the
+                        // server copy only carries the "expired" placeholder. Media reference
+                        // revalidation still gets the server copy, so it fails instead of
+                        // retrying the stale reference of the kept media.
+                        let keepsSavedMedia = bahogramKeepsSavedViewOnce(currentMessage) && message.media.contains(where: { $0 is TelegramMediaExpiredContent })
+                        transaction.updateMessage(updatedId, update: { previousMessage in
+                            return .update(bahogramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message))
                         })
-                        if let updatedMessage = transaction.getMessage(updatedId) {
+                        if !keepsSavedMedia, let updatedMessage = transaction.getMessage(updatedId) {
                             renderedMessages.append(updatedMessage)
                             addedExisting = true
                         }

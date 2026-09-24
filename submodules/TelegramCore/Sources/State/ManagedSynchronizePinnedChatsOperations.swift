@@ -252,7 +252,8 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
                         allPeersWithMessages.insert(message.id.peerId)
                     }
                 }
-                let _ = transaction.addMessages(storeMessages, location: .UpperHistoryBlock)
+                // Bahogram: chat top messages may already be stored; keep saved view-once media.
+                let _ = transaction.addMessages(bahogramPreservingSavedViewOnceMedia(transaction: transaction, messages: storeMessages), location: .UpperHistoryBlock)
                 
                 transaction.resetIncomingReadStates(readStates)
                 

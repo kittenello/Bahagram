@@ -4258,6 +4258,8 @@ func replayFinalState(
                     }
                 }
             
+                // Bahogram: an update can resend a stored message; keep saved view-once media.
+                messages = bahogramPreservingSavedViewOnceMedia(transaction: transaction, messages: messages)
                 let _ = transaction.addMessages(messages, location: location)
                 if case .UpperHistoryBlock = location {
                     for message in messages {
@@ -4577,7 +4579,9 @@ func replayFinalState(
                         updatedMedia = previousMessage.media
                     }
                     
-                    return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia))
+                    // Bahogram: keep the media of a saved view-once message that the server
+                    // copy only carries as an "expired" placeholder.
+                    return .update(bahogramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia)))
                 })
                 if let generatedEvent = generatedEvent {
                     addedReactionEvents.append(generatedEvent)

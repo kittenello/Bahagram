@@ -252,6 +252,12 @@ func managedReadReactionOrPollVoteActions(postbox: Postbox, network: Network, st
 }
 
 private func synchronizeConsumeMessageContents(transaction: Transaction, postbox: Postbox, network: Network, stateManager: AccountStateManager, id: MessageId) -> Signal<Void, NoError> {
+    // Bahogram: in ghost mode this request would also report the message's voice or
+    // round video as played, so the mention is only read locally.
+    if let message = transaction.getMessage(id), bahogramGhostModeBlocksMentionRead(message) {
+        bahogramConsumePersonalMentionLocally(transaction: transaction, id: id)
+        return .complete()
+    }
     if id.peerId.namespace == Namespaces.Peer.CloudUser || id.peerId.namespace == Namespaces.Peer.CloudGroup {
         return network.request(Api.functions.messages.readMessageContents(id: [id.id]))
             |> map(Optional.init)
