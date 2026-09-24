@@ -444,6 +444,12 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = "Стекло"
                                 case "BahoGlassEyes":
                                     name = "Стекло 2"
+                                case "BahoKisser":
+                                    name = "Бойкиссер"
+                                case "BahoKisserRed":
+                                    name = "Бойкиссер 2"
+                                case "BahoCat":
+                                    name = "Котик"
                                 default:
                                     name = icon.name
                             }
