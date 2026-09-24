@@ -448,6 +448,10 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = "Бойкиссер"
                                 case "BahoKisserRed":
                                     name = "Бойкиссер 2"
+                                case "BahoCat":
+                                    name = "Котик"
+                                case "BahoCatFace":
+                                    name = "Котик 2"
                                 default:
                                     name = icon.name
                             }
