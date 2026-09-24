@@ -29,6 +29,7 @@ import MultilineTextComponent
 import MultilineTextWithEntitiesComponent
 import ShimmerEffect
 import GlassBackgroundComponent
+import ChatTitleView
 
 public enum ChatListItemContent {
     public final class ThreadInfo: Equatable {
@@ -2507,6 +2508,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             var currentMutedIconImage: UIImage?
             var currentCredibilityIconContent: EmojiStatusComponent.Content?
             var currentVerifiedIconContent: EmojiStatusComponent.Content?
+            var currentBahogramTeamPeerName: String?
             var currentStatusIconContent: EmojiStatusComponent.Content?
             var currentStatusIconParticleColor: UIColor?
             var currentSecretIconImage: UIImage?
@@ -3574,6 +3576,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             if let verificationIconFileId = peer.verificationIconFileId {
                                 currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                             }
+                            if bahogramIsTeamMember(peerId: peer.id) {
+                                currentVerifiedIconContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                                currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                            }
                         }
                     default:
                         break
@@ -3607,6 +3613,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     if let verificationIconFileId = peer.verificationIconFileId {
                         currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                     }
+                    if bahogramIsTeamMember(peerId: peer.id) {
+                        currentVerifiedIconContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                        currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    }
                 }
             }
             if let currentSecretIconImage = currentSecretIconImage {
@@ -3629,6 +3639,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let textString = NSAttributedString(string: string, font: Font.bold(10.0), textColor: .black, paragraphAlignment: .center)
                     let stringRect = textString.boundingRect(with: CGSize(width: 100.0, height: 16.0), options: .usesLineFragmentOrigin, context: nil)
                     titleIconsWidth += floor(stringRect.width) + 11.0
+                case let .image(image, _):
+                    titleIconsWidth += image?.size.width ?? 16.0
                 default:
                     titleIconsWidth += 8.0
                 }
@@ -5281,13 +5293,21 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             strongSelf.mainContentContainerNode.view.addSubview(verifiedIconView)
                         }
                         
+                        let verifiedAction: (() -> Void)?
+                        if let name = currentBahogramTeamPeerName {
+                            verifiedAction = {
+                                presentBahogramTeamBadge(context: item.context, peerName: name)
+                            }
+                        } else {
+                            verifiedAction = nil
+                        }
                         let verifiedIconComponent = EmojiStatusComponent(
                             context: item.context,
                             animationCache: item.interaction.animationCache,
                             animationRenderer: item.interaction.animationRenderer,
                             content: currentVerifiedIconContent,
                             isVisibleForAnimations: strongSelf.visibilityStatus && item.context.sharedContext.energyUsageSettings.loopEmoji,
-                            action: nil
+                            action: verifiedAction
                         )
                         strongSelf.verifiedIconComponent = verifiedIconComponent
                         
@@ -5819,6 +5839,12 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard let item = self.item, self.frame.height > 0.0 else {
             return nil
+        }
+        if let verifiedIconView = self.verifiedIconView,
+           let content = self.verifiedIconComponent?.content,
+           case .image = content,
+           let result = verifiedIconView.hitTest(self.view.convert(point, to: verifiedIconView), with: event) {
+            return result
         }
         
         if let compoundTextButtonNode = self.compoundTextButtonNode, let compoundHighlightingNode = self.compoundHighlightingNode, compoundHighlightingNode.alpha != 0.0 {

@@ -415,6 +415,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.paneContainerNode = PeerInfoPaneContainerNode(context: context, updatedPresentationData: controller.updatedPresentationData, peerId: peerId, chatLocation: chatLocation, sharedMediaFromForumTopic: sharedMediaFromForumTopic, chatLocationContextHolder: chatLocationContextHolder, isMediaOnly: self.isMediaOnly, initialPaneKey: initialPaneKey, initialStoryFolderId: switchToStoryFolder, initialGiftCollectionId: switchToGiftCollection, switchToMediaTarget: switchToMediaTarget)
         
         super.init()
+        self.headerNode.displayBahogramTeamBadge = { name in
+            presentBahogramTeamBadge(context: context, peerName: name)
+        }
         
         self.paneContainerNode.parentController = controller
         

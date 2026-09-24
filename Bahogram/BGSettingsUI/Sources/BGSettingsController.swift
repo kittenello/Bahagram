@@ -7,6 +7,7 @@ import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
 import SettingsUI
+import UndoUI
 
 struct BGListState: Equatable { var revision: Int = 0 }
 
@@ -83,11 +84,11 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
         })
     }
     var pushControllerImpl: ((ViewController) -> Void)?
-    var presentRestartAlertImpl: (() -> Void)?
+    var presentRestartNoticeImpl: (() -> Void)?
     let arguments = BGListArguments(context: context, toggle: { key, value in
         toggle(key, value)
         refresh()
-        if restartRequiredKeys.contains(key) { presentRestartAlertImpl?() }
+        if restartRequiredKeys.contains(key) { presentRestartNoticeImpl?() }
     }, select: { key in select(key); refresh() }, open: { key in
         if let controller = open(key) { pushControllerImpl?(controller) }
     }, textUpdated: { key, value in textUpdated(key, value) })
@@ -101,12 +102,20 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
     // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
     controller.alwaysSynchronous = true
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
-    presentRestartAlertImpl = { [weak controller] in
+    presentRestartNoticeImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        controller?.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: nil, text: NSAttributedString(string: "Чтобы применить изменения, нужно перезапустить клиент"), actions: [
-            TextAlertAction(type: .genericAction, title: "Позже", action: {}),
-            TextAlertAction(type: .defaultAction, title: "Перезапустить", action: { Darwin.exit(0) })
-        ]), in: .window(.root))
+        controller?.present(UndoOverlayController(
+            presentationData: presentationData,
+            content: .info(title: nil, text: "Необходим перезапуск", timeout: 5.0, customUndoText: "Перезапустить сейчас"),
+            elevatedLayout: false,
+            position: .bottom,
+            action: { action in
+                if case .undo = action {
+                    Darwin.exit(0)
+                }
+                return false
+            }
+        ), in: .current)
     }
     return controller
 }

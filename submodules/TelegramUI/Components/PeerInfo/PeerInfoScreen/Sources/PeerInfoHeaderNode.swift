@@ -175,6 +175,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     var displayAvatarContextMenu: ((ASDisplayNode, ContextGesture?) -> Void)?
     var displayCopyContextMenu: ((ASDisplayNode, Bool, Bool) -> Void)?
     var displayEmojiPackTooltip: (() -> Void)?
+    var displayBahogramTeamBadge: ((String) -> Void)?
     
     var displaySavedMusic: (() -> Void)?
     
@@ -489,6 +490,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     
     private var currentCredibilityIcon: CredibilityIcon?
     private var currentVerifiedIcon: CredibilityIcon?
+    private var currentBahogramTeamPeerName: String?
     private var currentStatusIcon: CredibilityIcon?
     
     private var currentPanelStatusData: PeerInfoStatusData?
@@ -616,6 +618,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             }
             if let verificationIconFileId = peer.verificationIconFileId {
                 verifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
+            }
+            if bahogramIsTeamMember(peerId: peer.id) {
+                verifiedIcon = .verified
             }
         }
         
@@ -1086,13 +1091,20 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         
         do {
             self.currentVerifiedIcon = verifiedIcon
+            let teamPeerName = peer.flatMap { bahogramIsTeamMember(peerId: $0.id) ? $0.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder) : nil }
+            self.currentBahogramTeamPeerName = teamPeerName
             
             let emojiRegularStatusContent: EmojiStatusComponent.Content
             let emojiExpandedStatusContent: EmojiStatusComponent.Content
             switch verifiedIcon {
             case .verified:
-                emojiRegularStatusContent = .verified(fillColor: presentationData.theme.list.itemCheckColors.fillColor, foregroundColor: presentationData.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
-                emojiExpandedStatusContent = .verified(fillColor: navigationContentsAccentColor, foregroundColor: .clear, sizeType: .large)
+                if teamPeerName != nil {
+                    emojiRegularStatusContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                    emojiExpandedStatusContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                } else {
+                    emojiRegularStatusContent = .verified(fillColor: presentationData.theme.list.itemCheckColors.fillColor, foregroundColor: presentationData.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
+                    emojiExpandedStatusContent = .verified(fillColor: navigationContentsAccentColor, foregroundColor: .clear, sizeType: .large)
+                }
             case let .emojiStatus(emojiStatus):
                 emojiRegularStatusContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 80.0, height: 80.0), placeholderColor: presentationData.theme.list.mediaPlaceholderColor, themeColor: navigationContentsAccentColor, loopMode: .forever)
                 emojiExpandedStatusContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 80.0, height: 80.0), placeholderColor: navigationContentsAccentColor, themeColor: navigationContentsAccentColor, loopMode: .forever)
@@ -1110,7 +1122,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     content: emojiRegularStatusContent,
                     isVisibleForAnimations: true,
                     useSharedAnimation: true,
-                    action: nil,
+                    action: { [weak self] in
+                        if let teamPeerName {
+                            self?.displayBahogramTeamBadge?(teamPeerName)
+                        }
+                    },
                     emojiFileUpdated: nil
                 )),
                 environment: {},
@@ -1125,7 +1141,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     content: emojiExpandedStatusContent,
                     isVisibleForAnimations: true,
                     useSharedAnimation: true,
-                    action: {}
+                    action: { [weak self] in
+                        if let teamPeerName {
+                            self?.displayBahogramTeamBadge?(teamPeerName)
+                        }
+                    }
                 )),
                 environment: {},
                 containerSize: CGSize(width: 26.0, height: 26.0)
@@ -2792,6 +2812,15 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         }
         
         if !(self.state?.isEditing ?? false) {
+            if self.currentBahogramTeamPeerName != nil {
+                let iconFrame = self.titleVerifiedIconView.convert(self.titleVerifiedIconView.bounds, to: self.view)
+                let expandedIconFrame = self.titleExpandedVerifiedIconView.convert(self.titleExpandedVerifiedIconView.bounds, to: self.view)
+                if expandedIconFrame.contains(point) && self.isAvatarExpanded {
+                    return self.titleExpandedVerifiedIconView.hitTest(self.view.convert(point, to: self.titleExpandedVerifiedIconView), with: event)
+                } else if iconFrame.contains(point) {
+                    return self.titleVerifiedIconView.hitTest(self.view.convert(point, to: self.titleVerifiedIconView), with: event)
+                }
+            }
             switch self.currentCredibilityIcon {
             case .premium:
                 let iconFrame = self.titleCredibilityIconView.convert(self.titleCredibilityIconView.bounds, to: self.view)

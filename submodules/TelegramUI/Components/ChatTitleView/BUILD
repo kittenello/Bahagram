@@ -32,6 +32,7 @@ swift_library(
         "//submodules/Components/ComponentDisplayAdapters:ComponentDisplayAdapters",
         "//submodules/TelegramUI/Components/GlassBackgroundComponent",
         "//submodules/TelegramUI/Components/AnimatedTextComponent",
+        "//submodules/OverlayStatusController:OverlayStatusController",
     ],
     visibility = [
         "//visibility:public",

@@ -315,6 +315,7 @@ public final class ChatTitleComponent: Component {
         private var credibilityIcon: ComponentView<Empty>?
         private var verifiedIcon: ComponentView<Empty>?
         private var statusIcon: ComponentView<Empty>?
+        private var bahogramTeamPeerName: String?
         
         private var presenceManager: PeerPresenceStatusManager?
         
@@ -346,10 +347,16 @@ public final class ChatTitleComponent: Component {
         }
         
         @objc private func onTapGesture(_ recognizer: TapLongTapOrDoubleTapGestureRecognizer) {
-            if let (gesture, _) = recognizer.lastRecognizedGestureAndLocation {
+            if let (gesture, location) = recognizer.lastRecognizedGestureAndLocation {
                 switch gesture {
                 case .tap:
-                    self.component?.tapped()
+                    if let component = self.component, let name = self.bahogramTeamPeerName,
+                       let badgeView = self.verifiedIcon?.view,
+                       badgeView.frame.insetBy(dx: -5.0, dy: -5.0).contains(location) {
+                        presentBahogramTeamBadge(context: component.context, peerName: name)
+                    } else {
+                        self.component?.tapped()
+                    }
                 case .longTap:
                     self.component?.longTapped()
                 default:
@@ -373,6 +380,7 @@ public final class ChatTitleComponent: Component {
             var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
             var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
             var titleStatusIcon: ChatTitleCredibilityIcon = .none
+            var bahogramTeamPeerName: String?
             var isEnabled = true
             switch component.content {
             case let .peer(peerView, customTitle, _, _, isScheduledMessages, isMuted, _, hidePeerStatus, isEnabledValue):
@@ -461,6 +469,10 @@ public final class ChatTitleComponent: Component {
                             if let verificationIconFileId = peer.verificationIconFileId {
                                 titleVerifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
                             }
+                        }
+                        if bahogramIsTeamMember(peerId: peer.id) {
+                            titleVerifiedIcon = .verified
+                            bahogramTeamPeerName = EnginePeer(peer).displayTitle(strings: component.strings, displayOrder: component.nameDisplayOrder)
                         }
                     }
                     if peerView.peerId.namespace == Namespaces.Peer.SecretChat {
@@ -597,6 +609,7 @@ public final class ChatTitleComponent: Component {
                 }
                 isEnabled = enabled
             }
+            self.bahogramTeamPeerName = bahogramTeamPeerName
             
             var accessibilityText = ""
             for segment in titleSegments {
@@ -980,8 +993,14 @@ public final class ChatTitleComponent: Component {
                 }
             }
             
+            let verifiedContent: EmojiStatusComponent.Content?
+            if bahogramTeamPeerName != nil {
+                verifiedContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+            } else {
+                verifiedContent = mapTitleIcon(titleVerifiedIcon)
+            }
             var verifiedIconSize: CGSize?
-            if let titleVerifiedIcon = mapTitleIcon(titleVerifiedIcon) {
+            if let verifiedContent {
                 let verifiedIcon: ComponentView<Empty>
                 if let current = self.verifiedIcon {
                     verifiedIcon = current
@@ -995,7 +1014,7 @@ public final class ChatTitleComponent: Component {
                         context: component.context,
                         animationCache: component.context.animationCache,
                         animationRenderer: component.context.animationRenderer,
-                        content: titleVerifiedIcon,
+                        content: verifiedContent,
                         isVisibleForAnimations: true,
                         action: nil
                     )),
