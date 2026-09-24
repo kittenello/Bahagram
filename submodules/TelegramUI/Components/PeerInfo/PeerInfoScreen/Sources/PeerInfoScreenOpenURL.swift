@@ -9,6 +9,8 @@ import PresentationDataUtils
 import OverlayStatusController
 import HashtagSearchUI
 import UndoUI
+import BGSimpleSettings
+import Postbox
 
 extension PeerInfoScreenNode {
     func openResolved(_ result: ResolvedUrl) {
@@ -210,6 +212,23 @@ extension PeerInfoScreenNode {
     }
 
     func openUsername(value: String, isMainUsername: Bool, progress: Promise<Bool>?) {
+        if self.peerId == self.context.account.peerId,
+           self.data?.peer?.addressName?.caseInsensitiveCompare(value) != .orderedSame,
+           self.data?.peer?.usernames.contains(where: { $0.username.caseInsensitiveCompare(value) == .orderedSame }) != true,
+           let visual = BGSimpleSettings.shared.visualUsernames(accountId: self.context.account.peerId.toInt64()).first(where: { $0.isActive && $0.name.caseInsensitiveCompare(value) == .orderedSame }) {
+            progress?.set(.single(true))
+            let _ = (self.context.sharedContext.makeCollectibleItemInfoScreenInitialData(
+                context: self.context,
+                peerId: self.peerId,
+                subject: .visualUsername(visual.name, visual.addedAt, visual.tonPrice)
+            ) |> deliverOnMainQueue).start(next: { [weak self] initialData in
+                progress?.set(.single(false))
+                guard let self, let initialData else { return }
+                self.view.endEditing(true)
+                self.controller?.push(self.context.sharedContext.makeCollectibleItemInfoScreen(context: self.context, initialData: initialData))
+            })
+            return
+        }
         let url: String
         if value.hasPrefix("https://") {
             url = value

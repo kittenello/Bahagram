@@ -44,6 +44,8 @@ import PlainButtonComponent
 import BundleIconComponent
 import MarqueeComponent
 import EdgeEffect
+import BGSimpleSettings
+import Postbox
 
 final class PeerInfoHeaderNavigationTransition {
     let sourceNavigationBar: NavigationBar
@@ -1255,7 +1257,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
             
             if self.isSettings, case let .user(user) = peer {
-                var subtitle = formatPhoneNumber(context: self.context, number: user.phone ?? "")
+                let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+                let phone = BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : (user.phone ?? "")
+                var subtitle = formatPhoneNumber(context: self.context, number: phone)
                 
                 if let mainUsername = user.addressName, !mainUsername.isEmpty {
                     subtitle = "\(subtitle) • @\(mainUsername)"
@@ -2051,6 +2055,17 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             self.currentPendingStarRating = cachedData.pendingStarRating
         } else {
             self.currentStarRating = nil
+            self.currentPendingStarRating = nil
+        }
+        if peer?.id == self.context.account.peerId,
+           let visualLevel = BGSimpleSettings.shared.visualRatingLevel(accountId: self.context.account.peerId.toInt64()) {
+            let realRating = self.currentStarRating
+            self.currentStarRating = TelegramStarRating(
+                level: Int32(visualLevel),
+                currentLevelStars: realRating?.currentLevelStars ?? 0,
+                stars: realRating?.stars ?? 0,
+                nextLevelStars: realRating?.nextLevelStars
+            )
             self.currentPendingStarRating = nil
         }
         

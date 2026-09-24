@@ -17,6 +17,7 @@ import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
 import BGSimpleSettings
+import Postbox
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
@@ -175,11 +176,21 @@ func infoItems(
                 interaction.requestLayout(animated)
             }))
         }
+        let visualUsernames: [BGVisualUsername] = isMyProfile && user.id == context.account.peerId ? BGSimpleSettings.shared.visualUsernames(accountId: context.account.peerId.toInt64()).filter { visual in visual.isActive && user.addressName?.caseInsensitiveCompare(visual.name) != .orderedSame && !user.usernames.contains(where: { real in real.username.caseInsensitiveCompare(visual.name) == .orderedSame }) } : []
+        let preferredUsernameOrder = BGSimpleSettings.shared.visualUsernameOrder(accountId: context.account.peerId.toInt64())
+        let sortUsernames: ([String]) -> [String] = { names in
+            guard !preferredUsernameOrder.isEmpty else { return names }
+            return names.enumerated().sorted { lhs, rhs in
+                let lhsIndex = preferredUsernameOrder.firstIndex(where: { $0.caseInsensitiveCompare(lhs.element) == .orderedSame }) ?? Int.max
+                let rhsIndex = preferredUsernameOrder.firstIndex(where: { $0.caseInsensitiveCompare(rhs.element) == .orderedSame }) ?? Int.max
+                return lhsIndex == rhsIndex ? lhs.offset < rhs.offset : lhsIndex < rhsIndex
+            }.map { $0.element }
+        }
         if let mainUsername = user.addressName {
             var additionalUsernames: String?
-            let usernames = user.usernames.filter { $0.isActive && $0.username != mainUsername }
+            let usernames = sortUsernames(user.usernames.filter { $0.isActive && $0.username != mainUsername }.map { $0.username } + visualUsernames.map { $0.name })
             if !usernames.isEmpty {
-                additionalUsernames = presentationData.strings.Profile_AdditionalUsernames(String(usernames.map { "@\($0.username)" }.joined(separator: ", "))).string
+                additionalUsernames = presentationData.strings.Profile_AdditionalUsernames(String(usernames.map { "@\($0)" }.joined(separator: ", "))).string
             }
             
             items[currentPeerInfoSection]!.append(
@@ -207,6 +218,26 @@ func infoItems(
                     }
                 )
             )
+        } else if let firstVisualUsername = sortUsernames(visualUsernames.map { $0.name }).first {
+            let additionalUsernames = sortUsernames(visualUsernames.map { $0.name }).dropFirst().map { "@\($0)" }.joined(separator: ", ")
+            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(
+                id: ItemUsername,
+                label: presentationData.strings.Profile_Username,
+                text: "@\(firstVisualUsername)",
+                additionalText: additionalUsernames.isEmpty ? nil : presentationData.strings.Profile_AdditionalUsernames(additionalUsernames).string,
+                textColor: .accent,
+                action: { _, progress in
+                    interaction.openUsername(firstVisualUsername, false, progress)
+                },
+                linkItemAction: { type, item, _, _, progress in
+                    if case .tap = type, case let .mention(username) = item {
+                        interaction.openUsername(String(username.dropFirst()), false, progress)
+                    }
+                },
+                requestLayout: { animated in
+                    interaction.requestLayout(animated)
+                }
+            ))
         }
         
         if let cachedData = data.cachedData as? CachedUserData {

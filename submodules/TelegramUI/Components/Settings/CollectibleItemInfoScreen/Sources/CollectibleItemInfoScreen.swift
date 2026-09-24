@@ -713,6 +713,23 @@ public class CollectibleItemInfoScreen: ViewControllerComponentContainer {
     
     public static func initialData(context: AccountContext, peerId: EnginePeer.Id, subject: CollectibleItemInfoScreenSubject) -> Signal<CollectibleItemInfoScreenInitialData?, NoError> {
         switch subject {
+        case let .visualUsername(username, addedAt, tonPrice):
+            return context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
+            |> map { peer -> CollectibleItemInfoScreenInitialData? in
+                let rate = (context.currentAppConfiguration.with { $0 }.data?["ton_usd_rate"] as? Double) ?? 0.0
+                let safePrice = max(9, min(tonPrice, 900_000))
+                let usdCents = Int64((Double(safePrice) * max(0.0, rate) * 100.0).rounded())
+                let info = TelegramCollectibleItemInfo(
+                    subject: .username(username),
+                    purchaseDate: addedAt,
+                    currency: "USD",
+                    currencyAmount: usdCents,
+                    cryptoCurrency: "TON",
+                    cryptoCurrencyAmount: safePrice * 1_000_000_000,
+                    url: "https://fragment.com/username/\(username)"
+                )
+                return InitialData(peer: peer, subject: .username(ResolvedSubject.Username(username: username, info: info)))
+            }
         case let .username(username):
             return combineLatest(
                 context.engine.data.get(

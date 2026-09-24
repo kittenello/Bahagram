@@ -1,17 +1,47 @@
 import Display
 import AccountContext
 import BGSimpleSettings
+import Postbox
 
 public func bgSpySettingsController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
+    let accountId = context.account.peerId.toInt64()
     return bgController(context: context, title: "Bahogram", entries: {
         var result: [BGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
-        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(30, 3, "ДРУГОЕ"), .disclosure(31, 3, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен")])
+        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(30, 3, "ДРУГОЕ"), .disclosure(31, 3, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 3, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 3, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)")])
         return result
     }, toggle: { key, value in
         switch key { case "saveDeleted": s.saveDeletedMessages = value; case "transparentDeleted": s.semiTransparentDeletedMessages = value; case "saveEdits": s.saveEditHistory = value; case "saveOnce": s.saveViewOnceMedia = value; case "saveBots": s.saveInBotChats = value; case "bypassForward": s.bypassForwardRestrictions = value; default: break }
-    }, open: { key in key == "ghost" ? bgGhostSettingsController(context: context) : (key == "visualPhone" ? bgVisualPhoneController(context: context) : nil) })
+    }, open: { key in
+        switch key {
+        case "ghost": return bgGhostSettingsController(context: context)
+        case "visualPhone": return bgVisualPhoneController(context: context)
+        case "visualRating": return bgVisualRatingController(context: context)
+        case "visualUsernames": return bgVisualUsernamesController(context: context)
+        default: return nil
+        }
+    })
+}
+
+private func bgVisualRatingController(context: AccountContext) -> ViewController {
+    let settings = BGSimpleSettings.shared
+    let accountId = context.account.peerId.toInt64()
+    return bgController(context: context, title: "Визуальный рейтинг", entries: {
+        [.header(0, 0, "УРОВЕНЬ"), .input(1, 0, "level", settings.visualRatingLevel(accountId: accountId).map { String($0) } ?? "", "1–100"), .info(2, 0, "Укажите уровень от 1 до 100. Значок и его узор выбираются тем же компонентом, что и в Telegram. Пустое поле возвращает реальный рейтинг. Изменение видно только в Bahogram на этом устройстве.")]
+    }, textUpdated: { key, value in
+        if key == "level" { settings.setVisualRatingLevel(Int(value), accountId: accountId) }
+    })
+}
+
+private func bgVisualUsernamesController(context: AccountContext) -> ViewController {
+    let settings = BGSimpleSettings.shared
+    let accountId = context.account.peerId.toInt64()
+    return bgController(context: context, title: "Визуальные NFT-юзернеймы", entries: {
+        [.header(0, 0, "ИМЕНА ЧЕРЕЗ ЗАПЯТУЮ"), .input(1, 0, "names", settings.visualUsernames(accountId: accountId).map { "@\($0.name)" }.joined(separator: ", "), "@username, @username2"), .info(2, 0, "Имена добавляются только локально. Активность и порядок меняются в редакторе имён. Карточка Telegram покажет дату добавления и условную цену от 9 TON. Реальные ссылки, владельцы и данные Telegram не меняются.")]
+    }, textUpdated: { key, value in
+        if key == "names" { settings.updateVisualUsernames(value, accountId: accountId) }
+    })
 }
 
 private func bgVisualPhoneController(context: AccountContext) -> ViewController {

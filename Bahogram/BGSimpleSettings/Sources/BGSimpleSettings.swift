@@ -1,5 +1,29 @@
 import Foundation
 
+public struct BGVisualUsername: Codable, Equatable {
+    public var name: String
+    public var isActive: Bool
+    public var addedAt: Int32
+    public var tonPrice: Int64
+
+    public init(name: String, isActive: Bool, addedAt: Int32 = Int32(Date().timeIntervalSince1970), tonPrice: Int64 = Int64.random(in: 9 ... 90)) {
+        self.name = name
+        self.isActive = isActive
+        self.addedAt = addedAt
+        self.tonPrice = tonPrice
+    }
+
+    private enum CodingKeys: String, CodingKey { case name, isActive, addedAt, tonPrice }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.isActive = try container.decode(Bool.self, forKey: .isActive)
+        self.addedAt = try container.decodeIfPresent(Int32.self, forKey: .addedAt) ?? Int32(Date().timeIntervalSince1970)
+        self.tonPrice = try container.decodeIfPresent(Int64.self, forKey: .tonPrice) ?? 9
+    }
+}
+
 public final class BGSimpleSettings {
     public static let shared = BGSimpleSettings()
     public static let didChangeNotification = Notification.Name("bahogram.settings.didChange")
@@ -180,6 +204,74 @@ public final class BGSimpleSettings {
     public var bypassForwardRestrictions: Bool { get { bool(Key.bypassForwardRestrictions) } set { setBool(newValue, Key.bypassForwardRestrictions) } }
     public var visualPhoneEnabled: Bool { get { bool(Key.visualPhoneEnabled) } set { setBool(newValue, Key.visualPhoneEnabled) } }
     public var visualPhoneNumber: String { get { string(Key.visualPhoneNumber) } set { setString(newValue, Key.visualPhoneNumber) } }
+
+    private func accountKey(_ suffix: String, accountId: Int64) -> String {
+        return "bahogram.profile.\(accountId).\(suffix)"
+    }
+
+    public func visualRatingLevel(accountId: Int64) -> Int? {
+        let key = accountKey("visualRatingLevel", accountId: accountId)
+        guard self.defaults.object(forKey: key) != nil else { return nil }
+        let level = self.defaults.integer(forKey: key)
+        return (1 ... 100).contains(level) ? level : nil
+    }
+
+    public func setVisualRatingLevel(_ level: Int?, accountId: Int64) {
+        let key = accountKey("visualRatingLevel", accountId: accountId)
+        if let level, (1 ... 100).contains(level) {
+            self.defaults.set(level, forKey: key)
+        } else {
+            self.defaults.removeObject(forKey: key)
+        }
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
+
+    public func visualUsernames(accountId: Int64) -> [BGVisualUsername] {
+        let key = accountKey("visualUsernames", accountId: accountId)
+        guard let data = self.defaults.data(forKey: key),
+              let result = try? JSONDecoder().decode([BGVisualUsername].self, from: data) else { return [] }
+        return result
+    }
+
+    public func setVisualUsernames(_ usernames: [BGVisualUsername], accountId: Int64) {
+        guard let data = try? JSONEncoder().encode(usernames) else { return }
+        self.defaults.set(data, forKey: accountKey("visualUsernames", accountId: accountId))
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
+
+    public func updateVisualUsernames(_ text: String, accountId: Int64) {
+        let previous = visualUsernames(accountId: accountId)
+        var result: [BGVisualUsername] = []
+        var seen = Set<String>()
+        for part in text.components(separatedBy: CharacterSet(charactersIn: ",\n")) {
+            let name = part.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+            let key = name.lowercased()
+            guard !name.isEmpty, name.range(of: "^[A-Za-z][A-Za-z0-9_]{4,31}$", options: .regularExpression) != nil, seen.insert(key).inserted else { continue }
+            if var existing = previous.first(where: { $0.name.lowercased() == key }) {
+                existing.name = name
+                result.append(existing)
+            } else {
+                result.append(BGVisualUsername(name: name, isActive: true))
+            }
+        }
+        setVisualUsernames(result, accountId: accountId)
+    }
+
+    public func setVisualUsernameActive(_ name: String, isActive: Bool, accountId: Int64) {
+        var usernames = visualUsernames(accountId: accountId)
+        guard let index = usernames.firstIndex(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) else { return }
+        usernames[index].isActive = isActive
+        setVisualUsernames(usernames, accountId: accountId)
+    }
+
+    public func visualUsernameOrder(accountId: Int64) -> [String] {
+        return self.defaults.stringArray(forKey: accountKey("visualUsernameOrder", accountId: accountId)) ?? []
+    }
+
+    public func setVisualUsernameOrder(_ order: [String], accountId: Int64) {
+        self.defaults.set(order, forKey: accountKey("visualUsernameOrder", accountId: accountId))
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
 
     public var hideTabBar: Bool { get { bool(Key.hideTabBar) } set { setBool(newValue, Key.hideTabBar) } }
     public var showContactsTab: Bool { get { bool(Key.showContactsTab) } set { setBool(newValue, Key.showContactsTab) } }

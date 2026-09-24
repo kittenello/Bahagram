@@ -111,6 +111,7 @@ import VerifyAlertController
 import GiftViewScreen
 import PeerMessagesMediaPlaylist
 import EdgeEffect
+import BGSimpleSettings
 import Pasteboard
 import AccountPeerContextItem
 
@@ -285,6 +286,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let sourceMessageId: MessageId?
     var canDeleteReaction = false
     var dataDisposable: Disposable?
+    private var bahogramSettingsObserver: NSObjectProtocol?
     
     let activeActionDisposable = MetaDisposable()
     let resolveUrlDisposable = MetaDisposable()
@@ -415,6 +417,11 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.paneContainerNode = PeerInfoPaneContainerNode(context: context, updatedPresentationData: controller.updatedPresentationData, peerId: peerId, chatLocation: chatLocation, sharedMediaFromForumTopic: sharedMediaFromForumTopic, chatLocationContextHolder: chatLocationContextHolder, isMediaOnly: self.isMediaOnly, initialPaneKey: initialPaneKey, initialStoryFolderId: switchToStoryFolder, initialGiftCollectionId: switchToGiftCollection, switchToMediaTarget: switchToMediaTarget)
         
         super.init()
+        if peerId == context.account.peerId {
+            self.bahogramSettingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.requestLayout(animated: false)
+            }
+        }
         self.headerNode.displayBahogramTeamBadge = { name in
             presentBahogramTeamBadge(context: context, peerName: name)
         }
@@ -2661,6 +2668,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     }
     
     deinit {
+        if let bahogramSettingsObserver = self.bahogramSettingsObserver {
+            NotificationCenter.default.removeObserver(bahogramSettingsObserver)
+        }
         self.dataDisposable?.dispose()
         self.hiddenMediaDisposable?.dispose()
         self.activeActionDisposable.dispose()

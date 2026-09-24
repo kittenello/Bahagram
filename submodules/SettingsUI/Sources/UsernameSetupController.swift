@@ -10,15 +10,17 @@ import AccountContext
 import UndoUI
 import InviteLinksUI
 import TextFormat
+import BGSimpleSettings
+import Postbox
 
 private final class UsernameSetupControllerArguments {
     let updatePublicLinkText: (String?, String) -> Void
     let shareLink: () -> Void
-    let activateLink: (String) -> Void
-    let deactivateLink: (String) -> Void
+    let activateLink: (String, Bool) -> Void
+    let deactivateLink: (String, Bool) -> Void
     let openAuction: (String) -> Void
 
-    init(updatePublicLinkText: @escaping (String?, String) -> Void, shareLink: @escaping () -> Void, activateLink: @escaping (String) -> Void, deactivateLink: @escaping (String) -> Void, openAuction: @escaping (String) -> Void) {
+    init(updatePublicLinkText: @escaping (String?, String) -> Void, shareLink: @escaping () -> Void, activateLink: @escaping (String, Bool) -> Void, deactivateLink: @escaping (String, Bool) -> Void, openAuction: @escaping (String) -> Void) {
         self.updatePublicLinkText = updatePublicLinkText
         self.shareLink = shareLink
         self.activateLink = activateLink
@@ -56,7 +58,7 @@ private enum UsernameSetupEntry: ItemListNodeEntry {
     case publicLinkInfo(PresentationTheme, String)
     
     case additionalLinkHeader(PresentationTheme, String)
-    case additionalLink(PresentationTheme, TelegramPeerUsername, Int32, Bool)
+    case additionalLink(PresentationTheme, TelegramPeerUsername, Int32, Bool, Bool)
     case additionalLinkInfo(PresentationTheme, String)
     
     var section: ItemListSectionId {
@@ -80,7 +82,7 @@ private enum UsernameSetupEntry: ItemListNodeEntry {
                 return .index(3)
             case .additionalLinkHeader:
                 return .index(4)
-            case let .additionalLink(_, username, _, _):
+            case let .additionalLink(_, username, _, _, _):
                 return .username(username.username)
             case .additionalLinkInfo:
                 return .index(5)
@@ -119,8 +121,8 @@ private enum UsernameSetupEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
-            case let .additionalLink(lhsTheme, lhsAddressName, lhsIndex, lhsCanToggleIsActive):
-                if case let .additionalLink(rhsTheme, rhsAddressName, rhsIndex, rhsCanToggleIsActive) = rhs, lhsTheme === rhsTheme, lhsAddressName == rhsAddressName, lhsIndex == rhsIndex, lhsCanToggleIsActive == rhsCanToggleIsActive {
+            case let .additionalLink(lhsTheme, lhsAddressName, lhsIndex, lhsCanToggleIsActive, lhsIsVisual):
+                if case let .additionalLink(rhsTheme, rhsAddressName, rhsIndex, rhsCanToggleIsActive, rhsIsVisual) = rhs, lhsTheme === rhsTheme, lhsAddressName == rhsAddressName, lhsIndex == rhsIndex, lhsCanToggleIsActive == rhsCanToggleIsActive, lhsIsVisual == rhsIsVisual {
                     return true
                 } else {
                     return false
@@ -171,9 +173,9 @@ private enum UsernameSetupEntry: ItemListNodeEntry {
             default:
                 return true
             }
-        case let .additionalLink(_, _, lhsIndex, _):
+        case let .additionalLink(_, _, lhsIndex, _, _):
             switch rhs {
-            case let .additionalLink(_, _, rhsIndex, _):
+            case let .additionalLink(_, _, rhsIndex, _, _):
                 return lhsIndex < rhsIndex
             case .publicLinkHeader, .editablePublicLink, .publicLinkStatus, .publicLinkInfo, .additionalLinkHeader:
                 return false
@@ -228,13 +230,13 @@ private enum UsernameSetupEntry: ItemListNodeEntry {
                 }, sectionId: self.section)
             case let .additionalLinkHeader(_, text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-            case let .additionalLink(_, link, _, canToggleIsActive):
+            case let .additionalLink(_, link, _, canToggleIsActive, isVisual):
                 return AdditionalLinkItem(presentationData: presentationData, systemStyle: .glass, username: link, sectionId: self.section, style: .blocks, tapAction: {
                     if canToggleIsActive  {
                         if link.isActive {
-                            arguments.deactivateLink(link.username)
+                            arguments.deactivateLink(link.username, isVisual)
                         } else {
-                            arguments.activateLink(link.username)
+                            arguments.activateLink(link.username, isVisual)
                         }
                     }
                 })
@@ -288,7 +290,7 @@ private struct UsernameSetupControllerState: Equatable {
     }
 }
 
-private func usernameSetupControllerEntries(presentationData: PresentationData, peer: EnginePeer?, state: UsernameSetupControllerState, temporaryOrder: [String]?, mode: UsernameSetupMode) -> [UsernameSetupEntry] {
+private func usernameSetupControllerEntries(presentationData: PresentationData, peer: EnginePeer?, state: UsernameSetupControllerState, temporaryOrder: [String]?, mode: UsernameSetupMode, accountId: Int64) -> [UsernameSetupEntry] {
     var entries: [UsernameSetupEntry] = []
 
     if case let .user(peer) = peer {
@@ -346,6 +348,9 @@ private func usernameSetupControllerEntries(presentationData: PresentationData, 
         
         var isBot = false
         
+        let visualUsernames: [BGVisualUsername] = mode == .account ? BGSimpleSettings.shared.visualUsernames(accountId: accountId).filter { visual in
+            peer.addressName?.caseInsensitiveCompare(visual.name) != .orderedSame && !peer.usernames.contains(where: { $0.username.caseInsensitiveCompare(visual.name) == .orderedSame })
+        } : []
         let otherUsernames = peer.usernames.filter { !$0.flags.contains(.isEditable) }
         if case .bot = mode {
             isBot = true
@@ -365,37 +370,41 @@ private func usernameSetupControllerEntries(presentationData: PresentationData, 
             entries.append(.publicLinkInfo(presentationData.theme, infoText))
         }
         
-        if !otherUsernames.isEmpty {
+        if !otherUsernames.isEmpty || !visualUsernames.isEmpty {
             entries.append(.additionalLinkHeader(presentationData.theme, presentationData.strings.Username_LinksOrder))
             
-            var usernames = peer.usernames
-            if let temporaryOrder = temporaryOrder {
+            var usernames = peer.usernames + visualUsernames.map { visual in
+                TelegramPeerUsername(flags: visual.isActive ? [.isActive] : [], username: visual.name)
+            }
+            let preferredOrder = temporaryOrder ?? BGSimpleSettings.shared.visualUsernameOrder(accountId: accountId)
+            if !preferredOrder.isEmpty {
                 var usernamesMap: [String: TelegramPeerUsername] = [:]
                 for username in usernames {
                     usernamesMap[username.username] = username
                 }
                 var sortedUsernames: [TelegramPeerUsername] = []
-                for username in temporaryOrder {
-                    if let username = usernamesMap[username] {
+                for name in preferredOrder {
+                    if let username = usernamesMap.removeValue(forKey: name) {
                         sortedUsernames.append(username)
                     }
                 }
-                usernames = sortedUsernames
+                usernames = sortedUsernames + usernames.filter { usernamesMap[$0.username] != nil }
             }
             var i: Int32 = 0
             for username in usernames {
+                let isVisual = visualUsernames.contains(where: { $0.name == username.username })
                 var canToggleIsActive = false
-                if !username.flags.contains(.isEditable) || isBot {
+                if !username.flags.contains(.isEditable) || isBot || isVisual {
                     canToggleIsActive = true
                 }
-                entries.append(.additionalLink(presentationData.theme, username, i, canToggleIsActive))
+                entries.append(.additionalLink(presentationData.theme, username, i, canToggleIsActive, isVisual))
                 i += 1
             }
             
             let text: String
             switch mode {
             case .account:
-                text = presentationData.strings.Username_LinksOrderInfo
+                text = presentationData.strings.Username_LinksOrderInfo + (visualUsernames.isEmpty ? "" : "\nВизуальные имена хранятся только на этом устройстве и не создают ссылку на аккаунт.")
             case .bot:
                 text = presentationData.strings.Username_BotLinksOrderInfo
             }
@@ -439,6 +448,12 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
     case let .bot(botPeerId):
         domain = .bot(botPeerId)
         peerId = botPeerId
+    }
+
+    let visualRevision = ValuePromise(0, ignoreRepeated: true)
+    let visualRevisionValue = Atomic(value: 0)
+    let refreshVisual = {
+        visualRevision.set(visualRevisionValue.modify { $0 + 1 })
     }
     
     let arguments = UsernameSetupControllerArguments(updatePublicLinkText: { currentText, text in
@@ -495,7 +510,12 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
                 }
             }
         })
-    }, activateLink: { name in
+    }, activateLink: { name, isVisual in
+        if isVisual {
+            BGSimpleSettings.shared.setVisualUsernameActive(name, isActive: true, accountId: context.account.peerId.toInt64())
+            refreshVisual()
+            return
+        }
         dismissInputImpl?()
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let alertText: String
@@ -521,7 +541,12 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
                 presentControllerImpl?(textAlertController(context: context, title: nil, text: errorText, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), nil)
             })
         })]), nil)
-    }, deactivateLink: { name in
+    }, deactivateLink: { name, isVisual in
+        if isVisual {
+            BGSimpleSettings.shared.setVisualUsernameActive(name, isActive: false, accountId: context.account.peerId.toInt64())
+            refreshVisual()
+            return
+        }
         dismissInputImpl?()
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let alertText: String
@@ -548,9 +573,10 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
         context.sharedContext.presentationData,
         statePromise.get() |> deliverOnMainQueue,
         peerSignal,
-        temporaryOrder.get()
+        combineLatest(temporaryOrder.get(), visualRevision.get())
     )
-    |> map { presentationData, state, peer, temporaryOrder -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, state, peer, orderAndRevision -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let (temporaryOrder, _) = orderAndRevision
         var rightNavigationButton: ItemListNavigationButton?
         if case let .user(peer) = peer {
             var doneEnabled = true
@@ -608,7 +634,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
             title = presentationData.strings.Username_Title
         }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: leftNavigationButton, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: usernameSetupControllerEntries(presentationData: presentationData, peer: peer, state: state, temporaryOrder: temporaryOrder, mode: mode), style: .blocks, focusItemTag: mode == .account ? UsernameEntryTag.username : nil, animateChanges: true)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: usernameSetupControllerEntries(presentationData: presentationData, peer: peer, state: state, temporaryOrder: temporaryOrder, mode: mode, accountId: context.account.peerId.toInt64()), style: .blocks, focusItemTag: mode == .account ? UsernameEntryTag.username : nil, animateChanges: true)
             
         return (controllerState, (listState, arguments))
     } |> afterDisposed {
@@ -621,7 +647,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
     
     controller.setReorderEntry({ (fromIndex: Int, toIndex: Int, entries: [UsernameSetupEntry]) -> Signal<Bool, NoError> in
         let fromEntry = entries[fromIndex]
-        guard case let .additionalLink(_, fromUsername, _, _) = fromEntry else {
+        guard case let .additionalLink(_, fromUsername, _, _, _) = fromEntry else {
             return .single(false)
         }
         var referenceId: String?
@@ -634,7 +660,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
         var i = 0
         for entry in entries {
             switch entry {
-            case let .additionalLink(_, link, _, _):
+            case let .additionalLink(_, link, _, _, _):
                 currentUsernames.append(link.username)
                 if !link.isActive && maxIndex == nil {
                     maxIndex = max(0, i - 1)
@@ -647,7 +673,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
         
         if toIndex < entries.count {
             switch entries[toIndex] {
-                case let .additionalLink(_, toUsername, _, _):
+                case let .additionalLink(_, toUsername, _, _, _):
                     if toUsername.isActive {
                         referenceId = toUsername.username
                     } else {
@@ -722,13 +748,24 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
     
     controller.setReorderCompleted({ (entries: [UsernameSetupEntry]) -> Void in
         var currentUsernames: [TelegramPeerUsername] = []
+        var combinedOrder: [String] = []
         for entry in entries {
             switch entry {
-            case let .additionalLink(_, username, _, _):
-                currentUsernames.append(username)
+            case let .additionalLink(_, username, _, _, isVisual):
+                combinedOrder.append(username.username)
+                if !isVisual {
+                    currentUsernames.append(username)
+                }
             default:
                 break
             }
+        }
+        if case .account = mode {
+            BGSimpleSettings.shared.setVisualUsernameOrder(combinedOrder, accountId: context.account.peerId.toInt64())
+        }
+        if currentUsernames.isEmpty {
+            temporaryOrder.set(.single(nil))
+            return
         }
         let _ = (context.engine.peers.reorderAddressNames(domain: domain, names: currentUsernames)
         |> deliverOnMainQueue).start(completed: {

@@ -1114,6 +1114,7 @@ public protocol AffiliateProgramSetupScreenInitialData: AnyObject {
 public enum CollectibleItemInfoScreenSubject {
     case phoneNumber(String)
     case username(String)
+    case visualUsername(String, Int32, Int64)
 }
 
 
