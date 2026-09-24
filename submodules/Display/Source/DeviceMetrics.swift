@@ -413,6 +413,28 @@ public enum DeviceMetrics: CaseIterable, Equatable {
         if case .iPhoneX = self {
             return false
         }
-        return self.hasTopNotch
+        return self.hasTopNotch || self.dynamicIslandAppBadgeOffset != nil
+    }
+    
+    // The badge sits under the notch or the Dynamic Island, so it only shows up in screenshots.
+    public var appBadgeOffset: CGFloat {
+        return self.dynamicIslandAppBadgeOffset ?? 5.0
+    }
+    
+    // Centers the 22pt badge in the island. Display-zoomed modes are left out: the island
+    // sits elsewhere in their coordinate space.
+    private var dynamicIslandAppBadgeOffset: CGFloat? {
+        switch self {
+            case .iPhone14Pro:
+                return 18.0
+            case .iPhone14ProMax:
+                return 19.0
+            case .iPhone16Pro:
+                return 21.0
+            case .iPhone16ProMax, .iPhoneAir:
+                return 22.0
+            default:
+                return nil
+        }
     }
 }
