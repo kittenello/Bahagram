@@ -308,6 +308,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                         titleCredibilityIcon = .fake
                                     } else if peer.isScam {
                                         titleCredibilityIcon = .scam
+                                    } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
+                                        titleCredibilityIcon = .none
                                     } else if !hidePeerStatus, let emojiStatus = peer.emojiStatus {
                                         titleStatusIcon = .emojiStatus(emojiStatus)
                                     } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled {

@@ -142,6 +142,15 @@ public class ItemListAvatarAndNameInfoItem: ListViewItem, ItemListItem, ListItem
             }
             return nil
         }
+
+        var accountPeerId: EnginePeer.Id {
+            switch self {
+            case let .accountContext(accountContext):
+                return accountContext.account.peerId
+            case let .other(accountPeerId, _):
+                return accountPeerId
+            }
+        }
     }
     let itemContext: ItemContext
     let presentationData: ItemListPresentationData
@@ -441,7 +450,7 @@ public class ItemListAvatarAndNameInfoItemNode: ListViewItemNode, ItemListItemNo
                     credibilityIconOffset = 2.0
                 } else if peer.isVerified {
                     credibilityIconImage = PresentationResourcesItemList.verifiedPeerIcon(item.presentationData.theme)
-                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled {
+                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && !bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.itemContext.accountPeerId) {
                     credibilityIconImage = PresentationResourcesChatList.premiumIcon(item.presentationData.theme)
                 }
             }

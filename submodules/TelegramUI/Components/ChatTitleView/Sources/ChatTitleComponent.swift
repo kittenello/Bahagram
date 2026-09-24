@@ -447,6 +447,8 @@ public final class ChatTitleComponent: Component {
                                 titleCredibilityIcon = .fake
                             } else if peer.isScam {
                                 titleCredibilityIcon = .scam
+                            } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: component.context.account.peerId) {
+                                titleCredibilityIcon = .none
                             } else if !hidePeerStatus, let emojiStatus = peer.emojiStatus {
                                 titleStatusIcon = .emojiStatus(emojiStatus)
                             } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled {

@@ -602,6 +602,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 credibilityIcon = .fake
             } else if peer.isScam {
                 credibilityIcon = .scam
+            } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
+                credibilityIcon = .none
             } else if let emojiStatus = peer.emojiStatus {
                 statusIcon = .emojiStatus(emojiStatus)
             } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && (peer.id != self.context.account.peerId || self.isSettings || self.isMyProfile) {

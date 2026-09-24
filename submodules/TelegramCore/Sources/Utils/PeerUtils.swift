@@ -1,6 +1,5 @@
 import Foundation
 import Postbox
-import BGSimpleSettings
 
 public let anonymousSavedMessagesId: Int64 = 2666000
 
@@ -387,9 +386,6 @@ public extension Peer {
     }
     
     var emojiStatus: PeerEmojiStatus? {
-        if BGSimpleSettings.shared.hidePremiumStatuses {
-            return nil
-        }
         switch self {
         case let user as TelegramUser:
             return user.emojiStatus
