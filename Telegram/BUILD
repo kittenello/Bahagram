@@ -340,6 +340,9 @@ alternate_icon_folders = [
     "Baho3DCircle",
     "BahoGlass",
     "BahoGlassEyes",
+    # Bahogram boykisser icons
+    "BahoKisser",
+    "BahoKisserRed",
 ]
 
 composer_icon_folders = ["Telegram"]
