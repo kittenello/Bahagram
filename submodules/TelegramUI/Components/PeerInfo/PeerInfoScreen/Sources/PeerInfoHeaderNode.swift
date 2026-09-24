@@ -1093,6 +1093,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             self.currentVerifiedIcon = verifiedIcon
             let teamPeerName = peer.flatMap { bahogramIsTeamMember(peerId: $0.id) ? $0.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder) : nil }
             self.currentBahogramTeamPeerName = teamPeerName
+            let teamBadgeAction: (() -> Void)? = teamPeerName.map { name in
+                return { [weak self] in
+                    self?.displayBahogramTeamBadge?(name)
+                }
+            }
             
             let emojiRegularStatusContent: EmojiStatusComponent.Content
             let emojiExpandedStatusContent: EmojiStatusComponent.Content
@@ -1122,11 +1127,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     content: emojiRegularStatusContent,
                     isVisibleForAnimations: true,
                     useSharedAnimation: true,
-                    action: { [weak self] in
-                        if let teamPeerName {
-                            self?.displayBahogramTeamBadge?(teamPeerName)
-                        }
-                    },
+                    action: teamBadgeAction,
                     emojiFileUpdated: nil
                 )),
                 environment: {},
@@ -1141,11 +1142,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     content: emojiExpandedStatusContent,
                     isVisibleForAnimations: true,
                     useSharedAnimation: true,
-                    action: { [weak self] in
-                        if let teamPeerName {
-                            self?.displayBahogramTeamBadge?(teamPeerName)
-                        }
-                    }
+                    action: teamBadgeAction ?? {}
                 )),
                 environment: {},
                 containerSize: CGSize(width: 26.0, height: 26.0)
