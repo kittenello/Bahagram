@@ -419,6 +419,31 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = item.strings.Appearance_AppIconBlack
                                 case "PremiumTurbo":
                                     name = item.strings.Appearance_AppIconTurbo
+                                case "BahoSnout":
+                                    name = "Пятачок"
+                                    bordered = false
+                                case "BahoSnoutHead":
+                                    name = "Пятачок 2"
+                                    bordered = false
+                                case "BahoPigPlane":
+                                    name = "Свинолёт"
+                                case "BahoPigPlaneEars":
+                                    name = "Свинолёт 2"
+                                case "BahoPilot":
+                                    name = "Пилот"
+                                    bordered = false
+                                case "BahoPilotLens":
+                                    name = "Пилот 2"
+                                    bordered = false
+                                case "Baho3D":
+                                    name = "3D"
+                                    bordered = false
+                                case "Baho3DCircle":
+                                    name = "3D Круг"
+                                case "BahoGlass":
+                                    name = "Стекло"
+                                case "BahoGlassEyes":
+                                    name = "Стекло 2"
                                 default:
                                     name = icon.name
                             }

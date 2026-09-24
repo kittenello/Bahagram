@@ -329,6 +329,17 @@ alternate_icon_folders = [
     "Premium",
     "PremiumBlack",
     "PremiumTurbo",
+    # Bahogram pig icons
+    "BahoSnout",
+    "BahoSnoutHead",
+    "BahoPigPlane",
+    "BahoPigPlaneEars",
+    "BahoPilot",
+    "BahoPilotLens",
+    "Baho3D",
+    "Baho3DCircle",
+    "BahoGlass",
+    "BahoGlassEyes",
 ]
 
 composer_icon_folders = ["Telegram"]
