@@ -977,7 +977,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 icons.append(PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack", isPremium: true))
                 
                 // Bahogram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Baho*.alticon
-                for name in ["BahoSnout", "BahoSnoutHead", "BahoPigPlane", "BahoPigPlaneEars", "BahoPilot", "BahoPilotLens", "Baho3D", "Baho3DCircle", "BahoGlass", "BahoGlassEyes", "BahoKisser", "BahoKisserRed", "BahoCat", "BahoCatFace"] {
+                for name in ["BahoSnout", "BahoSnoutHead", "BahoPigPlane", "BahoPigPlaneEars", "BahoPilot", "BahoPilotLens", "Baho3D", "Baho3DCircle", "BahoGlass", "BahoGlassEyes", "BahoKisser", "BahoKisserRed", "BahoCat"] {
                     icons.append(PresentationAppIcon(name: name, imageName: name))
                 }
                 
