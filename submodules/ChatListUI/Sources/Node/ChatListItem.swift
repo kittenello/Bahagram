@@ -3577,7 +3577,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                                 currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                             }
                             if bahogramIsTeamMember(peerId: peer.id) {
-                                currentVerifiedIconContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                                currentVerifiedIconContent = bahogramTeamBadgeContent(sizeType: .compact)
                                 currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                             }
                         }
@@ -3614,7 +3614,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                     }
                     if bahogramIsTeamMember(peerId: peer.id) {
-                        currentVerifiedIconContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                        currentVerifiedIconContent = bahogramTeamBadgeContent(sizeType: .compact)
                         currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                     }
                 }
@@ -3639,8 +3639,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let textString = NSAttributedString(string: string, font: Font.bold(10.0), textColor: .black, paragraphAlignment: .center)
                     let stringRect = textString.boundingRect(with: CGSize(width: 100.0, height: 16.0), options: .usesLineFragmentOrigin, context: nil)
                     titleIconsWidth += floor(stringRect.width) + 11.0
-                case let .image(image, _):
-                    titleIconsWidth += image?.size.width ?? 16.0
+                case .verified:
+                    titleIconsWidth += 16.0
                 default:
                     titleIconsWidth += 8.0
                 }
@@ -5842,7 +5842,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         }
         if let verifiedIconView = self.verifiedIconView,
            let content = self.verifiedIconComponent?.content,
-           case .image = content,
+           case .verified = content,
            let result = verifiedIconView.hitTest(self.view.convert(point, to: verifiedIconView), with: event) {
             return result
         }

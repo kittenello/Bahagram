@@ -928,7 +928,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
             titleVerifiedContent = .premium(color: self.theme.list.itemAccentColor)
         case .verified:
             if self.hasBahogramTeamBadge {
-                titleVerifiedContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                titleVerifiedContent = bahogramTeamBadgeContent(sizeType: .large)
             } else {
                 titleVerifiedContent = .verified(fillColor: self.theme.list.itemCheckColors.fillColor, foregroundColor: self.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
             }

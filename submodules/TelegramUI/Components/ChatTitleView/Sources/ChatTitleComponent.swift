@@ -995,7 +995,7 @@ public final class ChatTitleComponent: Component {
             
             let verifiedContent: EmojiStatusComponent.Content?
             if bahogramTeamPeerName != nil {
-                verifiedContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                verifiedContent = bahogramTeamBadgeContent(sizeType: .large)
             } else {
                 verifiedContent = mapTitleIcon(titleVerifiedIcon)
             }

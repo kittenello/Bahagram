@@ -1104,8 +1104,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             switch verifiedIcon {
             case .verified:
                 if teamPeerName != nil {
-                    emojiRegularStatusContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
-                    emojiExpandedStatusContent = .image(image: bahogramTeamBadgeImage(), tintColor: nil)
+                    emojiRegularStatusContent = bahogramTeamBadgeContent(sizeType: .large)
+                    emojiExpandedStatusContent = bahogramTeamBadgeContent(sizeType: .large)
                 } else {
                     emojiRegularStatusContent = .verified(fillColor: presentationData.theme.list.itemCheckColors.fillColor, foregroundColor: presentationData.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
                     emojiExpandedStatusContent = .verified(fillColor: navigationContentsAccentColor, foregroundColor: .clear, sizeType: .large)
