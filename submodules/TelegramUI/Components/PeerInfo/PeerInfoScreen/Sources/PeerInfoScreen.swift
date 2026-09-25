@@ -422,8 +422,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                 self?.requestLayout(animated: false)
             }
         }
-        self.headerNode.displayBahogramTeamBadge = { name in
-            presentBahogramTeamBadge(context: context, peerName: name)
+        self.headerNode.displayBahogramTeamBadge = { badge, name in
+            presentBahogramBadge(badge, context: context, peerName: name)
         }
         
         self.paneContainerNode.parentController = controller

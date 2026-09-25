@@ -2508,7 +2508,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             var currentMutedIconImage: UIImage?
             var currentCredibilityIconContent: EmojiStatusComponent.Content?
             var currentVerifiedIconContent: EmojiStatusComponent.Content?
-            var currentBahogramTeamPeerName: String?
+            var currentBahogramBadge: (badge: BahogramBadge, peerName: String)?
             var currentStatusIconContent: EmojiStatusComponent.Content?
             var currentStatusIconParticleColor: UIColor?
             var currentSecretIconImage: UIImage?
@@ -3576,9 +3576,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             if let verificationIconFileId = peer.verificationIconFileId {
                                 currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                             }
-                            if bahogramIsTeamMember(peerId: peer.id) {
-                                currentVerifiedIconContent = bahogramTeamBadgeContent(sizeType: .compact)
-                                currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                            if let badge = bahogramBadge(peerId: peer.id) {
+                                currentVerifiedIconContent = bahogramBadgeContent(badge, sizeType: .compact)
+                                currentBahogramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
                             }
                         }
                     default:
@@ -3613,9 +3613,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     if let verificationIconFileId = peer.verificationIconFileId {
                         currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                     }
-                    if bahogramIsTeamMember(peerId: peer.id) {
-                        currentVerifiedIconContent = bahogramTeamBadgeContent(sizeType: .compact)
-                        currentBahogramTeamPeerName = peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    if let badge = bahogramBadge(peerId: peer.id) {
+                        currentVerifiedIconContent = bahogramBadgeContent(badge, sizeType: .compact)
+                        currentBahogramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
                     }
                 }
             }
@@ -3639,7 +3639,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let textString = NSAttributedString(string: string, font: Font.bold(10.0), textColor: .black, paragraphAlignment: .center)
                     let stringRect = textString.boundingRect(with: CGSize(width: 100.0, height: 16.0), options: .usesLineFragmentOrigin, context: nil)
                     titleIconsWidth += floor(stringRect.width) + 11.0
-                case .verified:
+                case .verified, .image:
                     titleIconsWidth += 16.0
                 default:
                     titleIconsWidth += 8.0
@@ -5294,9 +5294,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                         
                         let verifiedAction: (() -> Void)?
-                        if let name = currentBahogramTeamPeerName {
+                        if let bahogramBadgeInfo = currentBahogramBadge {
                             verifiedAction = {
-                                presentBahogramTeamBadge(context: item.context, peerName: name)
+                                presentBahogramBadge(bahogramBadgeInfo.badge, context: item.context, peerName: bahogramBadgeInfo.peerName)
                             }
                         } else {
                             verifiedAction = nil
@@ -5312,10 +5312,13 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         strongSelf.verifiedIconComponent = verifiedIconComponent
                         
                         let iconOrigin: CGFloat
+                        let isAfterTitle: Bool
                         if case .animation = currentVerifiedIconContent {
                             iconOrigin = contentRect.origin.x
+                            isAfterTitle = false
                         } else {
                             iconOrigin = nextTitleIconOrigin
+                            isAfterTitle = true
                         }
                         let containerSize = CGSize(width: 16.0, height: 16.0)
                         
@@ -5326,6 +5329,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             containerSize: containerSize
                         )
                         transition.updateFrame(view: verifiedIconView, frame: CGRect(origin: CGPoint(x: iconOrigin, y: floorToScreenPixels(titleFrame.maxY - lastLineRect.height * 0.5 - iconSize.height / 2.0) - UIScreenPixel), size: iconSize))
+                        if isAfterTitle {
+                            // A Bahogram badge sits after the title: move the hidden/muted icons past it.
+                            nextTitleIconOrigin += iconSize.width + 4.0
+                        }
                     } else if let verifiedIconView = strongSelf.verifiedIconView {
                         strongSelf.verifiedIconView = nil
                         verifiedIconView.removeFromSuperview()
@@ -5840,9 +5847,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         guard let item = self.item, self.frame.height > 0.0 else {
             return nil
         }
+        // Only a Bahogram badge in this slot has a tap action; it must win over the row's own tap.
         if let verifiedIconView = self.verifiedIconView,
-           let content = self.verifiedIconComponent?.content,
-           case .verified = content,
+           self.verifiedIconComponent?.action != nil,
            let result = verifiedIconView.hitTest(self.view.convert(point, to: verifiedIconView), with: event) {
             return result
         }
