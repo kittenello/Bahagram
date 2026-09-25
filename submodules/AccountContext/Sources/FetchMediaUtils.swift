@@ -43,6 +43,23 @@ public func messageMediaFileInteractiveFetched(fetchManager: FetchManager, messa
     return fetchManager.interactivelyFetched(category: fetchCategoryForFile(file), location: .chat(messageId.peerId), locationKey: .messageId(messageId), mediaReference: mediaReference, resourceReference: mediaReference.resourceReference(file.resource), ranges: ranges, statsCategory: statsCategoryForFileWithAttributes(file.attributes), elevatedPriority: false, userInitiated: userInitiated, priority: priority, storeToDownloadsPeerId: storeToDownloadsPeerId)
 }
 
+/// Downloads a message file if needed and delivers its local path once the file is complete.
+public func messageMediaFileCompletePath(context: AccountContext, message: Message, file: TelegramMediaFile) -> Signal<String, NoError> {
+    return Signal { subscriber in
+        let fetchDisposable = messageMediaFileInteractiveFetched(context: context, message: message, file: file, userInitiated: true).start()
+        let dataDisposable = (context.engine.resources.data(id: EngineMediaResource.Id(file.resource.id))
+        |> filter { $0.isComplete }
+        |> take(1)).start(next: { data in
+            subscriber.putNext(data.path)
+            subscriber.putCompletion()
+        })
+        return ActionDisposable {
+            fetchDisposable.dispose()
+            dataDisposable.dispose()
+        }
+    }
+}
+
 public func messageMediaFileCancelInteractiveFetch(context: AccountContext, messageId: MessageId, file: TelegramMediaFile) {
     context.fetchManager.cancelInteractiveFetches(category: fetchCategoryForFile(file), location: .chat(messageId.peerId), locationKey: .messageId(messageId), resource: file.resource)
 }

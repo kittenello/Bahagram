@@ -116,7 +116,7 @@ private func bgTranscriptionController(context: AccountContext) -> ViewControlle
         switch backend {
         case .auto: info = "Telegram, пока он может расшифровать сообщение сам — с Premium или бесплатными попытками. Иначе Apple."
         case .telegram: info = "Telegram использует облачный сервис распознавания."
-        case .apple: info = "Apple распознаёт голосовые сообщения локально на устройстве."
+        case .apple: info = "Apple распознаёт речь на устройстве, а если язык не поддерживается — на серверах Apple."
         }
         return [.checkbox(0, 0, "auto", "Авто", backend == .auto), .checkbox(1, 0, "telegram", "Telegram", backend == .telegram), .checkbox(2, 0, "apple", "Apple", backend == .apple), .info(3, 0, info)]
     }, select: { s.transcriptionBackend = BGSimpleSettings.TranscriptionBackend(rawValue: $0) ?? .auto })
