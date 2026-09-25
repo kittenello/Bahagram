@@ -42,6 +42,7 @@ swift_library(
         "//submodules/TelegramUI/Components/ChatControllerInteraction",
         "//submodules/TelegramUI/Components/LottieComponent",
         "//submodules/TelegramUI/Components/GlassBackgroundComponent",
+        "//Bahogram/BGSimpleSettings:BGSimpleSettings",
     ],
     visibility = [
         "//visibility:public",

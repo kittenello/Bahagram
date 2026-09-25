@@ -65,6 +65,7 @@ public final class BGSimpleSettings {
         static let showDc = "bahogram.appearance.showDc"
         static let showRegistrationDate = "bahogram.appearance.showRegistrationDate"
         static let showChatCreationDate = "bahogram.appearance.showChatCreationDate"
+        static let showMutualContact = "bahogram.appearance.showMutualContact"
         static let confirmCalls = "bahogram.appearance.confirmCalls"
         static let disableAds = "bahogram.appearance.disableAds"
         static let hidePremiumStatuses = "bahogram.appearance.hidePremiumStatuses"
@@ -79,6 +80,11 @@ public final class BGSimpleSettings {
         static let disableColoredReplies = "bahogram.chats.disableColoredReplies"
         static let showMessageSeconds = "bahogram.chats.showMessageSeconds"
         static let transcriptionBackend = "bahogram.chats.transcriptionBackend"
+        static let downloadTikTok = "bahogram.chats.downloadTikTok"
+        static let downloadYouTubeShorts = "bahogram.chats.downloadYouTubeShorts"
+        static let signDownloadedMedia = "bahogram.chats.signDownloadedMedia"
+        static let cobaltEndpoint = "bahogram.chats.cobaltEndpoint"
+        static let startRoundVideoWithRearCamera = "bahogram.chats.startRoundVideoWithRearCamera"
     }
 
     private let defaults: UserDefaults
@@ -283,6 +289,7 @@ public final class BGSimpleSettings {
     public var showDc: Bool { get { bool(Key.showDc) } set { setBool(newValue, Key.showDc) } }
     public var showRegistrationDate: Bool { get { bool(Key.showRegistrationDate) } set { setBool(newValue, Key.showRegistrationDate) } }
     public var showChatCreationDate: Bool { get { bool(Key.showChatCreationDate) } set { setBool(newValue, Key.showChatCreationDate) } }
+    public var showMutualContact: Bool { get { bool(Key.showMutualContact) } set { setBool(newValue, Key.showMutualContact) } }
     public var confirmCalls: Bool { get { bool(Key.confirmCalls) } set { setBool(newValue, Key.confirmCalls) } }
     public var disableAds: Bool { get { bool(Key.disableAds) } set { setBool(newValue, Key.disableAds) } }
     public var hidePremiumStatuses: Bool { get { bool(Key.hidePremiumStatuses) } set { setBool(newValue, Key.hidePremiumStatuses) } }
@@ -296,6 +303,11 @@ public final class BGSimpleSettings {
     public var hideShareButton: Bool { get { false } set { } }
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }
     public var showMessageSeconds: Bool { get { bool(Key.showMessageSeconds) } set { setBool(newValue, Key.showMessageSeconds) } }
+    public var downloadTikTok: Bool { get { bool(Key.downloadTikTok) } set { setBool(newValue, Key.downloadTikTok) } }
+    public var downloadYouTubeShorts: Bool { get { bool(Key.downloadYouTubeShorts) } set { setBool(newValue, Key.downloadYouTubeShorts) } }
+    public var signDownloadedMedia: Bool { get { bool(Key.signDownloadedMedia) } set { setBool(newValue, Key.signDownloadedMedia) } }
+    public var cobaltEndpoint: String { get { string(Key.cobaltEndpoint) } set { setString(newValue.trimmingCharacters(in: .whitespacesAndNewlines), Key.cobaltEndpoint) } }
+    public var startRoundVideoWithRearCamera: Bool { get { bool(Key.startRoundVideoWithRearCamera) } set { setBool(newValue, Key.startRoundVideoWithRearCamera) } }
     public var transcriptionBackend: TranscriptionBackend {
         get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .auto }
         set { setString(newValue.rawValue, Key.transcriptionBackend) }

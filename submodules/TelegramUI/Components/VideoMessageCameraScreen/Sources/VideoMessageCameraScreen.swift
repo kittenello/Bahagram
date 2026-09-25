@@ -28,6 +28,7 @@ import LegacyMediaPickerUI
 import TelegramAudio
 import ChatSendMessageActionUI
 import ChatControllerInteraction
+import BGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
@@ -950,7 +951,7 @@ public class VideoMessageCameraScreen: ViewController {
             self.previewContainerView.addSubview(self.previewContainerContentView)
                         
             let isDualCameraEnabled = Camera.isDualCameraSupported(forRoundVideo: true)
-            let isFrontPosition = "".isEmpty
+            let isFrontPosition = !BGSimpleSettings.shared.startRoundVideoWithRearCamera
             
             self.mainPreviewView = CameraSimplePreviewView(frame: .zero, main: true, roundVideo: true)
             self.additionalPreviewView = CameraSimplePreviewView(frame: .zero, main: false, roundVideo: true)

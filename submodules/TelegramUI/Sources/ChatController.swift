@@ -391,6 +391,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var videoRecorderValue: VideoMessageCameraScreen?
     var videoRecorder = Promise<VideoMessageCameraScreen?>()
     var videoRecorderDisposable: Disposable?
+    var bahogramMediaDownloader: BahogramMediaDownloader?
     
     var recorderDataDisposable = MetaDisposable()
     
@@ -8987,6 +8988,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
         
         guard let peerId = self.chatLocation.peerId else {
+            return
+        }
+
+        if self.bahogramTryStartMediaDownload(messages, postpone: postpone, commit: commit) {
             return
         }
         
