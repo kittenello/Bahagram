@@ -447,36 +447,11 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 if context.sharedContext.immediateExperimentalUISettings.localTranscription || useAppleTranscription {
                     let appLocale = presentationData.strings.baseLanguageCode
                     
-                    let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
-                    |> mapToSignal { message -> Signal<String?, NoError> in
-                        guard let message = message else {
-                            return .single(nil)
-                        }
-                        guard let file = message.media.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile else {
-                            return .single(nil)
-                        }
-                        return context.engine.resources.data(id: EngineMediaResource.Id(file.resource.id))
-                        |> take(1)
-                        |> mapToSignal { data -> Signal<String?, NoError> in
-                            if !data.isComplete {
-                                return .single(nil)
-                            }
-                            return .single(data.path)
-                        }
-                    }
-                    |> mapToSignal { result -> Signal<String?, NoError> in
-                        guard let result = result else {
-                            return .single(nil)
-                        }
-                        return convertOpusToAAC(sourcePath: result, allocateTempFile: {
+                    let signal: Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> = messageMediaFileCompletePath(context: context, message: message, file: arguments.file)
+                    |> mapToSignal { path -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
+                        return transcribeMediaFile(path: path, appLocale: appLocale, allocateTempFile: {
                             return EngineTempBox.shared.tempFile(fileName: "audio.m4a").path
                         })
-                    }
-                    |> mapToSignal { result -> Signal<LocallyTranscribedAudio?, NoError> in
-                        guard let result = result else {
-                            return .single(nil)
-                        }
-                        return transcribeAudio(path: result, appLocale: appLocale)
                     }
                     
                     self.transcribeDisposable = (signal
@@ -485,11 +460,13 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                             return
                         }
                         
-                        if let result = result {
-                            let _ = arguments.context.engine.messages.storeLocallyTranscribedAudio(messageId: arguments.message.id, text: result.text, isFinal: result.isFinal, error: nil).startStandalone()
-                        } else {
+                        switch result {
+                        case let .success(transcription):
+                            let _ = arguments.context.engine.messages.storeLocallyTranscribedAudio(messageId: arguments.message.id, text: transcription.text, isFinal: transcription.isFinal, error: nil).startStandalone()
+                        case let .failure(error):
                             strongSelf.audioTranscriptionState = .collapsed
                             strongSelf.requestUpdateLayout(true)
+                            strongSelf.presentLocalTranscriptionError(error)
                         }
                     }, completed: { [weak self] in
                         guard let strongSelf = self else {
@@ -531,6 +508,25 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 break
             }
         }
+    }
+    
+    private func presentLocalTranscriptionError(_ error: LocalAudioTranscriptionError) {
+        guard let arguments = self.arguments else {
+            return
+        }
+        let context = arguments.context
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        var openSettingsText: String?
+        if case .notAuthorized = error {
+            openSettingsText = "Настройки"
+        }
+        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.bahogramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
+            if case .undo = action {
+                context.sharedContext.applicationBindings.openSettings()
+            }
+            return false
+        })
+        arguments.controllerInteraction.presentControllerInCurrent(tipController, nil)
     }
     
     private func presentAudioTranscriptionTooltip(finished: Bool) -> Bool {
