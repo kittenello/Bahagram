@@ -220,7 +220,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
     private var titleRightIcon: ChatTitleIcon = .none
     private var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
     private var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
-    private var hasBahogramTeamBadge = false
+    private var bahogramTeamBadge: BahogramBadge?
     private var titleStatusIcon: ChatTitleCredibilityIcon = .none
     
     private var presenceManager: PeerPresenceStatusManager?
@@ -269,7 +269,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                 var titleRightIcon: ChatTitleIcon = .none
                 var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
                 var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
-                var hasBahogramTeamBadge = false
+                var bahogramTeamBadge: BahogramBadge?
                 var titleStatusIcon: ChatTitleCredibilityIcon = .none
                 var isEnabled = true
                 switch titleContent {
@@ -325,9 +325,9 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                         titleVerifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
                                     }
                                 }
-                                if bahogramIsTeamMember(peerId: peer.id) {
+                                if let badge = bahogramBadge(peerId: peer.id) {
                                     titleVerifiedIcon = .verified
-                                    hasBahogramTeamBadge = true
+                                    bahogramTeamBadge = badge
                                 }
                             }
                             if peerView.peerId.namespace == Namespaces.Peer.SecretChat {
@@ -465,8 +465,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                     self.titleVerifiedIcon = titleVerifiedIcon
                     updated = true
                 }
-                if hasBahogramTeamBadge != self.hasBahogramTeamBadge {
-                    self.hasBahogramTeamBadge = hasBahogramTeamBadge
+                if bahogramTeamBadge != self.bahogramTeamBadge {
+                    self.bahogramTeamBadge = bahogramTeamBadge
                     updated = true
                 }
                 
@@ -927,8 +927,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         case .premium:
             titleVerifiedContent = .premium(color: self.theme.list.itemAccentColor)
         case .verified:
-            if self.hasBahogramTeamBadge {
-                titleVerifiedContent = bahogramTeamBadgeContent(sizeType: .large)
+            if let bahogramTeamBadge = self.bahogramTeamBadge {
+                titleVerifiedContent = bahogramBadgeContent(bahogramTeamBadge, sizeType: .large)
             } else {
                 titleVerifiedContent = .verified(fillColor: self.theme.list.itemCheckColors.fillColor, foregroundColor: self.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
             }

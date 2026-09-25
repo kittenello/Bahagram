@@ -315,7 +315,7 @@ public final class ChatTitleComponent: Component {
         private var credibilityIcon: ComponentView<Empty>?
         private var verifiedIcon: ComponentView<Empty>?
         private var statusIcon: ComponentView<Empty>?
-        private var bahogramTeamPeerName: String?
+        private var bahogramTeamBadge: (badge: BahogramBadge, peerName: String)?
         
         private var presenceManager: PeerPresenceStatusManager?
         
@@ -350,10 +350,10 @@ public final class ChatTitleComponent: Component {
             if let (gesture, location) = recognizer.lastRecognizedGestureAndLocation {
                 switch gesture {
                 case .tap:
-                    if let component = self.component, let name = self.bahogramTeamPeerName,
+                    if let component = self.component, let bahogramTeamBadge = self.bahogramTeamBadge,
                        let badgeView = self.verifiedIcon?.view,
                        badgeView.frame.insetBy(dx: -5.0, dy: -5.0).contains(location) {
-                        presentBahogramTeamBadge(context: component.context, peerName: name)
+                        presentBahogramBadge(bahogramTeamBadge.badge, context: component.context, peerName: bahogramTeamBadge.peerName)
                     } else {
                         self.component?.tapped()
                     }
@@ -380,7 +380,7 @@ public final class ChatTitleComponent: Component {
             var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
             var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
             var titleStatusIcon: ChatTitleCredibilityIcon = .none
-            var bahogramTeamPeerName: String?
+            var bahogramTeamBadge: (badge: BahogramBadge, peerName: String)?
             var isEnabled = true
             switch component.content {
             case let .peer(peerView, customTitle, _, _, isScheduledMessages, isMuted, _, hidePeerStatus, isEnabledValue):
@@ -470,9 +470,9 @@ public final class ChatTitleComponent: Component {
                                 titleVerifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
                             }
                         }
-                        if bahogramIsTeamMember(peerId: peer.id) {
+                        if let badge = bahogramBadge(peerId: peer.id) {
                             titleVerifiedIcon = .verified
-                            bahogramTeamPeerName = EnginePeer(peer).displayTitle(strings: component.strings, displayOrder: component.nameDisplayOrder)
+                            bahogramTeamBadge = (badge: badge, peerName: EnginePeer(peer).displayTitle(strings: component.strings, displayOrder: component.nameDisplayOrder))
                         }
                     }
                     if peerView.peerId.namespace == Namespaces.Peer.SecretChat {
@@ -609,7 +609,7 @@ public final class ChatTitleComponent: Component {
                 }
                 isEnabled = enabled
             }
-            self.bahogramTeamPeerName = bahogramTeamPeerName
+            self.bahogramTeamBadge = bahogramTeamBadge
             
             var accessibilityText = ""
             for segment in titleSegments {
@@ -994,8 +994,8 @@ public final class ChatTitleComponent: Component {
             }
             
             let verifiedContent: EmojiStatusComponent.Content?
-            if bahogramTeamPeerName != nil {
-                verifiedContent = bahogramTeamBadgeContent(sizeType: .large)
+            if let bahogramTeamBadge {
+                verifiedContent = bahogramBadgeContent(bahogramTeamBadge.badge, sizeType: .large)
             } else {
                 verifiedContent = mapTitleIcon(titleVerifiedIcon)
             }
