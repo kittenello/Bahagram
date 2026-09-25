@@ -26,7 +26,7 @@ public enum LocalAudioTranscriptionError: Error {
         case .unsupportedLanguage:
             return "Apple не распознаёт речь на языке приложения и системы."
         case .unavailable:
-            return "Распознавание речи Apple сейчас недоступно. Проверьте подключение к интернету."
+            return "Распознавание речи Apple сейчас недоступно. Проверьте интернет и включена ли диктовка в настройках клавиатуры."
         case .failed:
             return "Не удалось распознать речь."
         }
@@ -54,23 +54,29 @@ private func requestSpeechAuthorization() -> Signal<Bool, NoError> {
     }
 }
 
-// Splits "ru_RU", "en-US" or "zh-Hans-CN" into a lowercased language and an uppercased region, if there is one.
+// Splits "ru_RU", "en-US", "pt-br" or "zh-Hant" into a lowercased language and an uppercased region, if there is one.
+// "@" keywords are dropped, and a Chinese script stands in for its usual region.
 private func languageAndRegion(_ identifier: String) -> (language: String, region: String?) {
-    let parts = identifier.split(whereSeparator: { $0 == "_" || $0 == "-" }).map(String.init)
+    let base = identifier.split(separator: "@").first.map(String.init) ?? identifier
+    let parts = base.split(whereSeparator: { $0 == "_" || $0 == "-" }).map(String.init)
     let language = parts.first?.lowercased() ?? ""
-    let region = parts.dropFirst().first(where: { $0.count == 2 || ($0.count == 3 && Int($0) != nil) })?.uppercased()
+    var region = parts.dropFirst().first(where: { $0.count == 2 || ($0.count == 3 && Int($0) != nil) })?.uppercased()
+    if region == nil, language == "zh", let script = parts.dropFirst().first(where: { $0.count == 4 })?.lowercased() {
+        region = script == "hant" ? "TW" : "CN"
+    }
     return (language, region)
 }
 
 // Recognizer locales to try: the app language first, then the system one. Each language is mapped to a supported
-// locale, preferring the system region, then the language's own region (ru-RU, de-DE), then US.
+// locale, preferring its own region (the app's pt-br), then the system region, then the language's region (ru-RU), then US.
 private func recognizerLocaleIdentifiers(appLocale: String) -> [String] {
     let supported = SFSpeechRecognizer.supportedLocales().map { $0.identifier }.sorted()
+    let app = languageAndRegion(appLocale)
     let system = languageAndRegion(Locale.current.identifier)
     var result: [String] = []
-    for language in [languageAndRegion(appLocale).language, system.language] where !language.isEmpty {
+    for (language, region) in [(app.language, app.region ?? system.region), (system.language, system.region)] where !language.isEmpty {
         let matches = supported.filter { languageAndRegion($0).language == language }
-        let preferredRegions = [system.region, language.uppercased(), "US"].compactMap { $0 }
+        let preferredRegions = [region, language.uppercased(), "US"].compactMap { $0 }
         var identifier: String?
         for region in preferredRegions {
             if let match = matches.first(where: { languageAndRegion($0).region == region }) {
@@ -142,9 +148,9 @@ private func recognizeSpeech(path: String, recognizer: SFSpeechRecognizer) -> Si
 }
 
 /// Recognizes speech in an AAC (m4a) file. Tries the app and the system language and keeps the most confident result.
-public func transcribeAudio(path: String, appLocale: String) -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> {
+private func transcribeAudio(path: String, appLocale: String) -> Signal<Swift.Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> {
     return requestSpeechAuthorization()
-    |> mapToSignal { isAuthorized -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
+    |> mapToSignal { isAuthorized -> Signal<Swift.Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
         if !isAuthorized {
             return .single(.failure(.notAuthorized))
         }
@@ -173,7 +179,7 @@ public func transcribeAudio(path: String, appLocale: String) -> Signal<Result<Lo
         }
 
         return results
-        |> map { results -> Result<LocallyTranscribedAudio, LocalAudioTranscriptionError> in
+        |> map { results -> Swift.Result<LocallyTranscribedAudio, LocalAudioTranscriptionError> in
             guard let best = results.filter({ !$0.text.isEmpty }).max(by: { $0.confidence < $1.confidence }) else {
                 return .failure(.failed)
             }
@@ -184,9 +190,9 @@ public func transcribeAudio(path: String, appLocale: String) -> Signal<Result<Lo
 }
 
 /// Recognizes speech in a voice message (Opus) or round video (MP4) file: its audio track is decoded to AAC first.
-public func transcribeMediaFile(path: String, appLocale: String, allocateTempFile: @escaping () -> String) -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> {
+public func transcribeMediaFile(path: String, appLocale: String, allocateTempFile: @escaping () -> String) -> Signal<Swift.Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> {
     return convertOpusToAAC(sourcePath: path, allocateTempFile: allocateTempFile)
-    |> mapToSignal { convertedPath -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
+    |> mapToSignal { convertedPath -> Signal<Swift.Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
         guard let convertedPath = convertedPath else {
             return .single(.failure(.failed))
         }

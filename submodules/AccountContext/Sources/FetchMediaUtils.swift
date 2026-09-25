@@ -46,10 +46,10 @@ public func messageMediaFileInteractiveFetched(fetchManager: FetchManager, messa
 /// Downloads a message file if needed and delivers its local path once the file is complete.
 public func messageMediaFileCompletePath(context: AccountContext, message: Message, file: TelegramMediaFile) -> Signal<String, NoError> {
     return Signal { subscriber in
-        let fetchDisposable = messageMediaFileInteractiveFetched(context: context, message: message, file: file, userInitiated: true).start()
+        let fetchDisposable = messageMediaFileInteractiveFetched(context: context, message: message, file: file, userInitiated: true).startStandalone()
         let dataDisposable = (context.engine.resources.data(id: EngineMediaResource.Id(file.resource.id))
         |> filter { $0.isComplete }
-        |> take(1)).start(next: { data in
+        |> take(1)).startStandalone(next: { data in
             subscriber.putNext(data.path)
             subscriber.putCompletion()
         })
