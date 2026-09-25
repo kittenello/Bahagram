@@ -987,7 +987,7 @@ func infoItems(
                 items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата создания чата", text: stringForDate(timestamp: timestamp, strings: presentationData.strings), textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
             }
         }
-        if BGSimpleSettings.shared.showMutualContact, let user = peer as? TelegramUser, user.flags.contains(.mutualContact) {
+        if BGSimpleSettings.shared.showMutualContact, case let .user(user) = peer, user.flags.contains(.mutualContact) {
             items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Взаимный контакт", text: "", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
         }
     }
