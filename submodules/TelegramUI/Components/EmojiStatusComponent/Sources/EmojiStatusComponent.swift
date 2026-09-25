@@ -16,6 +16,8 @@ import GZip
 import HierarchyTrackingLayer
 import TelegramUIPreferences
 
+private let iconFramesAnimationKey = "iconFrames"
+
 public final class EmojiStatusComponent: Component {
     public typealias EnvironmentType = Empty
     
@@ -263,6 +265,7 @@ public final class EmojiStatusComponent: Component {
                 if let lottieAnimationView = strongSelf.lottieAnimationView {
                     lottieAnimationView.play()
                 }
+                strongSelf.updateIconFrameAnimation()
             }
         }
         
@@ -283,6 +286,28 @@ public final class EmojiStatusComponent: Component {
         
         public func playOnce() {
             self.animationLayer?.playOnce()
+        }
+        
+        /// `.image` content may be an animated UIImage (Bahogram's developer badge): its frames
+        /// loop on the icon layer while the component is visible for animations and emoji may loop
+        /// (Power Saving turns that off).
+        private func updateIconFrameAnimation() {
+            guard let iconLayer = self.iconLayer else {
+                return
+            }
+            if let component = self.component, component.isVisibleForAnimations, component.energyUsageSettings.loopEmoji, let iconImage = self.iconLayerImage, let frames = iconImage.images, frames.count > 1 {
+                if iconLayer.animation(forKey: iconFramesAnimationKey) == nil {
+                    let animation = CAKeyframeAnimation(keyPath: "contents")
+                    animation.values = frames.compactMap { $0.cgImage }
+                    animation.duration = iconImage.duration
+                    animation.calculationMode = .discrete
+                    animation.repeatCount = .infinity
+                    animation.isRemovedOnCompletion = false
+                    iconLayer.add(animation, forKey: iconFramesAnimationKey)
+                }
+            } else {
+                iconLayer.removeAnimation(forKey: iconFramesAnimationKey)
+            }
         }
         
         func update(component: EmojiStatusComponent, availableSize: CGSize, state: EmptyComponentState, environment: Environment<EnvironmentType>, transition: ComponentTransition) -> CGSize {
@@ -490,8 +515,11 @@ public final class EmojiStatusComponent: Component {
                 }
                 if self.iconLayerImage !== iconImage {
                     self.iconLayerImage = iconImage
-                    iconLayer.contents = iconImage.cgImage
+                    // An animated UIImage keeps its frames in `images` and has no cgImage of its own.
+                    iconLayer.removeAnimation(forKey: iconFramesAnimationKey)
+                    iconLayer.contents = (iconImage.images?.first ?? iconImage).cgImage
                 }
+                self.updateIconFrameAnimation()
                 
                 if let iconTintColor {
                     transition.setTintColor(layer: iconLayer, color: iconTintColor)
