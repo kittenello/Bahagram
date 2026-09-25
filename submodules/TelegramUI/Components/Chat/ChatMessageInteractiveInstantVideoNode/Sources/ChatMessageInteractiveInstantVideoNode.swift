@@ -653,6 +653,9 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             let currentTime = Int32(Date().timeIntervalSince1970)
             if transcribedText == nil, !useAppleTranscription, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
                 updatedAudioTranscriptionState = .locked
+            } else if case .locked = audioTranscriptionState {
+                // The lock is stored on the node: drop it once it no longer applies (another service, the cooldown ended or a transcript arrived).
+                updatedAudioTranscriptionState = .collapsed
             }
             
             let effectiveAudioTranscriptionState = updatedAudioTranscriptionState ?? audioTranscriptionState

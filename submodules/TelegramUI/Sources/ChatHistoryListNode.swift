@@ -38,6 +38,7 @@ import TextFormat
 import ChatNewThreadInfoItem
 import PhoneNumberFormat
 import Postbox
+import BGSimpleSettings
 
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
@@ -752,6 +753,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     private var genericReactionEffect: String?
     private var genericReactionEffectDisposable: Disposable?
     
+    private var bahogramSettingsObserver: NSObjectProtocol?
+    private var bahogramTranscriptionBackend = BGSimpleSettings.shared.transcriptionBackend
+    
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
     
     private let clientId: Atomic<Int32>
@@ -1279,9 +1283,24 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         self.listView.view.addGestureRecognizer(selectionRecognizer)
 
         self.loadNextGenericReactionEffect(context: context)
+        
+        // The transcribe button reads the Bahogram transcription service at layout time, so re-layout the loaded messages when it changes.
+        self.bahogramSettingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
+            guard let self = self else {
+                return
+            }
+            let transcriptionBackend = BGSimpleSettings.shared.transcriptionBackend
+            if self.bahogramTranscriptionBackend != transcriptionBackend {
+                self.bahogramTranscriptionBackend = transcriptionBackend
+                self.updateLoadedMessageItems()
+            }
+        })
     }
     
     deinit {
+        if let bahogramSettingsObserver = self.bahogramSettingsObserver {
+            NotificationCenter.default.removeObserver(bahogramSettingsObserver)
+        }
         self.historyDisposable.dispose()
         self.readHistoryDisposable.dispose()
         self.interactiveReadActionDisposable?.dispose()
@@ -4822,6 +4841,18 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             if !scrolled {
                 self.scrollToEndOfHistory()
             }
+        }
+    }
+    
+    private func updateLoadedMessageItems() {
+        var messageIds: [MessageId] = []
+        self.forEachItemNode { itemNode in
+            if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
+                messageIds.append(item.content.firstMessage.id)
+            }
+        }
+        for messageId in messageIds {
+            self.requestMessageUpdate(messageId)
         }
     }
     
