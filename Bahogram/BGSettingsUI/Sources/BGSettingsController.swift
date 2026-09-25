@@ -85,12 +85,17 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
     }
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentRestartNoticeImpl: (() -> Void)?
+    // Set when a sub-page is pushed: it can change a value this page shows (e.g. the transcription service label).
+    var needsRefreshOnAppear = false
     let arguments = BGListArguments(context: context, toggle: { key, value in
         toggle(key, value)
         refresh()
         if restartRequiredKeys.contains(key) { presentRestartNoticeImpl?() }
     }, select: { key in select(key); refresh() }, open: { key in
-        if let controller = open(key) { pushControllerImpl?(controller) }
+        if let controller = open(key) {
+            needsRefreshOnAppear = true
+            pushControllerImpl?(controller)
+        }
     }, textUpdated: { key, value in textUpdated(key, value) })
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -101,9 +106,11 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
     let controller = ItemListController(context: context, state: signal)
     // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
     controller.alwaysSynchronous = true
-    // A sub-page can change a value this page shows (e.g. the transcription service label), so re-read the entries on return.
+    // Re-read the entries on return from a sub-page, but not on other re-appearances (tab switches, dismissed modals):
+    // that would overwrite a text field the user is still editing with its stored value.
     controller.didAppear = { firstTime in
-        if !firstTime {
+        if !firstTime && needsRefreshOnAppear {
+            needsRefreshOnAppear = false
             refresh()
         }
     }
