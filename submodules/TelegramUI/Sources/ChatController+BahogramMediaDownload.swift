@@ -36,7 +36,7 @@ extension ChatControllerImpl {
             return true
         }
 
-        let downloader = BahogramMediaDownloader(endpoint: settings.cobaltEndpoint, sourceURL: url)
+        let downloader = BahogramMediaDownloader(sourceURL: url, service: service)
         self.bahogramMediaDownloader = downloader
         let statusController = OverlayStatusController(theme: self.presentationData.theme, type: .loading(cancelled: { [weak downloader] in
             downloader?.cancel()

@@ -1,6 +1,8 @@
 import Foundation
+import AVFoundation
+import YouTubeKit
 
-enum BahogramMediaDownloadService {
+enum BahogramMediaDownloadService: Equatable {
     case tiktok
     case youtubeShorts
 
@@ -29,24 +31,18 @@ struct BahogramDownloadedMedia {
 }
 
 enum BahogramMediaDownloadError: LocalizedError {
-    case invalidEndpoint
     case invalidResponse
-    case server(String)
-    case unsupportedResponse
     case emptyResult
+    case noCompatibleVideo
 
     var errorDescription: String? {
         switch self {
-        case .invalidEndpoint:
-            return "Укажите корректный HTTPS-адрес своего сервера Cobalt в настройках «Чаты» → «Скачивание»."
         case .invalidResponse:
-            return "Сервер Cobalt вернул некорректный ответ."
-        case let .server(code):
-            return "Ошибка Cobalt: \(code)"
-        case .unsupportedResponse:
-            return "Сервер запросил локальную обработку, которую этот способ отправки не поддерживает."
+            return "Не удалось получить медиа по ссылке."
         case .emptyResult:
-            return "Cobalt не вернул ни одного файла."
+            return "На странице не найдено фото или видео."
+        case .noCompatibleVideo:
+            return "Для этого Shorts не найден подходящий MP4-поток."
         }
     }
 }
@@ -67,34 +63,6 @@ func bahogramDownloadService(for url: URL) -> BahogramMediaDownloadService? {
     return nil
 }
 
-private struct BahogramCobaltResponse: Decodable {
-    struct PickerItem: Decodable {
-        let type: String
-        let url: URL
-    }
-
-    struct ServerError: Decodable {
-        let code: String
-    }
-
-    let status: String
-    let url: URL?
-    let filename: String?
-    let picker: [PickerItem]?
-    let error: ServerError?
-}
-
-private struct BahogramCobaltRequest: Encodable {
-    let url: String
-    let videoQuality = "max"
-    let filenameStyle = "basic"
-    let downloadMode = "auto"
-    let youtubeVideoCodec = "h264"
-    let youtubeVideoContainer = "mp4"
-    let youtubeBetterAudio = true
-    let allowH265 = false
-}
-
 private struct BahogramRemoteMedia {
     let url: URL
     let kind: BahogramDownloadedMediaKind
@@ -102,16 +70,17 @@ private struct BahogramRemoteMedia {
 }
 
 final class BahogramMediaDownloader {
-    private let endpoint: String
     private let sourceURL: URL
+    private let service: BahogramMediaDownloadService
     private let session: URLSession
     private let lock = NSLock()
     private var tasks: [URLSessionTask] = []
+    private var extractionTask: Task<Void, Never>?
     private var cancelled = false
 
-    init(endpoint: String, sourceURL: URL) {
-        self.endpoint = endpoint
+    init(sourceURL: URL, service: BahogramMediaDownloadService) {
         self.sourceURL = sourceURL
+        self.service = service
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 60.0
         configuration.timeoutIntervalForResource = 600.0
@@ -127,82 +96,249 @@ final class BahogramMediaDownloader {
         self.lock.lock()
         self.cancelled = true
         let tasks = self.tasks
+        let extractionTask = self.extractionTask
         self.lock.unlock()
+        extractionTask?.cancel()
         for task in tasks {
             task.cancel()
         }
     }
 
     func start(completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
-        guard var components = URLComponents(string: self.endpoint), components.scheme?.lowercased() == "https", components.host != nil else {
-            completion(.failure(BahogramMediaDownloadError.invalidEndpoint))
+        switch self.service {
+        case .tiktok:
+            self.startTikTok(completion: completion)
+        case .youtubeShorts:
+            self.startYouTube(completion: completion)
+        }
+    }
+
+    private func startTikTok(completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
+        var components = URLComponents(string: "https://www.tikwm.com/api/")!
+        components.queryItems = [URLQueryItem(name: "url", value: self.sourceURL.absoluteString), URLQueryItem(name: "hd", value: "1")]
+        guard let url = components.url else {
+            self.startTikTokDirect(completion: completion)
             return
         }
-        components.query = nil
-        components.fragment = nil
-        guard let endpointURL = components.url else {
-            completion(.failure(BahogramMediaDownloadError.invalidEndpoint))
-            return
-        }
-
-        var request = URLRequest(url: endpointURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(BahogramCobaltRequest(url: self.sourceURL.absoluteString))
-
-        let task = self.session.dataTask(with: request) { [weak self] data, response, error in
-            guard let self else {
-                return
+        let task = self.session.dataTask(with: url) { [weak self] data, response, _ in
+            guard let self else { return }
+            if let response = response as? HTTPURLResponse, (200 ... 299).contains(response.statusCode),
+               let data, let media = self.tikWMMedia(from: data), !media.isEmpty {
+                self.download(media, completion: completion)
+            } else {
+                self.startTikTokDirect(completion: completion)
             }
+        }
+        self.add(task)
+        task.resume()
+    }
+
+    private func tikWMMedia(from data: Data) -> [BahogramRemoteMedia]? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let code = root["code"] as? Int, code == 0,
+              let item = root["data"] as? [String: Any] else { return nil }
+        let postId = (item["id"] as? String) ?? "post"
+        if let images = item["images"] as? [String], !images.isEmpty {
+            let media = images.enumerated().compactMap { index, address -> BahogramRemoteMedia? in
+                guard let url = URL(string: address) else { return nil }
+                return BahogramRemoteMedia(url: url, kind: .photo, filename: "tiktok-\(postId)-\(index + 1).jpg")
+            }
+            return media.count == images.count ? media : nil
+        }
+        for key in ["hdplay", "play"] {
+            if let address = item[key] as? String, let url = URL(string: address) {
+                return [BahogramRemoteMedia(url: url, kind: .video, filename: "tiktok-\(postId).mp4")]
+            }
+        }
+        return nil
+    }
+
+    private func startTikTokDirect(completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
+        var request = URLRequest(url: self.sourceURL)
+        // TikTok returns a different JSON schema to mobile Safari.
+        request.setValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        let task = self.session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
             if let error {
                 self.finish(.failure(error), completion: completion)
                 return
             }
-            guard let httpResponse = response as? HTTPURLResponse, (200 ..< 300).contains(httpResponse.statusCode), let data,
-                  let cobaltResponse = try? JSONDecoder().decode(BahogramCobaltResponse.self, from: data) else {
-                self.finish(.failure(BahogramMediaDownloadError.invalidResponse), completion: completion)
-                return
-            }
-
-            let remoteMedia: [BahogramRemoteMedia]
-            switch cobaltResponse.status {
-            case "tunnel", "redirect":
-                guard let url = cobaltResponse.url else {
-                    self.finish(.failure(BahogramMediaDownloadError.invalidResponse), completion: completion)
-                    return
-                }
-                remoteMedia = [BahogramRemoteMedia(url: url, kind: .unknown, filename: cobaltResponse.filename)]
-            case "picker":
-                remoteMedia = (cobaltResponse.picker ?? []).map { item in
-                    let kind: BahogramDownloadedMediaKind
-                    switch item.type {
-                    case "photo": kind = .photo
-                    case "video": kind = .video
-                    case "gif": kind = .gif
-                    default: kind = .unknown
-                    }
-                    return BahogramRemoteMedia(url: item.url, kind: kind, filename: nil)
-                }
-            case "local-processing":
-                self.finish(.failure(BahogramMediaDownloadError.unsupportedResponse), completion: completion)
-                return
-            case "error":
-                self.finish(.failure(BahogramMediaDownloadError.server(cobaltResponse.error?.code ?? "unknown")), completion: completion)
-                return
-            default:
-                self.finish(.failure(BahogramMediaDownloadError.invalidResponse), completion: completion)
-                return
-            }
-
-            guard !remoteMedia.isEmpty else {
+            guard let response = response as? HTTPURLResponse, (200 ... 299).contains(response.statusCode),
+                  let data, let html = String(data: data, encoding: .utf8),
+                  let media = self.tikTokMedia(from: html), !media.isEmpty else {
                 self.finish(.failure(BahogramMediaDownloadError.emptyResult), completion: completion)
                 return
             }
-            self.download(remoteMedia, completion: completion)
+            self.download(media, completion: completion)
         }
         self.add(task)
         task.resume()
+    }
+
+    private func tikTokMedia(from html: String) -> [BahogramRemoteMedia]? {
+        guard let marker = html.range(of: "<script id=\"__UNIVERSAL_DATA_FOR_REHYDRATION__\""),
+              let openingEnd = html[marker.upperBound...].firstIndex(of: ">"),
+              let closing = html[html.index(after: openingEnd)...].range(of: "</script>") else {
+            return nil
+        }
+        let json = String(html[html.index(after: openingEnd)..<closing.lowerBound])
+        guard let data = json.data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let scope = root["__DEFAULT_SCOPE__"] as? [String: Any],
+              let detail = scope["webapp.video-detail"] as? [String: Any],
+              let itemInfo = detail["itemInfo"] as? [String: Any],
+              let item = itemInfo["itemStruct"] as? [String: Any] else {
+            return nil
+        }
+        let postId = (item["id"] as? String) ?? "post"
+        if let imagePost = item["imagePost"] as? [String: Any],
+           let images = imagePost["images"] as? [[String: Any]], !images.isEmpty {
+            let media = images.enumerated().compactMap { index, image -> BahogramRemoteMedia? in
+                guard let imageURL = image["imageURL"] as? [String: Any],
+                      let urls = imageURL["urlList"] as? [String],
+                      let first = urls.first, let url = URL(string: first) else { return nil }
+                return BahogramRemoteMedia(url: url, kind: .photo, filename: "tiktok-\(postId)-\(index + 1).jpg")
+            }
+            return media.count == images.count ? media : nil
+        }
+        guard let video = item["video"] as? [String: Any] else { return nil }
+        let variants = (video["bitrateInfo"] as? [[String: Any]]) ?? []
+        let ordered = variants.sorted { lhs, rhs in
+            let lhsQuality = (lhs["Bitrate"] as? Int) ?? 0
+            let rhsQuality = (rhs["Bitrate"] as? Int) ?? 0
+            return lhsQuality > rhsQuality
+        }
+        for variant in ordered {
+            guard (variant["CodecType"] as? String)?.lowercased() == "h264",
+                  let address = variant["PlayAddr"] as? [String: Any],
+                  let urls = address["UrlList"] as? [String],
+                  let first = urls.first, let url = URL(string: first) else { continue }
+            return [BahogramRemoteMedia(url: url, kind: .video, filename: "tiktok-\(postId).mp4")]
+        }
+        if let address = video["playAddr"] as? String, let url = URL(string: address) {
+            return [BahogramRemoteMedia(url: url, kind: .video, filename: "tiktok-\(postId).mp4")]
+        }
+        return nil
+    }
+
+    private func startYouTube(completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
+        let task = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let streams = try await YouTube(url: self.sourceURL, methods: [.local, .remote]).streams
+                try Task.checkCancellation()
+                let progressive = streams.filter { $0.isProgressive && $0.fileExtension == .mp4 && $0.isNativelyPlayable }
+                    .max { ($0.videoResolution ?? 0) < ($1.videoResolution ?? 0) }
+                let video = streams.filter { $0.includesVideoTrack && !$0.includesAudioTrack && $0.fileExtension == .mp4 && $0.isNativelyPlayable }
+                    .max { ($0.videoResolution ?? 0) < ($1.videoResolution ?? 0) }
+                let audio = streams.filter { $0.includesAudioTrack && !$0.includesVideoTrack && $0.fileExtension == .m4a && $0.isNativelyPlayable }
+                    .max { ($0.bitrate ?? 0) < ($1.bitrate ?? 0) }
+                let filename = "shorts-\(self.sourceURL.lastPathComponent).mp4"
+                if let video, let audio, (video.videoResolution ?? 0) > (progressive?.videoResolution ?? 0) {
+                    self.downloadYouTube(videoURL: video.url, audioURL: audio.url, filename: filename, completion: completion)
+                } else if let progressive {
+                    self.download([BahogramRemoteMedia(url: progressive.url, kind: .video, filename: filename)], completion: completion)
+                } else if let video, let audio {
+                    self.downloadYouTube(videoURL: video.url, audioURL: audio.url, filename: filename, completion: completion)
+                } else {
+                    self.finish(.failure(BahogramMediaDownloadError.noCompatibleVideo), completion: completion)
+                }
+            } catch {
+                self.finish(.failure(error), completion: completion)
+            }
+        }
+        self.lock.lock()
+        self.extractionTask = task
+        let cancelled = self.cancelled
+        self.lock.unlock()
+        if cancelled { task.cancel() }
+    }
+
+    private func downloadYouTube(videoURL: URL, audioURL: URL, filename: String, completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
+        let group = DispatchGroup()
+        let resultLock = NSLock()
+        var savedFiles: [URL?] = [nil, nil]
+        var firstError: Error?
+        for (index, url) in [videoURL, audioURL].enumerated() {
+            group.enter()
+            let task = self.session.downloadTask(with: url) { location, response, error in
+                defer { group.leave() }
+                resultLock.lock()
+                defer { resultLock.unlock() }
+                if let error {
+                    if firstError == nil { firstError = error }
+                    return
+                }
+                guard let response = response as? HTTPURLResponse, (200 ... 299).contains(response.statusCode), let location else {
+                    if firstError == nil { firstError = BahogramMediaDownloadError.invalidResponse }
+                    return
+                }
+                let destination = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension(index == 0 ? "mp4" : "m4a")
+                do {
+                    try FileManager.default.moveItem(at: location, to: destination)
+                    savedFiles[index] = destination
+                } catch {
+                    if firstError == nil { firstError = error }
+                }
+            }
+            self.add(task)
+            task.resume()
+        }
+        group.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+            guard let self else { return }
+            let files = savedFiles.compactMap { $0 }
+            if let firstError {
+                files.forEach { try? FileManager.default.removeItem(at: $0) }
+                self.finish(.failure(firstError), completion: completion)
+                return
+            }
+            guard files.count == 2 else {
+                files.forEach { try? FileManager.default.removeItem(at: $0) }
+                self.finish(.failure(BahogramMediaDownloadError.emptyResult), completion: completion)
+                return
+            }
+            self.mergeYouTube(videoFile: files[0], audioFile: files[1], filename: filename, completion: completion)
+        }
+    }
+
+    private func mergeYouTube(videoFile: URL, audioFile: URL, filename: String, completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
+        let videoAsset = AVURLAsset(url: videoFile)
+        let audioAsset = AVURLAsset(url: audioFile)
+        let composition = AVMutableComposition()
+        do {
+            guard let sourceVideo = videoAsset.tracks(withMediaType: .video).first,
+                  let sourceAudio = audioAsset.tracks(withMediaType: .audio).first,
+                  let targetVideo = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+                  let targetAudio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                throw BahogramMediaDownloadError.noCompatibleVideo
+            }
+            try targetVideo.insertTimeRange(CMTimeRange(start: .zero, duration: videoAsset.duration), of: sourceVideo, at: .zero)
+            try targetAudio.insertTimeRange(CMTimeRange(start: .zero, duration: CMTimeMinimum(audioAsset.duration, videoAsset.duration)), of: sourceAudio, at: .zero)
+            targetVideo.preferredTransform = sourceVideo.preferredTransform
+        } catch {
+            [videoFile, audioFile].forEach { try? FileManager.default.removeItem(at: $0) }
+            self.finish(.failure(error), completion: completion)
+            return
+        }
+        guard let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
+            [videoFile, audioFile].forEach { try? FileManager.default.removeItem(at: $0) }
+            self.finish(.failure(BahogramMediaDownloadError.noCompatibleVideo), completion: completion)
+            return
+        }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("mp4")
+        exporter.outputURL = output
+        exporter.outputFileType = .mp4
+        exporter.exportAsynchronously { [weak self] in
+            defer { [videoFile, audioFile, output].forEach { try? FileManager.default.removeItem(at: $0) } }
+            guard let self else { return }
+            if exporter.status == .completed, let data = try? Data(contentsOf: output) {
+                self.finish(.success([BahogramDownloadedMedia(data: data, kind: .video, filename: filename, mimeType: "video/mp4")]), completion: completion)
+            } else {
+                self.finish(.failure(exporter.error ?? BahogramMediaDownloadError.invalidResponse), completion: completion)
+            }
+        }
     }
 
     private func download(_ remoteMedia: [BahogramRemoteMedia], completion: @escaping (Result<[BahogramDownloadedMedia], Error>) -> Void) {
@@ -213,7 +349,12 @@ final class BahogramMediaDownloader {
 
         for (index, item) in remoteMedia.enumerated() {
             group.enter()
-            let task = self.session.downloadTask(with: item.url) { location, response, error in
+            var request = URLRequest(url: item.url)
+            request.setValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+            if self.service == .tiktok {
+                request.setValue("https://www.tiktok.com/", forHTTPHeaderField: "Referer")
+            }
+            let task = self.session.downloadTask(with: request) { location, response, error in
                 defer { group.leave() }
                 if let error {
                     resultLock.lock()
@@ -221,7 +362,8 @@ final class BahogramMediaDownloader {
                     resultLock.unlock()
                     return
                 }
-                guard let location, let data = try? Data(contentsOf: location) else {
+                guard let response = response as? HTTPURLResponse, (200 ... 299).contains(response.statusCode),
+                      let location, let data = try? Data(contentsOf: location) else {
                     resultLock.lock()
                     if firstError == nil { firstError = BahogramMediaDownloadError.invalidResponse }
                     resultLock.unlock()

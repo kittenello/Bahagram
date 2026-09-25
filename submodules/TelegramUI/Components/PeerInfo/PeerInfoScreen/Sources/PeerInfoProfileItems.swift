@@ -951,7 +951,9 @@ func infoItems(
             case Namespaces.Peer.CloudChannel: profileId = "\(-1_000_000_000_000 - rawId)"
             default: profileId = "\(rawId)"
             }
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: profileId, textColor: .accent, action: { _, _ in
+            let accountId = context.account.peerId.toInt64()
+            let visualId = peer.id == context.account.peerId ? BGSimpleSettings.shared.visualProfileId(accountId: accountId) : ""
+            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: visualId.isEmpty ? profileId : visualId, textColor: .accent, action: { _, _ in
                 UIPasteboard.general.string = profileId
             }, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1

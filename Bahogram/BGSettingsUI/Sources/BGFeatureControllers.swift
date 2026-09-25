@@ -9,7 +9,7 @@ public func bgSpySettingsController(context: AccountContext) -> ViewController {
     return bgController(context: context, title: "Bahogram", entries: {
         var result: [BGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
-        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(30, 3, "ДРУГОЕ"), .disclosure(31, 3, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 3, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 3, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)")])
+        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(30, 3, "ДРУГОЕ"), .disclosure(31, 3, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 3, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 3, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 3, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId))])
         return result
     }, toggle: { key, value in
         switch key { case "saveDeleted": s.saveDeletedMessages = value; case "transparentDeleted": s.semiTransparentDeletedMessages = value; case "saveEdits": s.saveEditHistory = value; case "saveOnce": s.saveViewOnceMedia = value; case "saveBots": s.saveInBotChats = value; case "bypassForward": s.bypassForwardRestrictions = value; default: break }
@@ -19,8 +19,19 @@ public func bgSpySettingsController(context: AccountContext) -> ViewController {
         case "visualPhone": return bgVisualPhoneController(context: context)
         case "visualRating": return bgVisualRatingController(context: context)
         case "visualUsernames": return bgVisualUsernamesController(context: context)
+        case "visualId": return bgVisualIdController(context: context)
         default: return nil
         }
+    })
+}
+
+private func bgVisualIdController(context: AccountContext) -> ViewController {
+    let settings = BGSimpleSettings.shared
+    let accountId = context.account.peerId.toInt64()
+    return bgController(context: context, title: "Визуальный ID", entries: {
+        [.header(0, 0, "ID ПРОФИЛЯ"), .input(1, 0, "visualId", settings.visualProfileId(accountId: accountId), "Любой текст"), .info(2, 0, "Меняется только ID в вашем профиле на этом устройстве. Пустое поле возвращает настоящий ID. Нажатие на ID копирует настоящий номер Telegram.")]
+    }, textUpdated: { key, value in
+        if key == "visualId" { settings.setVisualProfileId(value, accountId: accountId) }
     })
 }
 
@@ -94,12 +105,19 @@ func bgChatsSettingsController(context: AccountContext) -> ViewController {
     return bgController(context: context, title: "Чаты", entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
         let transcription = bgTranscriptionBackendTitle(s.transcriptionBackend)
-        return [.header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"), .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true), .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true), .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"), .header(10, 1, "СООБЩЕНИЯ"), .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies), .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true), .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true), .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true), .header(20, 2, "ГОЛОС В ТЕКСТ"), .disclosure(21, 2, "transcription", "Сервис", transcription), .header(30, 3, "СКАЧИВАНИЕ"), .toggle(31, 3, "downloadTikTok", "Скачивать TikTok", s.downloadTikTok, true), .toggle(32, 3, "downloadShorts", "Скачивать YT Shorts", s.downloadYouTubeShorts, true), .toggle(33, 3, "signDownloads", "Подписывать", s.signDownloadedMedia, true), .input(34, 3, "cobaltEndpoint", s.cobaltEndpoint, "https://ваш-cobalt-сервер"), .info(35, 3, "Для скачивания нужен собственный сервер Cobalt. Адрес хранится только на устройстве."), .header(40, 4, "ДРУГОЕ"), .toggle(41, 4, "rearCamera", "На заднюю камера", s.startRoundVideoWithRearCamera, true)]
+        return [.header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"), .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true), .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true), .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"), .header(10, 1, "СООБЩЕНИЯ"), .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies), .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true), .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true), .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true), .header(20, 2, "ГОЛОС В ТЕКСТ"), .disclosure(21, 2, "transcription", "Сервис", transcription), .header(30, 3, "ДРУГОЕ"), .toggle(31, 3, "rearCamera", "На заднюю камера", s.startRoundVideoWithRearCamera, true)]
     }, toggle: { key, value in
-        switch key { case "onlyAdded": s.onlyAddedStickers = value; case "recent": s.infiniteRecentStickers = value; case "tails": s.removeMessageTails = value; case "seconds": s.showMessageSeconds = value; case "replies": s.disableColoredReplies = value; case "downloadTikTok": s.downloadTikTok = value; case "downloadShorts": s.downloadYouTubeShorts = value; case "signDownloads": s.signDownloadedMedia = value; case "rearCamera": s.startRoundVideoWithRearCamera = value; default: break }
-    }, textUpdated: { key, value in
-        if key == "cobaltEndpoint" { s.cobaltEndpoint = value }
+        switch key { case "onlyAdded": s.onlyAddedStickers = value; case "recent": s.infiniteRecentStickers = value; case "tails": s.removeMessageTails = value; case "seconds": s.showMessageSeconds = value; case "replies": s.disableColoredReplies = value; case "rearCamera": s.startRoundVideoWithRearCamera = value; default: break }
     }, open: { key in key == "reactions" ? bgHiddenReactionsController(context: context) : (key == "transcription" ? bgTranscriptionController(context: context) : nil) })
+}
+
+func bgDownloadsSettingsController(context: AccountContext) -> ViewController {
+    let settings = BGSimpleSettings.shared
+    return bgController(context: context, title: "Скачивание", entries: {
+        [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true), .info(4, 0, "Ссылки TikTok обрабатывает публичный сервис TikWM. Для YouTube Shorts используется встроенный модуль с сетевым резервом. Свой сервер не нужен.")]
+    }, toggle: { key, value in
+        switch key { case "downloadTikTok": settings.downloadTikTok = value; case "downloadShorts": settings.downloadYouTubeShorts = value; case "signDownloads": settings.signDownloadedMedia = value; default: break }
+    })
 }
 
 private func bgTranscriptionBackendTitle(_ backend: BGSimpleSettings.TranscriptionBackend) -> String {

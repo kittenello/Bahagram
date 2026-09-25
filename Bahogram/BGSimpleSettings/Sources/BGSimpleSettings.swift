@@ -83,7 +83,6 @@ public final class BGSimpleSettings {
         static let downloadTikTok = "bahogram.chats.downloadTikTok"
         static let downloadYouTubeShorts = "bahogram.chats.downloadYouTubeShorts"
         static let signDownloadedMedia = "bahogram.chats.signDownloadedMedia"
-        static let cobaltEndpoint = "bahogram.chats.cobaltEndpoint"
         static let startRoundVideoWithRearCamera = "bahogram.chats.startRoundVideoWithRearCamera"
     }
 
@@ -217,6 +216,14 @@ public final class BGSimpleSettings {
         return "bahogram.profile.\(accountId).\(suffix)"
     }
 
+    public func visualProfileId(accountId: Int64) -> String {
+        return string(accountKey("visualProfileId", accountId: accountId))
+    }
+
+    public func setVisualProfileId(_ value: String, accountId: Int64) {
+        setString(value.trimmingCharacters(in: .whitespacesAndNewlines), accountKey("visualProfileId", accountId: accountId))
+    }
+
     public func visualRatingLevel(accountId: Int64) -> Int? {
         let key = accountKey("visualRatingLevel", accountId: accountId)
         guard self.defaults.object(forKey: key) != nil else { return nil }
@@ -306,7 +313,6 @@ public final class BGSimpleSettings {
     public var downloadTikTok: Bool { get { bool(Key.downloadTikTok) } set { setBool(newValue, Key.downloadTikTok) } }
     public var downloadYouTubeShorts: Bool { get { bool(Key.downloadYouTubeShorts) } set { setBool(newValue, Key.downloadYouTubeShorts) } }
     public var signDownloadedMedia: Bool { get { bool(Key.signDownloadedMedia) } set { setBool(newValue, Key.signDownloadedMedia) } }
-    public var cobaltEndpoint: String { get { string(Key.cobaltEndpoint) } set { setString(newValue.trimmingCharacters(in: .whitespacesAndNewlines), Key.cobaltEndpoint) } }
     public var startRoundVideoWithRearCamera: Bool { get { bool(Key.startRoundVideoWithRearCamera) } set { setBool(newValue, Key.startRoundVideoWithRearCamera) } }
     public var transcriptionBackend: TranscriptionBackend {
         get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .auto }
