@@ -101,6 +101,12 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
     let controller = ItemListController(context: context, state: signal)
     // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
     controller.alwaysSynchronous = true
+    // A sub-page can change a value this page shows (e.g. the transcription service label), so re-read the entries on return.
+    controller.didAppear = { firstTime in
+        if !firstTime {
+            refresh()
+        }
+    }
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
     presentRestartNoticeImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }

@@ -32,6 +32,8 @@ public final class BGSimpleSettings {
     public enum TranscriptionBackend: String, CaseIterable {
         case telegram
         case apple
+        /// Telegram while it can transcribe a message itself, Apple otherwise.
+        case auto
     }
 
     private enum Key {
@@ -295,7 +297,20 @@ public final class BGSimpleSettings {
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }
     public var showMessageSeconds: Bool { get { bool(Key.showMessageSeconds) } set { setBool(newValue, Key.showMessageSeconds) } }
     public var transcriptionBackend: TranscriptionBackend {
-        get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .telegram }
+        get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .auto }
         set { setString(newValue.rawValue, Key.transcriptionBackend) }
+    }
+
+    /// Whether to transcribe a message on device. `telegramCanTranscribe` is true when Telegram itself
+    /// can transcribe the message right now: Premium, a group boost or a free trial attempt.
+    public func usesAppleTranscription(telegramCanTranscribe: Bool) -> Bool {
+        switch self.transcriptionBackend {
+        case .telegram:
+            return false
+        case .apple:
+            return true
+        case .auto:
+            return !telegramCanTranscribe
+        }
     }
 }

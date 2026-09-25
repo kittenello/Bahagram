@@ -93,18 +93,33 @@ func bgChatsSettingsController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
     return bgController(context: context, title: "Чаты", entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
-        let transcription = s.transcriptionBackend == .apple ? "Apple" : "Telegram"
+        let transcription = bgTranscriptionBackendTitle(s.transcriptionBackend)
         return [.header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"), .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true), .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true), .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"), .header(10, 1, "СООБЩЕНИЯ"), .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies), .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true), .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true), .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true), .header(20, 2, "ГОЛОС В ТЕКСТ"), .disclosure(21, 2, "transcription", "Сервис", transcription)]
     }, toggle: { key, value in
         switch key { case "onlyAdded": s.onlyAddedStickers = value; case "recent": s.infiniteRecentStickers = value; case "tails": s.removeMessageTails = value; case "seconds": s.showMessageSeconds = value; case "replies": s.disableColoredReplies = value; default: break }
     }, open: { key in key == "reactions" ? bgHiddenReactionsController(context: context) : (key == "transcription" ? bgTranscriptionController(context: context) : nil) })
 }
 
+private func bgTranscriptionBackendTitle(_ backend: BGSimpleSettings.TranscriptionBackend) -> String {
+    switch backend {
+    case .auto: return "Авто"
+    case .telegram: return "Telegram"
+    case .apple: return "Apple"
+    }
+}
+
 private func bgTranscriptionController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
     return bgController(context: context, title: "Голос в текст", entries: {
-        [.checkbox(0, 0, "telegram", "Telegram", s.transcriptionBackend == .telegram), .checkbox(1, 0, "apple", "Apple", s.transcriptionBackend == .apple), .info(2, 0, s.transcriptionBackend == .apple ? "Apple распознаёт голосовые сообщения локально на устройстве." : "Telegram использует облачный сервис распознавания.")]
-    }, select: { s.transcriptionBackend = BGSimpleSettings.TranscriptionBackend(rawValue: $0) ?? .telegram })
+        let backend = s.transcriptionBackend
+        let info: String
+        switch backend {
+        case .auto: info = "Telegram, пока он может расшифровать сообщение сам — с Premium или бесплатными попытками. Иначе Apple."
+        case .telegram: info = "Telegram использует облачный сервис распознавания."
+        case .apple: info = "Apple распознаёт голосовые сообщения локально на устройстве."
+        }
+        return [.checkbox(0, 0, "auto", "Авто", backend == .auto), .checkbox(1, 0, "telegram", "Telegram", backend == .telegram), .checkbox(2, 0, "apple", "Apple", backend == .apple), .info(3, 0, info)]
+    }, select: { s.transcriptionBackend = BGSimpleSettings.TranscriptionBackend(rawValue: $0) ?? .auto })
 }
 
 private func bgHiddenReactionsController(context: AccountContext) -> ViewController {
