@@ -376,13 +376,15 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         }
         
         if self.isLocalTranscriptionRunning {
-            // A second tap cancels on-device transcription, e.g. while the file download is stuck.
             self.isLocalTranscriptionRunning = false
             self.transcribeDisposable?.dispose()
             self.transcribeDisposable = nil
-            self.audioTranscriptionState = .collapsed
-            self.requestUpdateLayout(true)
-            return
+            if case .inProgress = self.audioTranscriptionState {
+                // A second tap cancels on-device transcription, e.g. while the file download is stuck.
+                self.audioTranscriptionState = .collapsed
+                self.requestUpdateLayout(true)
+                return
+            }
         }
         
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
@@ -465,8 +467,8 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         strongSelf.transcribeDisposable?.dispose()
                         strongSelf.transcribeDisposable = nil
                         
-                        if BGSimpleSettings.shared.transcriptionBackend == .auto {
-                            // Auto hides Telegram's free-trial limits: when Telegram refuses (e.g. the free attempts were used up on another device), transcribe on device instead.
+                        if BGSimpleSettings.shared.transcriptionBackend != .telegram {
+                            // Outside explicit Telegram mode the free-trial limits stay hidden: when Telegram refuses (e.g. the free attempts were used up on another device), transcribe on device instead.
                             if case .error = result {
                                 strongSelf.startLocalTranscription()
                             }
@@ -534,6 +536,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
             guard let strongSelf = self else {
                 return
             }
+            strongSelf.isLocalTranscriptionRunning = false
             strongSelf.transcribeDisposable?.dispose()
             strongSelf.transcribeDisposable = nil
         })
@@ -621,6 +624,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         
         let currentMessage = self.message
         let audioTranscriptionState = self.audioTranscriptionState
+        let isLocalTranscriptionRunning = self.isLocalTranscriptionRunning
         let forcedAudioTranscriptionText = self.forcedAudioTranscriptionText
         
         return { arguments in
@@ -844,15 +848,19 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 
                 switch audioTranscriptionState {
                 case .inProgress:
-                    if transcribedText != nil {
-                        updatedAudioTranscriptionState = .expanded
+                    if let transcribedText = transcribedText {
+                        if case .error = transcribedText, isLocalTranscriptionRunning {
+                            // An on-device fallback is replacing a Telegram error: keep the spinner.
+                        } else {
+                            updatedAudioTranscriptionState = .expanded
+                        }
                     }
                 default:
                     break
                 }
                 
                 let currentTime = Int32(Date().timeIntervalSince1970)
-                if transcribedText == nil, !useAppleTranscription, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
+                if transcribedText == nil, !useAppleTranscription, !isLocalTranscriptionRunning, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
                     updatedAudioTranscriptionState = .locked
                 } else if case .locked = audioTranscriptionState {
                     // The lock is stored on the node: drop it once it no longer applies (another service, the cooldown ended or a transcript arrived).
