@@ -173,6 +173,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
     public var audioTranscriptionState: AudioTranscriptionButtonComponent.TranscriptionState = .collapsed
     public var audioTranscriptionText: TranscribedText?
     private var transcribeDisposable: Disposable?
+    private var isLocalTranscriptionRunning = false
     public var hasExpandedAudioTranscription: Bool {
         if case .expanded = audioTranscriptionState {
             return true
@@ -1843,6 +1844,17 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             return
         }
         
+        if self.isLocalTranscriptionRunning {
+            // A second tap cancels on-device transcription, e.g. while the file download is stuck.
+            self.isLocalTranscriptionRunning = false
+            self.transcribeDisposable?.dispose()
+            self.transcribeDisposable = nil
+            self.audioTranscriptionState = .collapsed
+            self.requestUpdateLayout(true)
+            self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+            return
+        }
+        
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
         let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: item.message.effectivelyIncoming(item.context.account.peerId), premiumConfiguration: premiumConfiguration))
         
@@ -1910,49 +1922,12 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         
         if shouldBeginTranscription {
             if self.transcribeDisposable == nil {
-                self.audioTranscriptionState = .inProgress
-                self.requestUpdateLayout(true)
-                
                 if item.context.sharedContext.immediateExperimentalUISettings.localTranscription || useAppleTranscription {
-                    let context = item.context
-                    let messageId = item.message.id
-                    let appLocale = presentationData.strings.baseLanguageCode
-                    
-                    let signal: Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError>
-                    if let file = self.media {
-                        signal = messageMediaFileCompletePath(context: context, message: item.message, file: file)
-                        |> mapToSignal { path -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
-                            return transcribeMediaFile(path: path, appLocale: appLocale, allocateTempFile: {
-                                return EngineTempBox.shared.tempFile(fileName: "audio.m4a").path
-                            })
-                        }
-                    } else {
-                        signal = .single(.failure(.failed))
-                    }
-                    
-                    self.transcribeDisposable = (signal
-                    |> deliverOnMainQueue).startStrict(next: { [weak self] result in
-                        guard let strongSelf = self else {
-                            return
-                        }
-                        
-                        switch result {
-                        case let .success(transcription):
-                            let _ = context.engine.messages.storeLocallyTranscribedAudio(messageId: messageId, text: transcription.text, isFinal: transcription.isFinal, error: nil).startStandalone()
-                        case let .failure(error):
-                            strongSelf.audioTranscriptionState = .collapsed
-                            strongSelf.requestUpdateLayout(true)
-                            strongSelf.updateTranscriptionExpanded?(strongSelf.audioTranscriptionState)
-                            strongSelf.presentLocalTranscriptionError(error)
-                        }
-                    }, completed: { [weak self] in
-                        guard let strongSelf = self else {
-                            return
-                        }
-                        strongSelf.transcribeDisposable?.dispose()
-                        strongSelf.transcribeDisposable = nil
-                    })
+                    self.startLocalTranscription()
                 } else {
+                    self.audioTranscriptionState = .inProgress
+                    self.requestUpdateLayout(true)
+                    
                     self.transcribeDisposable = (item.context.engine.messages.transcribeAudio(messageId: item.message.id)
                     |> deliverOnMainQueue).startStrict(next: { [weak self] result in
                         guard let strongSelf = self else {
@@ -1961,7 +1936,12 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                         strongSelf.transcribeDisposable?.dispose()
                         strongSelf.transcribeDisposable = nil
                         
-                        if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                        if BGSimpleSettings.shared.transcriptionBackend == .auto {
+                            // Auto hides Telegram's free-trial limits: when Telegram refuses (e.g. the free attempts were used up on another device), transcribe on device instead.
+                            if case .error = result {
+                                strongSelf.startLocalTranscription()
+                            }
+                        } else if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
                             Queue.mainQueue().after(0.1, {
                                 let _ = strongSelf.presentAudioTranscriptionTooltip(finished: true)
                             })
@@ -1986,6 +1966,53 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         }
         
         self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+    }
+    
+    // Transcribes on device with Apple: downloads the video if needed, then recognizes speech in its audio track.
+    private func startLocalTranscription() {
+        guard let item = self.item, let file = self.media else {
+            return
+        }
+        let context = item.context
+        let messageId = item.message.id
+        let appLocale = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+        
+        self.audioTranscriptionState = .inProgress
+        self.requestUpdateLayout(true)
+        self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+        self.isLocalTranscriptionRunning = true
+        
+        let signal: Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> = messageMediaFileCompletePath(context: context, message: item.message, file: file)
+        |> mapToSignal { path -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
+            return transcribeMediaFile(path: path, appLocale: appLocale, allocateTempFile: {
+                return EngineTempBox.shared.tempFile(fileName: "audio.m4a").path
+            })
+        }
+        
+        self.transcribeDisposable?.dispose()
+        self.transcribeDisposable = (signal
+        |> deliverOnMainQueue).startStrict(next: { [weak self] result in
+            guard let strongSelf = self else {
+                return
+            }
+            strongSelf.isLocalTranscriptionRunning = false
+            
+            switch result {
+            case let .success(transcription):
+                let _ = context.engine.messages.storeLocallyTranscribedAudio(messageId: messageId, text: transcription.text, isFinal: transcription.isFinal, error: nil).startStandalone()
+            case let .failure(error):
+                strongSelf.audioTranscriptionState = .collapsed
+                strongSelf.requestUpdateLayout(true)
+                strongSelf.updateTranscriptionExpanded?(strongSelf.audioTranscriptionState)
+                strongSelf.presentLocalTranscriptionError(error)
+            }
+        }, completed: { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            strongSelf.transcribeDisposable?.dispose()
+            strongSelf.transcribeDisposable = nil
+        })
     }
     
     private func presentLocalTranscriptionError(_ error: LocalAudioTranscriptionError) {
