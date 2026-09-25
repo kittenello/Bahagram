@@ -4853,6 +4853,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 let hasTranscribableMedia = message.media.contains(where: { media in
                     if let file = media as? TelegramMediaFile {
                         return file.isVoice || file.isInstantVideo
+                    } else if let webpage = media as? TelegramMediaWebpage, case let .Loaded(content) = webpage.content, let file = content.file {
+                        return file.isVoice || file.isInstantVideo
                     } else {
                         return false
                     }
