@@ -42,6 +42,28 @@ private struct FetchControls {
     let cancel: () -> Void
 }
 
+// Duration of a voice message; 0 for other files, e.g. a round video shown through this node.
+private func voiceMessageDuration(_ file: TelegramMediaFile) -> Int32 {
+    for attribute in file.attributes {
+        if case let .Audio(_, duration, _, _, _) = attribute {
+            return Int32(duration)
+        }
+    }
+    return 0
+}
+
+// Whether Telegram itself can transcribe the message now: Premium, a group boost or a free trial attempt
+// (the same trial rules this node uses to show the transcribe button).
+private func telegramCanTranscribeVoice(associatedData: ChatMessageItemAssociatedData, incoming: Bool, audioDuration: Int32, premiumConfiguration: PremiumConfiguration) -> Bool {
+    if associatedData.isPremium || associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        return true
+    }
+    if let cooldownUntilTime = associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > Int32(Date().timeIntervalSince1970) {
+        return false
+    }
+    return premiumConfiguration.audioTransciptionTrialCount > 0 && incoming && audioDuration < premiumConfiguration.audioTransciptionTrialMaxDuration
+}
+
 public final class ChatMessageInteractiveFileNode: ASDisplayNode {
     public final class Arguments {
         public let context: AccountContext
@@ -353,15 +375,17 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
             return
         }
         
-        if !context.isPremium && BGSimpleSettings.shared.transcriptionBackend != .apple, case .inProgress = self.audioTranscriptionState {
+        let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
+        let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: voiceMessageDuration(arguments.file), premiumConfiguration: premiumConfiguration))
+        
+        if !context.isPremium && !useAppleTranscription, case .inProgress = self.audioTranscriptionState {
             return
         }
         
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
         
         let transcriptionText = self.forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(message))
-        if transcriptionText == nil && BGSimpleSettings.shared.transcriptionBackend != .apple && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        if transcriptionText == nil && !useAppleTranscription && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !arguments.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -420,7 +444,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                if context.sharedContext.immediateExperimentalUISettings.localTranscription || BGSimpleSettings.shared.transcriptionBackend == .apple {
+                if context.sharedContext.immediateExperimentalUISettings.localTranscription || useAppleTranscription {
                     let appLocale = presentationData.strings.baseLanguageCode
                     
                     let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
@@ -767,12 +791,14 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 var textString: NSAttributedString?
                 var updatedAudioTranscriptionState: AudioTranscriptionButtonComponent.TranscriptionState?
                 
+                let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
+                let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: audioDuration, premiumConfiguration: premiumConfiguration))
+                
                 var displayTranscribe = false
                 if Namespaces.Message.allNonRegular.contains(arguments.message.id.namespace) {
                     displayTranscribe = false
                 } else if arguments.message.id.peerId.namespace != Namespaces.Peer.SecretChat && !isViewOnceMessage && !arguments.presentationData.isPreview {
-                    let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
-                    if BGSimpleSettings.shared.transcriptionBackend == .apple || arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                    if useAppleTranscription || arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
                         displayTranscribe = true
                     } else if premiumConfiguration.audioTransciptionTrialCount > 0 {
                         if arguments.incoming {
@@ -801,7 +827,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 }
                 
                 let currentTime = Int32(Date().timeIntervalSince1970)
-                if transcribedText == nil, BGSimpleSettings.shared.transcriptionBackend != .apple, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
+                if transcribedText == nil, !useAppleTranscription, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
                     updatedAudioTranscriptionState = .locked
                 }
                 
