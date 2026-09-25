@@ -4844,11 +4844,22 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
+    // Re-layouts the loaded voice messages and round videos: only they show a transcribe button.
     private func updateLoadedMessageItems() {
         var messageIds: [MessageId] = []
         self.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
-                messageIds.append(item.content.firstMessage.id)
+                let message = item.content.firstMessage
+                let hasTranscribableMedia = message.media.contains(where: { media in
+                    if let file = media as? TelegramMediaFile {
+                        return file.isVoice || file.isInstantVideo
+                    } else {
+                        return false
+                    }
+                })
+                if hasTranscribableMedia {
+                    messageIds.append(message.id)
+                }
             }
         }
         for messageId in messageIds {
