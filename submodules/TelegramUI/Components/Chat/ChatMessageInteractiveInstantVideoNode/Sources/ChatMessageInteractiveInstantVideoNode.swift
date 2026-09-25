@@ -30,6 +30,8 @@ import ChatControllerInteraction
 import WallpaperBackgroundNode
 import TelegramStringFormatting
 import InvisibleInkDustNode
+import BGSimpleSettings
+import LocalAudioTranscription
 
 public struct ChatMessageInstantVideoItemLayoutResult {
     public let contentSize: CGSize
@@ -56,6 +58,18 @@ private let textFont = Font.regular(11.0)
 private let nameFont = Font.medium(14.0)
 private let inlineBotPrefixFont = Font.regular(14.0)
 private let inlineBotNameFont = nameFont
+
+// Whether Telegram itself can transcribe the round video now: Premium, a group boost or a free trial attempt
+// (the same trial rules this node uses to show the transcribe button).
+private func telegramCanTranscribeInstantVideo(associatedData: ChatMessageItemAssociatedData, incoming: Bool, premiumConfiguration: PremiumConfiguration) -> Bool {
+    if associatedData.isPremium || associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        return true
+    }
+    if let cooldownUntilTime = associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > Int32(Date().timeIntervalSince1970) {
+        return false
+    }
+    return premiumConfiguration.audioTransciptionTrialCount > 0 && incoming
+}
 
 public enum ChatMessageInteractiveInstantVideoNodeStatusType {
     case free
@@ -633,8 +647,11 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                 updatedTranscriptionText = transcribedText
             }
             
+            let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
+            let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: incoming, premiumConfiguration: premiumConfiguration))
+            
             let currentTime = Int32(Date().timeIntervalSince1970)
-            if transcribedText == nil, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
+            if transcribedText == nil, !useAppleTranscription, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
                 updatedAudioTranscriptionState = .locked
             }
             
@@ -839,8 +856,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                                                             
                     var displayTranscribe = false
                     if item.message.id.peerId.namespace != Namespaces.Peer.SecretChat && statusDisplayType == .free && !isViewOnceMessage && !item.presentationData.isPreview {
-                        let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
-                        if item.associatedData.isPremium || item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                        if useAppleTranscription || item.associatedData.isPremium || item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
                             displayTranscribe = true
                         } else if premiumConfiguration.audioTransciptionTrialCount > 0 {
                             if incoming {
@@ -1824,15 +1840,17 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             return
         }
         
-        if !item.context.isPremium, case .inProgress = self.audioTranscriptionState {
+        let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
+        let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: item.message.effectivelyIncoming(item.context.account.peerId), premiumConfiguration: premiumConfiguration))
+        
+        if !item.context.isPremium && !useAppleTranscription, case .inProgress = self.audioTranscriptionState {
             return
         }
         
         let presentationData = item.context.sharedContext.currentPresentationData.with { $0 }
-        let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
         
         let transcriptionText = transcribedText(message: EngineMessage(item.message))
-        if transcriptionText == nil && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        if transcriptionText == nil && !useAppleTranscription && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !item.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -1892,20 +1910,61 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                self.transcribeDisposable = (item.context.engine.messages.transcribeAudio(messageId: item.message.id)
-                |> deliverOnMainQueue).startStrict(next: { [weak self] result in
-                    guard let strongSelf = self else {
-                        return
-                    }
-                    strongSelf.transcribeDisposable?.dispose()
-                    strongSelf.transcribeDisposable = nil
+                if item.context.sharedContext.immediateExperimentalUISettings.localTranscription || useAppleTranscription {
+                    let context = item.context
+                    let messageId = item.message.id
+                    let appLocale = presentationData.strings.baseLanguageCode
                     
-                    if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
-                        Queue.mainQueue().after(0.1, {
-                            let _ = strongSelf.presentAudioTranscriptionTooltip(finished: true)
-                        })
+                    let signal: Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError>
+                    if let file = self.media {
+                        signal = messageMediaFileCompletePath(context: context, message: item.message, file: file)
+                        |> mapToSignal { path -> Signal<Result<LocallyTranscribedAudio, LocalAudioTranscriptionError>, NoError> in
+                            return transcribeMediaFile(path: path, appLocale: appLocale, allocateTempFile: {
+                                return EngineTempBox.shared.tempFile(fileName: "audio.m4a").path
+                            })
+                        }
+                    } else {
+                        signal = .single(.failure(.failed))
                     }
-                })
+                    
+                    self.transcribeDisposable = (signal
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] result in
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        
+                        switch result {
+                        case let .success(transcription):
+                            let _ = context.engine.messages.storeLocallyTranscribedAudio(messageId: messageId, text: transcription.text, isFinal: transcription.isFinal, error: nil).startStandalone()
+                        case let .failure(error):
+                            strongSelf.audioTranscriptionState = .collapsed
+                            strongSelf.requestUpdateLayout(true)
+                            strongSelf.updateTranscriptionExpanded?(strongSelf.audioTranscriptionState)
+                            strongSelf.presentLocalTranscriptionError(error)
+                        }
+                    }, completed: { [weak self] in
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        strongSelf.transcribeDisposable?.dispose()
+                        strongSelf.transcribeDisposable = nil
+                    })
+                } else {
+                    self.transcribeDisposable = (item.context.engine.messages.transcribeAudio(messageId: item.message.id)
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] result in
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        strongSelf.transcribeDisposable?.dispose()
+                        strongSelf.transcribeDisposable = nil
+                        
+                        if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                            Queue.mainQueue().after(0.1, {
+                                let _ = strongSelf.presentAudioTranscriptionTooltip(finished: true)
+                            })
+                        }
+                    })
+                }
             }
         }
         
@@ -1924,6 +1983,25 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         }
         
         self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+    }
+    
+    private func presentLocalTranscriptionError(_ error: LocalAudioTranscriptionError) {
+        guard let item = self.item else {
+            return
+        }
+        let context = item.context
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        var openSettingsText: String?
+        if case .notAuthorized = error {
+            openSettingsText = "Настройки"
+        }
+        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.bahogramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
+            if case .undo = action {
+                context.sharedContext.applicationBindings.openSettings()
+            }
+            return false
+        })
+        item.controllerInteraction.presentControllerInCurrent(tipController, nil)
     }
     
     private func presentAudioTranscriptionTooltip(finished: Bool) -> Bool {
