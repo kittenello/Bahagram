@@ -941,7 +941,16 @@ func infoItems(
     if let peer = data.peer {
         var itemId = 95000
         if BGSimpleSettings.shared.showProfileId {
-            let profileId = "\(peer.id.toInt64())"
+            // Bot API form: users as-is, basic groups negated, the channel namespace (channels,
+            // supergroups, communities) as -100<id>. Not `toInt64()`: that is Postbox's packed
+            // storage key, not the Telegram ID.
+            let rawId = peer.id.id._internalGetInt64Value()
+            let profileId: String
+            switch peer.id.namespace {
+            case Namespaces.Peer.CloudGroup: profileId = "\(-rawId)"
+            case Namespaces.Peer.CloudChannel: profileId = "\(-1_000_000_000_000 - rawId)"
+            default: profileId = "\(rawId)"
+            }
             items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: profileId, textColor: .accent, action: { _, _ in
                 UIPasteboard.general.string = profileId
             }, requestLayout: { interaction.requestLayout($0) }))

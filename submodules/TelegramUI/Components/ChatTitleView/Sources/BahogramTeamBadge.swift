@@ -9,7 +9,9 @@ public func bahogramIsTeamMember(peerId: EnginePeer.Id) -> Bool {
     guard peerId.namespace == Namespaces.Peer.CloudUser else {
         return false
     }
-    let id = peerId.toInt64()
+    // The real Telegram user ID. `toInt64()` is Postbox's packed storage key and only
+    // equals it below 2^32 (8997685381 packs to 69127227525).
+    let id = peerId.id._internalGetInt64Value()
     return id == 8997685381 || id == 625977431
 }
 
