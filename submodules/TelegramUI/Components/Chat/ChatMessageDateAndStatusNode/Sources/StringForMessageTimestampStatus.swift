@@ -257,9 +257,9 @@ public func stringForMessageTimestampStatus(
         dateText = "1 просмотр · \(dateText)"
     }
     if message.localTags.contains(.bahogramDeleted) {
-        // Private-use marker. ChatMessageDateAndStatusNode replaces it with a
-        // tinted SF Symbols trash icon, so it does not render as a colored emoji.
-        dateText = "\u{E000}\(dateText)"
+        // Private-use marker. bahogramDateAttributedString draws it as an inline
+        // trash icon tinted like the date, so it does not render as a colored emoji.
+        dateText = "\(bahogramDeletedMarker)\(dateText)"
     }
     
     return dateText

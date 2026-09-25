@@ -250,7 +250,7 @@ public class ChatMessageCallBubbleContentNode: ChatMessageBubbleContentNode {
                     statusText.append(",")
                 }
                 
-                let attributedLabel = NSAttributedString(string: statusText, font: labelFont, textColor: messageTheme.fileDurationColor)
+                let attributedLabel = bahogramDateAttributedString(statusText, font: labelFont, textColor: messageTheme.fileDurationColor)
 
                 let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: attributedTitle, backgroundColor: nil, maximumNumberOfLines: 0, truncationType: .end, constrainedSize: textConstrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
                 let (labelLayout, labelApply) = makeLabelLayout(TextNodeLayoutArguments(attributedString: attributedLabel, backgroundColor: nil, maximumNumberOfLines: 0, truncationType: .end, constrainedSize: textConstrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))

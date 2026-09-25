@@ -266,7 +266,6 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
     private var clockMinNode: ASImageNode?
     private let dateNode: TextNode
     private var impressionIcon: ASImageNode?
-    private var bahogramDeletedIcon: ASImageNode?
     private var reactionNodes: [MessageReaction.Reaction: StatusReactionNode] = [:]
     private let reactionButtonsContainer = ReactionButtonsAsyncLayoutContainer()
     private var reactionButtonNode: HighlightTrackingButtonNode?
@@ -328,7 +327,6 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
         
         var currentBackgroundNode = self.backgroundNode
         var currentImpressionIcon = self.impressionIcon
-        var currentBahogramDeletedIcon = self.bahogramDeletedIcon
         var currentRepliesIcon = self.repliesIcon
         var currentStarsIcon = self.starsIcon
 
@@ -541,12 +539,6 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             }
             
             var updatedDateText = arguments.dateText
-            let bahogramDeletedMarker = "\u{E000}"
-            let hasBahogramDeletedIcon = updatedDateText.hasPrefix(bahogramDeletedMarker)
-            if hasBahogramDeletedIcon {
-                updatedDateText.removeFirst(bahogramDeletedMarker.count)
-                updatedDateText = "   \(updatedDateText)"
-            }
             if arguments.edited {
                 if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp {
                 } else {
@@ -558,22 +550,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             }
             
             let dateFont = Font.regular(floor(arguments.presentationData.fontSize.baseDisplaySize * 11.0 / 17.0))
-            let bahogramDeletedIconImage: UIImage?
-            if hasBahogramDeletedIcon {
-                let configuration = UIImage.SymbolConfiguration(pointSize: floor(arguments.presentationData.fontSize.baseDisplaySize * 9.0 / 17.0), weight: .regular)
-                bahogramDeletedIconImage = UIImage(systemName: "trash.fill", withConfiguration: configuration)?.withTintColor(dateColor, renderingMode: .alwaysOriginal)
-                if currentBahogramDeletedIcon == nil {
-                    let iconNode = ASImageNode()
-                    iconNode.isLayerBacked = true
-                    iconNode.displayWithoutProcessing = true
-                    iconNode.displaysAsynchronously = false
-                    currentBahogramDeletedIcon = iconNode
-                }
-            } else {
-                bahogramDeletedIconImage = nil
-                currentBahogramDeletedIcon = nil
-            }
-            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: bahogramDateAttributedString(updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
             let checkOffset = floor(arguments.presentationData.fontSize.baseDisplaySize * 6.0 / 17.0)
             
@@ -1134,25 +1111,6 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                         } else if let impressionIcon = strongSelf.impressionIcon {
                             impressionIcon.removeFromSupernode()
                             strongSelf.impressionIcon = nil
-                        }
-
-                        if let currentBahogramDeletedIcon, let bahogramDeletedIconImage {
-                            let dateOrigin = CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth, y: backgroundInsets.top + 1.0 + offset + verticalInset)
-                            let iconFrame = CGRect(
-                                origin: CGPoint(x: dateOrigin.x, y: dateOrigin.y + floor((date.size.height - bahogramDeletedIconImage.size.height) / 2.0)),
-                                size: bahogramDeletedIconImage.size
-                            )
-                            currentBahogramDeletedIcon.image = bahogramDeletedIconImage
-                            if currentBahogramDeletedIcon.supernode == nil {
-                                strongSelf.bahogramDeletedIcon = currentBahogramDeletedIcon
-                                strongSelf.addSubnode(currentBahogramDeletedIcon)
-                                currentBahogramDeletedIcon.frame = iconFrame
-                            } else {
-                                animation.animator.updateFrame(layer: currentBahogramDeletedIcon.layer, frame: iconFrame, completion: nil)
-                            }
-                        } else if let bahogramDeletedIcon = strongSelf.bahogramDeletedIcon {
-                            bahogramDeletedIcon.removeFromSupernode()
-                            strongSelf.bahogramDeletedIcon = nil
                         }
                         
                         animation.animator.updateFrame(layer: strongSelf.dateNode.layer, frame: CGRect(origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth, y: backgroundInsets.top + 1.0 + offset + verticalInset), size: date.size), completion: nil)
