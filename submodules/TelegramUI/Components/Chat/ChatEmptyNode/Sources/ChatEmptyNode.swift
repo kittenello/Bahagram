@@ -23,6 +23,7 @@ import UndoUI
 import PremiumUI
 import LottieComponent
 import BundleIconComponent
+import BGSimpleSettings
 
 private protocol ChatEmptyNodeContent {
     func updateLayout(interfaceState: ChatPresentationInterfaceState, subject: ChatEmptyNode.Subject, size: CGSize, leftInset: CGFloat, rightInset: CGFloat, transition: ContainedViewLayoutTransition) -> CGSize
@@ -195,7 +196,11 @@ public final class ChatEmptyNodeGreetingChatContent: ASDisplayNode, ChatEmptyNod
             stickerSize = dimensions.aspectFitted(stickerSize)
         }
         
-        if let item = self.stickerItem, previousCustomStickerFile == customStickerFile {
+        let hideSticker = BGSimpleSettings.shared.hideGreetingSticker
+        self.stickerNode.isHidden = hideSticker
+        if hideSticker {
+            self.disposable.set(nil)
+        } else if let item = self.stickerItem, previousCustomStickerFile == customStickerFile {
             self.stickerNode.updateLayout(item: item, size: stickerSize, isVisible: true, synchronousLoads: true)
         } else if !self.didSetupSticker || previousCustomStickerFile != customStickerFile {
             let sticker: Signal<TelegramMediaFile?, NoError>
@@ -279,7 +284,8 @@ public final class ChatEmptyNodeGreetingChatContent: ASDisplayNode, ChatEmptyNod
         
         contentWidth = max(contentWidth, max(titleSize.width, textSize.width))
         
-        contentHeight += titleSize.height + titleSpacing + textSize.height + stickerSpacing + stickerSize.height
+        contentHeight += titleSize.height + titleSpacing + textSize.height
+        if !hideSticker { contentHeight += stickerSpacing + stickerSize.height }
         
         let contentRect = CGRect(origin: CGPoint(x: insets.left, y: insets.top), size: CGSize(width: contentWidth, height: contentHeight))
         

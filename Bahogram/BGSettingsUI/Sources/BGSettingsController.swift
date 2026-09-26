@@ -55,7 +55,15 @@ private func bgSettingsSymbol(key: String, title: String) -> String {
     case "reactions": return "heart"
     case "seconds": return "clock"
     case "transcription": return "waveform"
-    case "rearCamera": return "camera.rotate"
+    case "camera", "rearCamera", "rememberCamera", "zoomSlider", "staticZoom": return "camera.rotate"
+    case "autoPause", "autoPauseMedia": return "pause.circle"
+    case "editedIcon": return "pencil.line"
+    case "onlineIndicator": return "circle.fill"
+    case "greetingSticker": return "hand.wave"
+    case "mentionComma": return "at"
+    case "snow": return "snowflake"
+    case "hideArchive": return "archivebox"
+    case "localPremium": return "star"
     case "visualPhone", "number": return "phone"
     case "visualRating": return "star"
     case "visualUsernames": return "at"
@@ -182,8 +190,8 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
 }
 
 public func bgSettingsController(context: AccountContext) -> ViewController {
-    return bgController(context: context, title: "Bahogram", entries: {
-        [.header(0, 0, "BAHOGRAM"), .disclosure(1, 0, "downloads", "Скачивание", ""), .disclosure(2, 0, "spy", "Bahogram", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Bahogram is an unofficial client based on Telegram for iOS.")]
+    return bgController(context: context, title: "Настройки Bahagram", entries: {
+        [.header(0, 0, "BAHAGRAM"), .disclosure(1, 0, "downloads", "Скачивание", ""), .disclosure(2, 0, "spy", "Bahagram", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Bahagram is an unofficial client based on Telegram for iOS.")]
     }, open: { key in
         switch key {
         case "downloads": return bgDownloadsSettingsController(context: context)

@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import BGSimpleSettings
 import SwiftSignalKit
 import AVFoundation
 import MobileCoreServices
@@ -65,6 +67,7 @@ public final class MediaManagerImpl: NSObject, MediaManager {
     private let accountManager: AccountManager<TelegramAccountManagerTypes>
     private let inForeground: Signal<Bool, NoError>
     private let presentationData: Signal<PresentationData, NoError>
+    private var backgroundPauseObservers: [NSObjectProtocol] = []
     
     public let audioSession: ManagedAudioSession
     public let overlayMediaManager: OverlayMediaManager = OverlayMediaManager()
@@ -202,6 +205,13 @@ public final class MediaManagerImpl: NSObject, MediaManager {
         self.audioSession = sharedAudioSession
         
         super.init()
+
+        for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification] {
+            let observer = NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main, using: { [weak self] _ in
+                self?.pauseSelectedMediaOnInterruption()
+            })
+            self.backgroundPauseObservers.append(observer)
+        }
        
         let combinedPlayersSignal: Signal<(Account, SharedMediaPlayerItemPlaybackStateOrLoading, MediaManagerPlayerType)?, NoError> = combineLatest(queue: Queue.mainQueue(), self.voiceMediaPlayerState, self.musicMediaPlayerState)
         |> map { voice, music -> (Account, SharedMediaPlayerItemPlaybackStateOrLoading, MediaManagerPlayerType)? in
@@ -449,6 +459,9 @@ public final class MediaManagerImpl: NSObject, MediaManager {
     }
     
     deinit {
+        for observer in self.backgroundPauseObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
         self.globalControlsDisposable.dispose()
         self.globalControlsArtworkDisposable.dispose()
         self.globalControlsStatusDisposable.dispose()
@@ -457,6 +470,29 @@ public final class MediaManagerImpl: NSObject, MediaManager {
         self.musicListenTrackingDisposable.dispose()
         self.globalAudioSessionForegroundDisposable.dispose()
         self.voiceMediaPlayerStateDisposable.dispose()
+    }
+
+    private func pauseSelectedMediaOnInterruption() {
+        let settings = BGSimpleSettings.shared
+        guard settings.autoPause else { return }
+        let selected = settings.autoPauseMedia
+        if selected & 5 != 0 {
+            (self.universalVideoManager as? UniversalVideoManagerImpl)?.pauseForBackground(video: selected & 1 != 0, instantVideo: selected & 4 != 0)
+        }
+        guard selected & 6 != 0, self.voiceMediaPlayer != nil else { return }
+        let _ = (self.voiceMediaPlayerState |> take(1) |> deliverOnMainQueue).startStrict(next: { [weak self] value in
+            guard let self, let (_, stateOrLoading) = value, case let .state(state) = stateOrLoading,
+                  let displayData = state.item.displayData else { return }
+            let shouldPause: Bool
+            switch displayData {
+            case .voice: shouldPause = selected & 2 != 0
+            case .instantVideo: shouldPause = selected & 4 != 0
+            default: shouldPause = false
+            }
+            if shouldPause {
+                self.voiceMediaPlayer?.control(.playback(.pause))
+            }
+        })
     }
     
     public func audioRecorder(

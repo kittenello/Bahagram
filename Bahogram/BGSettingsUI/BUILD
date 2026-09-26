@@ -18,6 +18,8 @@ swift_library(
         "//submodules/PresentationDataUtils:PresentationDataUtils",
         "//submodules/AccountContext:AccountContext",
         "//submodules/Postbox:Postbox",
+        "//submodules/TelegramUIPreferences:TelegramUIPreferences",
+        "//submodules/TelegramCore:TelegramCore",
         "//submodules/SettingsUI:SettingsUI",
         "//submodules/UndoUI:UndoUI",
     ],

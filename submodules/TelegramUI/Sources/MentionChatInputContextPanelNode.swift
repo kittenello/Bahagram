@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import TelegramCore
@@ -148,6 +149,9 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
             }
         }, peerSelected: { [weak self] peer in
             if let strongSelf = self, let interfaceInteraction = strongSelf.interfaceInteraction {
+                let isBot: Bool
+                if case let .user(user) = peer { isBot = user.botInfo != nil } else { isBot = false }
+                let mentionSuffix = BGSimpleSettings.shared.commaAfterMention && !isBot ? ", " : " "
                 switch strongSelf.mode {
                     case .input:
                         interfaceInteraction.updateTextInputStateAndMode { textInputState, inputMode in
@@ -163,7 +167,7 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
                                 let inputText = NSMutableAttributedString(attributedString: textInputState.inputText)
                                 
                                 if let addressName = peer.addressName, !addressName.isEmpty {
-                                    let replacementText = addressName + " "
+                                    let replacementText = addressName + mentionSuffix
                                     
                                     inputText.replaceCharacters(in: range, with: replacementText)
                                     
@@ -173,7 +177,7 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
                                 } else if !peer.compactDisplayTitle.isEmpty {
                                     let replacementText = NSMutableAttributedString()
                                     replacementText.append(NSAttributedString(string: peer.compactDisplayTitle, attributes: [ChatTextInputAttributes.textMention: ChatTextInputTextMentionAttribute(peerId: peer.id)]))
-                                    replacementText.append(NSAttributedString(string: " "))
+                                    replacementText.append(NSAttributedString(string: mentionSuffix))
                                     
                                     let updatedRange = NSRange(location: range.location - 1, length: range.length + 1)
                                     

@@ -36,6 +36,12 @@ public final class BGSimpleSettings {
         case auto
     }
 
+    public enum RoundVideoCamera: Int, CaseIterable {
+        case front = 0
+        case rear = 1
+        case ask = 2
+    }
+
     private enum Key {
         static let saveDeletedMessages = "bahogram.spy.saveDeletedMessages"
         static let semiTransparentDeletedMessages = "bahogram.spy.semiTransparentDeletedMessages"
@@ -71,6 +77,8 @@ public final class BGSimpleSettings {
         static let hidePremiumStatuses = "bahogram.appearance.hidePremiumStatuses"
         static let disableCustomBackgrounds = "bahogram.appearance.disableCustomBackgrounds"
         static let hideStories = "bahogram.appearance.hideStories"
+        static let forceSnow = "bahogram.appearance.forceSnow"
+        static let localPremiumPeerIds = "bahogram.other.localPremiumPeerIds"
 
         static let onlyAddedStickers = "bahogram.chats.onlyAddedStickers"
         static let infiniteRecentStickers = "bahogram.chats.infiniteRecentStickers"
@@ -84,6 +92,18 @@ public final class BGSimpleSettings {
         static let downloadYouTubeShorts = "bahogram.chats.downloadYouTubeShorts"
         static let signDownloadedMedia = "bahogram.chats.signDownloadedMedia"
         static let startRoundVideoWithRearCamera = "bahogram.chats.startRoundVideoWithRearCamera"
+        static let roundVideoCamera = "bahogram.chats.roundVideoCamera"
+        static let rememberRoundVideoCamera = "bahogram.chats.rememberRoundVideoCamera"
+        static let lastRoundVideoCamera = "bahogram.chats.lastRoundVideoCamera"
+        static let roundVideoZoomSlider = "bahogram.chats.roundVideoZoomSlider"
+        static let staticRoundVideoZoom = "bahogram.chats.staticRoundVideoZoom"
+        static let autoPause = "bahogram.chats.autoPause"
+        static let autoPauseMedia = "bahogram.chats.autoPauseMedia"
+        static let editedIcon = "bahogram.chats.editedIcon"
+        static let showOnlineIndicator = "bahogram.chats.showOnlineIndicator"
+        static let hideGreetingSticker = "bahogram.chats.hideGreetingSticker"
+        static let commaAfterMention = "bahogram.chats.commaAfterMention"
+        static let hideArchive = "bahogram.chats.hideArchive"
     }
 
     private let defaults: UserDefaults
@@ -302,6 +322,17 @@ public final class BGSimpleSettings {
     public var hidePremiumStatuses: Bool { get { bool(Key.hidePremiumStatuses) } set { setBool(newValue, Key.hidePremiumStatuses) } }
     public var disableCustomBackgrounds: Bool { get { bool(Key.disableCustomBackgrounds) } set { setBool(newValue, Key.disableCustomBackgrounds) } }
     public var hideStories: Bool { get { bool(Key.hideStories) } set { setBool(newValue, Key.hideStories) } }
+    public var forceSnow: Bool { get { bool(Key.forceSnow) } set { setBool(newValue, Key.forceSnow) } }
+
+    public func localPremium(accountId: Int64) -> Bool {
+        return self.defaults.stringArray(forKey: Key.localPremiumPeerIds)?.contains(String(accountId)) ?? false
+    }
+    public func setLocalPremium(_ enabled: Bool, accountId: Int64) {
+        var ids = Set(self.defaults.stringArray(forKey: Key.localPremiumPeerIds) ?? [])
+        if enabled { ids.insert(String(accountId)) } else { ids.remove(String(accountId)) }
+        self.defaults.set(Array(ids).sorted(), forKey: Key.localPremiumPeerIds)
+        NotificationCenter.default.post(name: BGSimpleSettings.didChangeNotification, object: self)
+    }
 
     public var onlyAddedStickers: Bool { get { bool(Key.onlyAddedStickers) } set { setBool(newValue, Key.onlyAddedStickers) } }
     public var infiniteRecentStickers: Bool { get { bool(Key.infiniteRecentStickers) } set { setBool(newValue, Key.infiniteRecentStickers) } }
@@ -314,6 +345,36 @@ public final class BGSimpleSettings {
     public var downloadYouTubeShorts: Bool { get { bool(Key.downloadYouTubeShorts) } set { setBool(newValue, Key.downloadYouTubeShorts) } }
     public var signDownloadedMedia: Bool { get { bool(Key.signDownloadedMedia) } set { setBool(newValue, Key.signDownloadedMedia) } }
     public var startRoundVideoWithRearCamera: Bool { get { bool(Key.startRoundVideoWithRearCamera) } set { setBool(newValue, Key.startRoundVideoWithRearCamera) } }
+    public var roundVideoCamera: RoundVideoCamera {
+        get {
+            if self.defaults.object(forKey: Key.roundVideoCamera) == nil && startRoundVideoWithRearCamera { return .rear }
+            return RoundVideoCamera(rawValue: integer(Key.roundVideoCamera)) ?? .front
+        }
+        set { setInteger(newValue.rawValue, Key.roundVideoCamera) }
+    }
+    public var rememberRoundVideoCamera: Bool { get { bool(Key.rememberRoundVideoCamera) } set { setBool(newValue, Key.rememberRoundVideoCamera) } }
+    public var lastRoundVideoCamera: RoundVideoCamera {
+        get {
+            if self.defaults.object(forKey: Key.lastRoundVideoCamera) == nil {
+                return roundVideoCamera == .rear ? .rear : .front
+            }
+            return RoundVideoCamera(rawValue: integer(Key.lastRoundVideoCamera)) == .rear ? .rear : .front
+        }
+        set { setInteger(newValue == .rear ? 1 : 0, Key.lastRoundVideoCamera) }
+    }
+    public var roundVideoZoomSlider: Bool { get { bool(Key.roundVideoZoomSlider) } set { setBool(newValue, Key.roundVideoZoomSlider) } }
+    public var staticRoundVideoZoom: Bool { get { bool(Key.staticRoundVideoZoom) } set { setBool(newValue, Key.staticRoundVideoZoom) } }
+    public var autoPause: Bool { get { bool(Key.autoPause) } set { setBool(newValue, Key.autoPause) } }
+    /// Bitmask: video = 1, voice = 2, round video = 4.
+    public var autoPauseMedia: Int {
+        get { self.defaults.object(forKey: Key.autoPauseMedia) == nil ? 7 : integer(Key.autoPauseMedia) }
+        set { setInteger(newValue & 7, Key.autoPauseMedia) }
+    }
+    public var editedIcon: Bool { get { bool(Key.editedIcon) } set { setBool(newValue, Key.editedIcon) } }
+    public var showOnlineIndicator: Bool { get { bool(Key.showOnlineIndicator) } set { setBool(newValue, Key.showOnlineIndicator) } }
+    public var hideGreetingSticker: Bool { get { bool(Key.hideGreetingSticker) } set { setBool(newValue, Key.hideGreetingSticker) } }
+    public var commaAfterMention: Bool { get { bool(Key.commaAfterMention) } set { setBool(newValue, Key.commaAfterMention) } }
+    public var hideArchive: Bool { get { bool(Key.hideArchive) } set { setBool(newValue, Key.hideArchive) } }
     public var transcriptionBackend: TranscriptionBackend {
         get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .auto }
         set { setString(newValue.rawValue, Key.transcriptionBackend) }
