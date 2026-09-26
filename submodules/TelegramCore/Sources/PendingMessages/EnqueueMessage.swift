@@ -812,7 +812,7 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                     current.append(NotificationInfoMessageAttribute(flags: .muted))
                 }
                 if shouldSchedule && !current.contains(where: { $0 is OutgoingScheduleInfoMessageAttribute }) {
-                    current.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + 12, repeatPeriod: nil))
+                    current.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(account.network.context.globalTime()) + ghostScheduledMessageDelay, repeatPeriod: nil, isGhostScheduled: true))
                 }
                 return current
             }

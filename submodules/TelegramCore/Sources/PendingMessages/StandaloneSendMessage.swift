@@ -429,7 +429,7 @@ private func sendUploadedMessageContent(
                     }
                 } else if let attribute = attribute as? OutgoingScheduleInfoMessageAttribute {
                     flags |= Int32(1 << 10)
-                    scheduleTime = attribute.scheduleTime
+                    scheduleTime = attribute.effectiveScheduleTime(currentTime: network.context.globalTime())
                     if let repeatPeriod = attribute.repeatPeriod {
                         flags |= Int32(1 << 24)
                         scheduleRepeatPeriod = repeatPeriod
@@ -728,7 +728,7 @@ private func sendMessageContent(account: Account, peerId: PeerId, attributes: [M
                     }
                 } else if let attribute = attribute as? OutgoingScheduleInfoMessageAttribute {
                     flags |= Int32(1 << 10)
-                    scheduleTime = attribute.scheduleTime
+                    scheduleTime = attribute.effectiveScheduleTime(currentTime: account.network.context.globalTime())
                     if let repeatPeriod = attribute.repeatPeriod {
                         flags |= Int32(1 << 24)
                         scheduleRepeatPeriod = repeatPeriod

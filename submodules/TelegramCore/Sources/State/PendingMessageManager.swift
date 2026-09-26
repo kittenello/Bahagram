@@ -1246,7 +1246,7 @@ public final class PendingMessageManager {
                         }
                     } else if let attribute = attribute as? OutgoingScheduleInfoMessageAttribute {
                         flags |= Int32(1 << 10)
-                        scheduleTime = attribute.scheduleTime
+                        scheduleTime = attribute.effectiveScheduleTime(currentTime: network.context.globalTime())
                         if let repeatPeriod = attribute.repeatPeriod {
                             flags |= Int32(1 << 24)
                             scheduleRepeatPeriod = repeatPeriod
@@ -1786,7 +1786,7 @@ public final class PendingMessageManager {
                         }
                     } else if let attribute = attribute as? OutgoingScheduleInfoMessageAttribute {
                         flags |= Int32(1 << 10)
-                        scheduleTime = attribute.scheduleTime
+                        scheduleTime = attribute.effectiveScheduleTime(currentTime: network.context.globalTime())
                         if let repeatPeriod = attribute.repeatPeriod {
                             flags |= Int32(1 << 24)
                             scheduleRepeatPeriod = repeatPeriod

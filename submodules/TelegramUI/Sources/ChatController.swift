@@ -9006,12 +9006,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             let isGhostScheduledSend = BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostUseScheduledMessages
             
             if shouldDivert {
-                let delay: Int32 = isGhostScheduledSend ? 12 : 10 * 24 * 60 * 60
+                let delay: Int32 = isGhostScheduledSend ? ghostScheduledMessageDelay : 10 * 24 * 60 * 60
                 messages = messages.map { message -> EnqueueMessage in
                     return message.withUpdatedAttributes { attributes in
                         var attributes = attributes
                         attributes.removeAll(where: { $0 is OutgoingScheduleInfoMessageAttribute })
-                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + delay, repeatPeriod: nil))
+                        attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(Date().timeIntervalSince1970) + delay, repeatPeriod: nil, isGhostScheduled: isGhostScheduledSend))
                         return attributes
                     }
                 }
