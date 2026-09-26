@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import UIKit
 import Display
 import SwiftSignalKit
 import AccountContext
@@ -23,6 +24,49 @@ final class BGListArguments {
         self.select = select
         self.open = open
         self.textUpdated = textUpdated
+    }
+}
+
+private func bgSettingsSymbol(key: String, title: String) -> String {
+    switch key {
+    case "downloads", "downloadTikTok", "downloadShorts": return "arrow.down.to.line"
+    case "spy", "ghost", "options", "offline": return "eye.slash"
+    case "chats", "messages", "tails", "replies": return "bubble.left.and.bubble.right"
+    case "appearance", "customBackgrounds": return "paintbrush"
+    case "support": return "questionmark.circle"
+    case "saveDeleted", "transparentDeleted": return "tray.full"
+    case "saveEdits": return "pencil"
+    case "saveOnce": return "lock"
+    case "saveBots": return "bubble.left"
+    case "bypassForward": return "arrowshape.turn.up.right"
+    case "readOnAction": return "checkmark.message"
+    case "scheduled": return "calendar"
+    case "silent": return "speaker.slash"
+    case "stories", "hideStories": return "play.rectangle"
+    case "premiumStatuses": return "star.slash"
+    case "hideTabBar", "wideTabBar": return "rectangle.split.3x1"
+    case "contacts", "mutualContact": return "person.2"
+    case "calls", "confirmCalls": return "phone"
+    case "profileId", "visualId": return "number"
+    case "dc": return "network"
+    case "regDate", "chatDate": return "calendar"
+    case "disableAds": return "xmark.rectangle"
+    case "onlyAdded", "recent": return "face.smiling"
+    case "reactions": return "heart"
+    case "seconds": return "clock"
+    case "transcription": return "waveform"
+    case "rearCamera": return "camera.rotate"
+    case "visualPhone", "number": return "phone"
+    case "visualRating": return "star"
+    case "visualUsernames": return "at"
+    case "signDownloads": return "text.alignleft"
+    case "online": return "person.crop.circle"
+    case "typing": return "ellipsis.bubble"
+    default:
+        if title.contains("номер") { return "phone" }
+        if title.contains("истори") { return "play.rectangle" }
+        if title.contains("звука") { return "speaker.slash" }
+        return "gearshape"
     }
 }
 
@@ -51,13 +95,17 @@ enum BGListEntry: ItemListNodeEntry {
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! BGListArguments
+        func icon(_ key: String, _ title: String, enabled: Bool = true) -> UIImage? {
+            let color = enabled ? presentationData.theme.list.itemPrimaryTextColor : presentationData.theme.list.itemDisabledTextColor
+            return PresentationResourcesSettings.bahogramOutlineIcon(bgSettingsSymbol(key: key, title: title), color: color)
+        }
         switch self {
         case let .header(_, _, title):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: title, sectionId: self.section)
         case let .toggle(_, _, key, title, value, enabled):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) })
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title, enabled: enabled), title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) })
         case let .disclosure(_, _, key, title, label):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.open(key) })
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title), title: title, label: label, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.open(key) })
         case let .checkbox(_, _, key, title, checked):
             return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: title, style: .left, checked: checked, zeroSeparatorInsets: false, sectionId: self.section, action: { arguments.select(key) })
         case let .info(_, _, text):

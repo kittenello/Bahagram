@@ -117,6 +117,20 @@ let colorGray = UIColor(rgb: 0x8E8E93)
 let colorViolet = UIColor(rgb: 0x5E5CE6)
 
 public struct PresentationResourcesSettings {
+    public static func bahogramOutlineIcon(_ symbolName: String, color: UIColor) -> UIImage? {
+        let configuration = UIImage.SymbolConfiguration(pointSize: 19.0, weight: .regular)
+        guard let symbol = (UIImage(systemName: symbolName, withConfiguration: configuration) ?? UIImage(systemName: "gearshape", withConfiguration: configuration))?.withTintColor(color, renderingMode: .alwaysOriginal) else {
+            return nil
+        }
+        return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
+            let symbolSize = symbol.size
+            let rect = CGRect(x: floor((size.width - symbolSize.width) / 2.0), y: floor((size.height - symbolSize.height) / 2.0), width: symbolSize.width, height: symbolSize.height)
+            UIGraphicsPushContext(context)
+            symbol.draw(in: rect)
+            UIGraphicsPopContext()
+        })
+    }
+
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])
