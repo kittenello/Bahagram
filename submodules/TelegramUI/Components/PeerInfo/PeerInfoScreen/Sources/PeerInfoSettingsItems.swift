@@ -197,7 +197,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         }
     }
     
-    items[.bahogram]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "Настройки Bahagram", icon: PresentationResourcesSettings.bahogramOutlineIcon("gearshape", color: presentationData.theme.list.itemPrimaryTextColor), action: {
+    items[.bahogram]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "Настройки Bahagram", icon: PresentationResourcesSettings.bahogramOutlineIcon("gearshape", color: .white, backgroundColor: presentationData.theme.list.itemAccentColor), action: {
         interaction.openSettings(.bahogram)
     }))
 
