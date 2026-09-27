@@ -2,7 +2,7 @@ import Foundation
 import Postbox
 
 public let scheduleWhenOnlineTimestamp: Int32 = 0x7ffffffe
-public let ghostScheduledMessageDelay: Int32 = 11
+public let ghostScheduledMessageDelay: Int32 = 12
 
 public class OutgoingScheduleInfoMessageAttribute: MessageAttribute {
     public let scheduleTime: Int32
@@ -32,9 +32,10 @@ public class OutgoingScheduleInfoMessageAttribute: MessageAttribute {
     }
 
     public func effectiveScheduleTime(currentTime: Double) -> Int32 {
-        // Telegram sends dates less than 10 seconds away immediately. Leave half
-        // a second for transit, and refresh the date after any media upload.
-        return self.isGhostScheduled ? max(self.scheduleTime, Int32(ceil(currentTime + 10.5))) : self.scheduleTime
+        // Telegram sends dates less than 10 seconds away immediately. Keep a
+        // 2-second margin for transit, clock skew and MTProto resends, and refresh
+        // the date after any media upload.
+        return self.isGhostScheduled ? max(self.scheduleTime, Int32(ceil(currentTime + Double(ghostScheduledMessageDelay)))) : self.scheduleTime
     }
     
     public func withUpdatedScheduleTime(_ scheduleTime: Int32) -> OutgoingScheduleInfoMessageAttribute {
