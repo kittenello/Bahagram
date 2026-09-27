@@ -1,36 +1,36 @@
 {
   "fill" : {
-    "solid" : "srgb:0.08235,0.65098,0.91765,1.00000"
+    "linear-gradient" : [
+      "srgb:0.22745,0.22745,0.24706,1.00000",
+      "srgb:0.01961,0.01961,0.02353,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 1,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0,
+        "y" : 1
+      }
+    }
   },
   "groups" : [
     {
-      "blend-mode" : "normal",
-      "blur-material" : 0,
       "layers" : [
         {
-          "blend-mode-specializations" : [
-            {
-              "value" : "normal"
-            },
-            {
-              "appearance" : "dark",
-              "value" : "normal"
-            }
-          ],
-          "glass" : false,
-          "image-name" : "Bahogram.png",
-          "name" : "Bahogram"
+          "glass" : true,
+          "image-name" : "Spy.svg",
+          "name" : "Spy"
         }
       ],
-      "lighting" : "combined",
       "shadow" : {
-        "kind" : "layer-color",
-        "opacity" : 0
+        "kind" : "neutral",
+        "opacity" : 0.5
       },
-      "specular" : false,
       "translucency" : {
         "enabled" : false,
-        "value" : 1
+        "value" : 0.5
       }
     }
   ],
