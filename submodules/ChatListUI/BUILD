@@ -11,6 +11,7 @@ swift_library(
     ],
     deps = [
         "//Bahogram/BGSimpleSettings:BGSimpleSettings",
+        "//Bahogram/BGSnowEffect:BGSnowEffect",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

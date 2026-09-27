@@ -768,6 +768,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 })
                 self.updateNavigationBarPresentation()
             }
+            if self.isNodeLoaded {
+                self.chatDisplayNode.updateBahogramSnowAppearance()
+            }
         }
         
         self.scrollToTop = { [weak self] in
