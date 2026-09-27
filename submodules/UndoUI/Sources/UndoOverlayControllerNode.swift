@@ -1879,6 +1879,8 @@ final class UndoOverlayControllerNode: ViewControllerTracingNode {
             self.textNode.attributedText = attributedText
             
             self.statusNode?.transitionToState(.progress(color: .white, lineWidth: nil, value: max(progress, 0.027), cancelEnabled: false, animateRotation: true), completion: {})
+            // A progress toast stays on screen while its owner keeps updating it.
+            self.remainingSeconds = self.originalRemainingSeconds
         default:
             break
         }

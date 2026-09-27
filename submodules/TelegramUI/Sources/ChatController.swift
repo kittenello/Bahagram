@@ -391,8 +391,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var videoRecorderValue: VideoMessageCameraScreen?
     var videoRecorder = Promise<VideoMessageCameraScreen?>()
     var videoRecorderDisposable: Disposable?
-    var bahogramMediaDownloader: BahogramMediaDownloader?
-    
+
     var recorderDataDisposable = MetaDisposable()
     
     var chatUnreadCountDisposable: Disposable?
@@ -8991,10 +8990,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             return
         }
 
-        if self.bahogramTryStartMediaDownload(messages, postpone: postpone, commit: commit) {
-            return
-        }
-        
         let _ = (self.shouldDivertMessagesToScheduled(messages: messages)
         |> deliverOnMainQueue).startStandalone(next: { [weak self] shouldDivert in
             guard let self else {

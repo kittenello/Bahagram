@@ -49,7 +49,6 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//third-party/YouTubeKit:YouTubeKit",
         "//third-party/recaptcha:RecaptchaEnterprise",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/SSignalKit/SSignalKit:SSignalKit",
@@ -192,6 +191,7 @@ swift_library(
         "//submodules/ShareItems:ShareItems",
         "//submodules/ShareItems/Impl:ShareItemsImpl",
         "//submodules/SettingsUI:SettingsUI",
+        "//Bahogram/BGLinkDownloader:BGLinkDownloader",
         "//Bahogram/BGSettingsUI:BGSettingsUI",
         "//Bahogram/BGSimpleSettings:BGSimpleSettings",
         "//submodules/UrlHandling:UrlHandling",

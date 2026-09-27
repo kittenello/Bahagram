@@ -203,7 +203,7 @@ private func bgAutoPauseMediaController(context: AccountContext) -> ViewControll
 func bgDownloadsSettingsController(context: AccountContext) -> ViewController {
     let settings = BGSimpleSettings.shared
     return bgController(context: context, title: "Скачивание", entries: {
-        [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true), .info(4, 0, "Ссылки TikTok обрабатывает публичный сервис TikWM. Для YouTube Shorts используется встроенный модуль с сетевым резервом. Свой сервер не нужен.")]
+        [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true), .info(4, 0, "Видео и фото скачиваются напрямую с TikTok и YouTube, без сторонних серверов. В секретных чатах и чатах с платными сообщениями ссылка отправляется как есть.")]
     }, toggle: { key, value in
         switch key { case "downloadTikTok": settings.downloadTikTok = value; case "downloadShorts": settings.downloadYouTubeShorts = value; case "signDownloads": settings.signDownloadedMedia = value; default: break }
     })
