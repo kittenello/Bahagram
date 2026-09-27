@@ -30,7 +30,7 @@ import ChatControllerInteraction
 import WallpaperBackgroundNode
 import TelegramStringFormatting
 import InvisibleInkDustNode
-import BGSimpleSettings
+import DGSimpleSettings
 import LocalAudioTranscription
 
 public struct ChatMessageInstantVideoItemLayoutResult {
@@ -654,7 +654,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             }
             
             let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
-            let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: incoming, premiumConfiguration: premiumConfiguration))
+            let useAppleTranscription = DGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: incoming, premiumConfiguration: premiumConfiguration))
             
             let currentTime = Int32(Date().timeIntervalSince1970)
             if transcribedText == nil, !useAppleTranscription, !isLocalTranscriptionRunning, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
@@ -1863,7 +1863,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         }
         
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
-        let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: item.message.effectivelyIncoming(item.context.account.peerId), premiumConfiguration: premiumConfiguration))
+        let useAppleTranscription = DGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeInstantVideo(associatedData: item.associatedData, incoming: item.message.effectivelyIncoming(item.context.account.peerId), premiumConfiguration: premiumConfiguration))
         
         if !item.context.isPremium && !useAppleTranscription, case .inProgress = self.audioTranscriptionState {
             return
@@ -1943,7 +1943,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                         strongSelf.transcribeDisposable?.dispose()
                         strongSelf.transcribeDisposable = nil
                         
-                        if BGSimpleSettings.shared.transcriptionBackend != .telegram {
+                        if DGSimpleSettings.shared.transcriptionBackend != .telegram {
                             // Outside explicit Telegram mode the free-trial limits stay hidden: when Telegram refuses (e.g. the free attempts were used up on another device), transcribe on device instead.
                             if case .error = result {
                                 strongSelf.startLocalTranscription()
@@ -2040,7 +2040,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         if case .notAuthorized = error {
             openSettingsText = "Настройки"
         }
-        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.bahogramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
+        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.donutgramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
             if case .undo = action {
                 context.sharedContext.applicationBindings.openSettings()
             }

@@ -318,22 +318,22 @@ filegroup(
 
 alternate_icon_folders = [
     "BlueIcon",
-    # Bahogram pig icons
-    "BahoSnout",
-    "BahoSnoutHead",
-    "BahoPigPlane",
-    "BahoPigPlaneEars",
-    "BahoPilot",
-    "BahoPilotLens",
-    "Baho3D",
-    "Baho3DCircle",
-    "BahoGlass",
-    "BahoGlassEyes",
-    # Bahogram boykisser icons
-    "BahoKisser",
-    "BahoKisserRed",
-    # Bahogram cat icon
-    "BahoCat",
+    # Donutgram pig icons
+    "DgSnout",
+    "DgSnoutHead",
+    "DgPigPlane",
+    "DgPigPlaneEars",
+    "DgPilot",
+    "DgPilotLens",
+    "Dg3D",
+    "Dg3DCircle",
+    "DgGlass",
+    "DgGlassEyes",
+    # Donutgram boykisser icons
+    "DgKisser",
+    "DgKisserRed",
+    # Donutgram cat icon
+    "DgCat",
 ]
 
 composer_icon_folders = ["Telegram"]
@@ -578,7 +578,7 @@ official_background_gpu_fragment = """
 """
 background_gpu_fragment = official_background_gpu_fragment if telegram_bundle_id == "ph.telegra.Telegraph" else ""
 
-# Bahogram is distributed through sideloading. Privileged Telegram entitlements
+# Donutgram is distributed through sideloading. Privileged Telegram entitlements
 # (App Groups, APNs, Siri, iCloud, CarPlay, etc.) are deliberately omitted here;
 # Sideloadly will apply the entitlements available to the user's own signing team.
 plist_fragment(

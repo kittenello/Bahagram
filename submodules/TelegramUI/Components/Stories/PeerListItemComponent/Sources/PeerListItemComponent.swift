@@ -867,7 +867,7 @@ public final class PeerListItemComponent: Component {
             var statusIcon: EmojiStatusComponent.Content?
             var particleColor: UIColor?
             if let peer = component.peer {
-                let hidesPremiumStatus = bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: component.context.account.peerId)
+                let hidesPremiumStatus = donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: component.context.account.peerId)
                 if peer.isScam {
                     statusIcon = .text(color: component.theme.chat.message.incoming.scamColor, string: component.strings.Message_ScamAccount.uppercased())
                 } else if peer.isFake {

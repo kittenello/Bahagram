@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import TelegramApi
 import Postbox
 import SwiftSignalKit
@@ -325,8 +325,8 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
                     if attributes.contains(where: { $0 is PendingProcessingMessageAttribute }) {
                         namespace = Namespaces.Message.ScheduledCloud
                     } else {
-                        // Bahogram: ghost-mode sends refresh their schedule date.
-                        if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: updatedTimestamp, result: result) {
+                        // Donutgram: ghost-mode sends refresh their schedule date.
+                        if donutgramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: updatedTimestamp, result: result) {
                             namespace = Namespaces.Message.ScheduledCloud
                         }
                     }
@@ -458,7 +458,7 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
         }
         for file in sentStickers {
             if let entry = CodableEntry(RecentMediaItem(file)) {
-                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: BGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
+                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: DGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
             }
         }
         for file in sentGifs {
@@ -503,8 +503,8 @@ func applyUpdateGroupMessages(postbox: Postbox, stateManager: AccountStateManage
         if Namespaces.Message.allQuickReply.contains(messages[0].id.namespace) {
             namespace = Namespaces.Message.QuickReplyCloud
         } else if let message = messages.first, let apiMessage = result.messages.first {
-            // Bahogram: ghost-mode sends refresh their schedule date.
-            if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
+            // Donutgram: ghost-mode sends refresh their schedule date.
+            if donutgramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
                 namespace = Namespaces.Message.ScheduledCloud
             } else if let apiMessage = result.messages.first, case let .message(messageData) = apiMessage, (messageData.flags2 & (1 << 4)) != 0 {
                 namespace = Namespaces.Message.ScheduledCloud
@@ -658,7 +658,7 @@ func applyUpdateGroupMessages(postbox: Postbox, stateManager: AccountStateManage
         
         for file in sentStickers {
             if let entry = CodableEntry(RecentMediaItem(file)) {
-                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: BGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
+                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: DGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
             }
         }
         for file in sentGifs {

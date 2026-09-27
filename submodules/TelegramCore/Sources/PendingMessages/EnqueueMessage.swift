@@ -3,7 +3,7 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 import Emoji
-import BGSimpleSettings
+import DGSimpleSettings
 
 public enum EnqueueMessageGrouping {
     case none
@@ -625,7 +625,7 @@ private func localCopyOfProtectedMedia(account: Account, sourceMessage: Message,
 private func prepareProtectedForwardCopies(account: Account, messages: [EnqueueMessage]) -> Signal<[EnqueueMessage], NoError> {
     return account.postbox.transaction { transaction -> [PreparedProtectedForward] in
         return messages.map { message in
-            guard BGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = message, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtectedIgnoringBahogramSetting() else {
+            guard DGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = message, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtectedIgnoringDonutgramSetting() else {
                 return PreparedProtectedForward(message: message, sourceMessage: nil)
             }
             var copiedAttributes = sourceMessage.attributes.filter { attribute in
@@ -763,7 +763,7 @@ public func resendMessages(account: Account, messageIds: [MessageId]) -> Signal<
 }
 
 func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId, messages: [(Bool, EnqueueMessage)], disableAutoremove: Bool = false, transformGroupingKeysWithPeerId: Bool = false) -> [MessageId?] {
-    if BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostReadOnAction {
+    if DGSimpleSettings.shared.ghostModeEnabled && DGSimpleSettings.shared.ghostReadOnAction {
         let namespace: MessageId.Namespace = peerId.namespace == Namespaces.Peer.SecretChat ? Namespaces.Message.SecretIncoming : Namespaces.Message.Cloud
         if let index = transaction.getTopPeerMessageIndex(peerId: peerId, namespace: namespace) {
             let _ = transaction.applyInteractiveReadMaxIndex(index)
@@ -795,14 +795,14 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
     var updatedMessages: [(Bool, EnqueueMessage)] = []
     outer: for (transformedMedia, message) in messages {
         var updatedMessage = message
-        if BGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = updatedMessage, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtectedIgnoringBahogramSetting() {
+        if DGSimpleSettings.shared.bypassForwardRestrictions, case let .forward(source, threadId, _, forwardedAttributes, correlationId) = updatedMessage, let sourceMessage = transaction.getMessage(source), sourceMessage.isCopyProtectedIgnoringDonutgramSetting() {
             var copiedAttributes = sourceMessage.attributes.filter { attribute in
                 return !(attribute is ReplyMessageAttribute) && !(attribute is ReplyThreadMessageAttribute) && !(attribute is ViewCountMessageAttribute) && !(attribute is ForwardCountMessageAttribute) && !(attribute is ReactionsMessageAttribute) && !(attribute is AutoclearTimeoutMessageAttribute) && !(attribute is AutoremoveTimeoutMessageAttribute)
             }
             copiedAttributes.append(contentsOf: forwardedAttributes.filter { !($0 is ForwardOptionsMessageAttribute) })
             updatedMessage = .message(text: sourceMessage.text, attributes: copiedAttributes, inlineStickers: [:], mediaReference: sourceMessage.media.first.flatMap(AnyMediaReference.standalone), threadId: threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: sourceMessage.groupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: [])
         }
-        let ghostSettings = BGSimpleSettings.shared
+        let ghostSettings = DGSimpleSettings.shared
         let shouldSendSilently = ghostSettings.ghostSendWithoutSound == 2 || (ghostSettings.ghostSendWithoutSound == 1 && ghostSettings.ghostModeEnabled)
         let shouldSchedule = ghostSettings.ghostModeEnabled && ghostSettings.ghostUseScheduledMessages
         if shouldSendSilently || shouldSchedule {

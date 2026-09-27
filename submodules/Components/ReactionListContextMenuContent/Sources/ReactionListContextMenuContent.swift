@@ -634,7 +634,7 @@ public final class ReactionListContextMenuContent: ContextControllerItemsContent
                 }
                 
                 let premiumConfiguration = PremiumConfiguration.with(appConfiguration: self.context.currentAppConfiguration.with { $0 })
-                let hidesPremiumStatus = bahogramHidesPremiumStatus(peerId: item.peer.id, accountPeerId: self.context.account.peerId)
+                let hidesPremiumStatus = donutgramHidesPremiumStatus(peerId: item.peer.id, accountPeerId: self.context.account.peerId)
                 var currentCredibilityIcon: EmojiStatusComponent.Content?
                 if item.peer.isScam {
                     currentCredibilityIcon = .text(color: presentationData.theme.chat.message.incoming.scamColor, string: presentationData.strings.Message_ScamAccount.uppercased())

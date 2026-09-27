@@ -1,5 +1,5 @@
 import Foundation
-import BGSettingsUI
+import DGSettingsUI
 import UIKit
 import Display
 import AccountContext
@@ -63,8 +63,8 @@ extension PeerInfoScreenNode {
                 isMyProfile: true,
                 profileGiftsContext: self.data?.profileGiftsContext
             ))
-        case .bahogram:
-            push(bgSettingsController(context: self.context))
+        case .donutgram:
+            push(dgSettingsController(context: self.context))
         case .stories:
             push(PeerInfoStoryGridScreen(context: self.context, peerId: self.context.account.peerId, scope: .saved))
         case .savedMessages:

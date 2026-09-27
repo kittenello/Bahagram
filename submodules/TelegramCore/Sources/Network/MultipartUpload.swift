@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 import TelegramApi
 import SwiftSignalKit
@@ -153,7 +153,7 @@ private final class MultipartUploadManager {
         
         if increaseParallelParts {
             self.parallelParts = 30
-        } else if BGSimpleSettings.shared.accelerateUpload && encryptionKey == nil {
+        } else if DGSimpleSettings.shared.accelerateUpload && encryptionKey == nil {
             self.parallelParts = 8
         } else {
             self.parallelParts = 3

@@ -75,8 +75,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/telegram-bazel-cache
-          key: bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-${{ github.sha }}
+          key: donutgram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-${{ github.sha }}
+          # The second prefix is the pre-rename cache, kept until master saves one under the new key.
           restore-keys: |
+            donutgram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-
             bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-
 
       - name: Prepare canonical source path
@@ -103,12 +105,12 @@ jobs:
 
           echo "Build number: $BUILD_NUMBER"
 
-          export CONFIG_PATH="$RUNNER_TEMP/bahogram-configuration.json"
+          export CONFIG_PATH="$RUNNER_TEMP/donutgram-configuration.json"
           python3 - <<'PY'
           import json
           import os
 
-          source = "build-system/bahogram-configuration.json"
+          source = "build-system/donutgram-configuration.json"
           destination = os.environ["CONFIG_PATH"]
 
           with open(source, "r", encoding="utf-8") as file:
@@ -116,7 +118,7 @@ jobs:
 
           # The repository's fake provisioning profile is issued for Telegram's
           # build-time bundle id. Sideloadly will re-sign the final IPA, so we
-          # change the installed identity to com.kittenello.bahogram after Bazel
+          # change the installed identity to com.kittenello.donutgram after Bazel
           # has produced the application.
           config["bundle_id"] = "ph.telegra.Telegraph"
           config["api_id"] = os.environ["TG_API_ID"]
@@ -156,7 +158,7 @@ jobs:
             exit 1
           fi
 
-          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.kittenello.bahogram" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.kittenello.donutgram" "$APP_PATH/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Donutgram" "$APP_PATH/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleName Donutgram" "$APP_PATH/Info.plist"
 

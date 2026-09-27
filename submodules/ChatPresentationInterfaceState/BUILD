@@ -10,7 +10,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Bahogram/BGSimpleSettings:BGSimpleSettings",
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

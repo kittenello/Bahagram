@@ -4,7 +4,7 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 import RangeSet
-import BGSimpleSettings
+import DGSimpleSettings
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
@@ -568,7 +568,7 @@ private final class MultipartFetchManager {
         if isStory {
             self.defaultPartSize = 512 * 1024
             if let size = size, size > self.defaultPartSize {
-                self.parallelParts = BGSimpleSettings.shared.downloadAcceleration == 2 ? 10 : (BGSimpleSettings.shared.downloadAcceleration == 1 ? 6 : 4)
+                self.parallelParts = DGSimpleSettings.shared.downloadAcceleration == 2 ? 10 : (DGSimpleSettings.shared.downloadAcceleration == 1 ? 6 : 4)
             } else {
                 self.parallelParts = 1
             }
@@ -578,7 +578,7 @@ private final class MultipartFetchManager {
                 self.parallelParts = 4 * 4
             } else {
                 self.defaultPartSize = 512 * 1024
-                self.parallelParts = BGSimpleSettings.shared.downloadAcceleration == 2 ? 20 : (BGSimpleSettings.shared.downloadAcceleration == 1 ? 12 : 8)
+                self.parallelParts = DGSimpleSettings.shared.downloadAcceleration == 2 ? 20 : (DGSimpleSettings.shared.downloadAcceleration == 1 ? 12 : 8)
             }
         } else {
             self.parallelParts = 1

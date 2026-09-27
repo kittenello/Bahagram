@@ -157,10 +157,10 @@ public struct Namespaces {
         public static let cachedCommunityPeerLinkRequests: Int8 = 54
         public static let richTextComposerDrafts: Int8 = 55
 
-        // Reserved for Bahogram-only local data. Keep this far away from
+        // Reserved for Donutgram-only local data. Keep this far away from
         // Telegram's upstream collection ids so normal upstream additions do
         // not collide with the edit-history cache.
-        public static let bahogramEditHistory: Int8 = 120
+        public static let donutgramEditHistory: Int8 = 120
     }
     
     public struct UnorderedItemList {
@@ -208,11 +208,11 @@ public extension LocalMessageTags {
     static let OutgoingLiveLocation = LocalMessageTags(rawValue: 1 << 0)
     static let OutgoingDeliveredToServer = LocalMessageTags(rawValue: 1 << 1)
 
-    // Local-only Bahogram state. These bits never leave Postbox and survive
+    // Local-only Donutgram state. These bits never leave Postbox and survive
     // application restarts together with the stored message.
-    static let bahogramSavedViewOnce = LocalMessageTags(rawValue: 1 << 28)
-    static let bahogramDeleted = LocalMessageTags(rawValue: 1 << 29)
-    static let bahogramHasEditHistory = LocalMessageTags(rawValue: 1 << 30)
+    static let donutgramSavedViewOnce = LocalMessageTags(rawValue: 1 << 28)
+    static let donutgramDeleted = LocalMessageTags(rawValue: 1 << 29)
+    static let donutgramHasEditHistory = LocalMessageTags(rawValue: 1 << 30)
 }
 
 public extension PendingMessageActionType {

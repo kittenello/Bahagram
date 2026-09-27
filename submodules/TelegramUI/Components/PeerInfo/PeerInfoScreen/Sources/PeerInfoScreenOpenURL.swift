@@ -9,7 +9,7 @@ import PresentationDataUtils
 import OverlayStatusController
 import HashtagSearchUI
 import UndoUI
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 
 extension PeerInfoScreenNode {
@@ -215,7 +215,7 @@ extension PeerInfoScreenNode {
         if self.peerId == self.context.account.peerId,
            self.data?.peer?.addressName?.caseInsensitiveCompare(value) != .orderedSame,
            self.data?.peer?.usernames.contains(where: { $0.username.caseInsensitiveCompare(value) == .orderedSame }) != true,
-           let visual = BGSimpleSettings.shared.visualUsernames(accountId: self.context.account.peerId.toInt64()).first(where: { $0.isActive && $0.name.caseInsensitiveCompare(value) == .orderedSame }) {
+           let visual = DGSimpleSettings.shared.visualUsernames(accountId: self.context.account.peerId.toInt64()).first(where: { $0.isActive && $0.name.caseInsensitiveCompare(value) == .orderedSame }) {
             progress?.set(.single(true))
             let _ = (self.context.sharedContext.makeCollectibleItemInfoScreenInitialData(
                 context: self.context,

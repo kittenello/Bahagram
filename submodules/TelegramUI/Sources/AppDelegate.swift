@@ -651,7 +651,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             // the App Groups entitlement. Keep the main app functional by using
             // its own sandbox as the shared-data root.
             let baseUrl = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let fallbackUrl = baseUrl.appendingPathComponent("Bahogram", isDirectory: true)
+            let fallbackUrl = baseUrl.appendingPathComponent("Donutgram", isDirectory: true)
             try? FileManager.default.createDirectory(at: fallbackUrl, withIntermediateDirectories: true)
             appGroupUrl = fallbackUrl
         }
@@ -962,8 +962,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon", isDefault: true)
                 ]
                 
-                // Bahogram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Baho*.alticon
-                for name in ["BahoSnout", "BahoSnoutHead", "BahoPigPlane", "BahoPigPlaneEars", "BahoPilot", "BahoPilotLens", "Baho3D", "Baho3DCircle", "BahoGlass", "BahoGlassEyes", "BahoKisser", "BahoKisserRed", "BahoCat"] {
+                // Donutgram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Baho*.alticon
+                for name in ["DgSnout", "DgSnoutHead", "DgPigPlane", "DgPigPlaneEars", "DgPilot", "DgPilotLens", "Dg3D", "Dg3DCircle", "DgGlass", "DgGlassEyes", "DgKisser", "DgKisserRed", "DgCat"] {
                     icons.append(PresentationAppIcon(name: name, imageName: name))
                 }
                 

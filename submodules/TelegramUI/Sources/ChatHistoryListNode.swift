@@ -38,7 +38,7 @@ import TextFormat
 import ChatNewThreadInfoItem
 import PhoneNumberFormat
 import Postbox
-import BGSimpleSettings
+import DGSimpleSettings
 
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
@@ -753,8 +753,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     private var genericReactionEffect: String?
     private var genericReactionEffectDisposable: Disposable?
     
-    private var bahogramSettingsObserver: NSObjectProtocol?
-    private var bahogramTranscriptionBackend = BGSimpleSettings.shared.transcriptionBackend
+    private var donutgramSettingsObserver: NSObjectProtocol?
+    private var donutgramTranscriptionBackend = DGSimpleSettings.shared.transcriptionBackend
     
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
     
@@ -1284,22 +1284,22 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
 
         self.loadNextGenericReactionEffect(context: context)
         
-        // The transcribe button reads the Bahogram transcription service at layout time, so re-layout the loaded messages when it changes.
-        self.bahogramSettingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
+        // The transcribe button reads the Donutgram transcription service at layout time, so re-layout the loaded messages when it changes.
+        self.donutgramSettingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
             guard let self = self else {
                 return
             }
-            let transcriptionBackend = BGSimpleSettings.shared.transcriptionBackend
-            if self.bahogramTranscriptionBackend != transcriptionBackend {
-                self.bahogramTranscriptionBackend = transcriptionBackend
+            let transcriptionBackend = DGSimpleSettings.shared.transcriptionBackend
+            if self.donutgramTranscriptionBackend != transcriptionBackend {
+                self.donutgramTranscriptionBackend = transcriptionBackend
                 self.updateLoadedMessageItems()
             }
         })
     }
     
     deinit {
-        if let bahogramSettingsObserver = self.bahogramSettingsObserver {
-            NotificationCenter.default.removeObserver(bahogramSettingsObserver)
+        if let donutgramSettingsObserver = self.donutgramSettingsObserver {
+            NotificationCenter.default.removeObserver(donutgramSettingsObserver)
         }
         self.historyDisposable.dispose()
         self.readHistoryDisposable.dispose()

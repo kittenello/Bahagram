@@ -6,7 +6,7 @@ import TelegramStringFormatting
 import TextFormat
 import LocalizedPeerData
 import AccountContext
-import BGSimpleSettings
+import DGSimpleSettings
 
 public enum MessageTimestampStatusFormat {
     case full
@@ -108,7 +108,7 @@ public func stringForMessageTimestampStatus(
         timestamp = orignalDate
     }
     
-    let withSeconds = BGSimpleSettings.shared.showMessageSeconds
+    let withSeconds = DGSimpleSettings.shared.showMessageSeconds
     var dateText = stringForMessageTimestamp(timestamp: timestamp, dateTimeFormat: dateTimeFormat, withSeconds: withSeconds)
     if timestamp == scheduleWhenOnlineTimestamp {
         dateText = "         "
@@ -250,17 +250,17 @@ public func stringForMessageTimestampStatus(
         }
     }
 
-    if message.localTags.contains(.bahogramHasEditHistory) {
-        // Drawn by bahogramDateAttributedString as an outline pencil icon.
-        dateText = "\(bahogramEditedMarker)\(dateText)"
+    if message.localTags.contains(.donutgramHasEditHistory) {
+        // Drawn by donutgramDateAttributedString as an outline pencil icon.
+        dateText = "\(donutgramEditedMarker)\(dateText)"
     }
-    if message.localTags.contains(.bahogramSavedViewOnce) {
+    if message.localTags.contains(.donutgramSavedViewOnce) {
         dateText = "1 просмотр · \(dateText)"
     }
-    if message.localTags.contains(.bahogramDeleted) {
-        // Private-use marker. bahogramDateAttributedString draws it as an inline
+    if message.localTags.contains(.donutgramDeleted) {
+        // Private-use marker. donutgramDateAttributedString draws it as an inline
         // trash icon tinted like the date, so it does not render as a colored emoji.
-        dateText = "\(bahogramDeletedMarker)\(dateText)"
+        dateText = "\(donutgramDeletedMarker)\(dateText)"
     }
     
     return dateText

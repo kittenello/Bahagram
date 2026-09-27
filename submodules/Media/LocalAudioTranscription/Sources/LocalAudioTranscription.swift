@@ -18,8 +18,8 @@ public enum LocalAudioTranscriptionError: Error {
     /// Decoding the audio or recognizing speech failed, or no speech was recognized.
     case failed
 
-    /// The text shown to the user (the Bahogram UI is Russian-only).
-    public var bahogramText: String {
+    /// The text shown to the user (the Donutgram UI is Russian-only).
+    public var donutgramText: String {
         switch self {
         case .notAuthorized:
             return "Нет доступа к распознаванию речи. Разрешите его в настройках iOS."

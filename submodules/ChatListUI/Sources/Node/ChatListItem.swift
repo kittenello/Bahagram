@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -32,7 +32,7 @@ import ShimmerEffect
 import GlassBackgroundComponent
 import ChatTitleView
 
-private func bahagramPresenceIcon(_ theme: PresentationTheme, state: RecentStatusOnlineIconState, voiceChat: Bool, offline: Bool) -> UIImage? {
+private func donutgramPresenceIcon(_ theme: PresentationTheme, state: RecentStatusOnlineIconState, voiceChat: Bool, offline: Bool) -> UIImage? {
     if !offline {
         return PresentationResourcesChatList.recentStatusOnlineIcon(theme, state: state, voiceChat: voiceChat)
     }
@@ -2216,7 +2216,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             if let item = self.item, case .chatList = item.index {
-                self.onlineNode.setImage(bahagramPresenceIcon(item.presentationData.theme, state: .highlighted, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline), color: nil, transition: transition)
+                self.onlineNode.setImage(donutgramPresenceIcon(item.presentationData.theme, state: .highlighted, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline), color: nil, transition: transition)
                 self.starView?.setOutlineColor(item.presentationData.theme.chatList.itemHighlightedBackgroundColor, transition: transition)
             }
         } else {
@@ -2238,10 +2238,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 let onlineIcon: UIImage?
                 let effectiveBackgroundColor: UIColor
                 if item.isPinned {
-                    onlineIcon = bahagramPresenceIcon(item.presentationData.theme, state: .pinned, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline)
+                    onlineIcon = donutgramPresenceIcon(item.presentationData.theme, state: .pinned, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline)
                     effectiveBackgroundColor = item.presentationData.theme.chatList.pinnedItemBackgroundColor
                 } else {
-                    onlineIcon = bahagramPresenceIcon(item.presentationData.theme, state: .regular, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline)
+                    onlineIcon = donutgramPresenceIcon(item.presentationData.theme, state: .regular, voiceChat: self.onlineIsVoiceChat, offline: self.onlineIsOffline)
                     effectiveBackgroundColor = item.presentationData.theme.chatList.itemBackgroundColor
                 }
                 self.onlineNode.setImage(onlineIcon, color: nil, transition: transition)
@@ -2529,7 +2529,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             var currentMutedIconImage: UIImage?
             var currentCredibilityIconContent: EmojiStatusComponent.Content?
             var currentVerifiedIconContent: EmojiStatusComponent.Content?
-            var currentBahogramBadge: (badge: BahogramBadge, peerName: String)?
+            var currentDonutgramBadge: (badge: DonutgramBadge, peerName: String)?
             var currentStatusIconContent: EmojiStatusComponent.Content?
             var currentStatusIconParticleColor: UIColor?
             var currentSecretIconImage: UIImage?
@@ -3580,7 +3580,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                                 currentCredibilityIconContent = .text(color: item.presentationData.theme.chat.message.incoming.scamColor, string: item.presentationData.strings.Message_ScamAccount.uppercased())
                             } else if peer.isFake {
                                 currentCredibilityIconContent = .text(color: item.presentationData.theme.chat.message.incoming.scamColor, string: item.presentationData.strings.Message_FakeAccount.uppercased())
-                            } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
+                            } else if donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
                                 currentCredibilityIconContent = nil
                             } else if let emojiStatus = peer.emojiStatus {
                                 currentStatusIconContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(2))
@@ -3597,9 +3597,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             if let verificationIconFileId = peer.verificationIconFileId {
                                 currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                             }
-                            if let badge = bahogramBadge(peerId: peer.id) {
-                                currentVerifiedIconContent = bahogramBadgeContent(badge, sizeType: .compact)
-                                currentBahogramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
+                            if let badge = donutgramBadge(peerId: peer.id) {
+                                currentVerifiedIconContent = donutgramBadgeContent(badge, sizeType: .compact)
+                                currentDonutgramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
                             }
                         }
                     default:
@@ -3617,7 +3617,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         currentCredibilityIconContent = .text(color: item.presentationData.theme.chat.message.incoming.scamColor, string: item.presentationData.strings.Message_ScamAccount.uppercased())
                     } else if peer.isFake {
                         currentCredibilityIconContent = .text(color: item.presentationData.theme.chat.message.incoming.scamColor, string: item.presentationData.strings.Message_FakeAccount.uppercased())
-                    } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
+                    } else if donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
                         currentCredibilityIconContent = nil
                     } else if let emojiStatus = peer.emojiStatus {
                         currentStatusIconContent = .animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(2))
@@ -3634,9 +3634,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     if let verificationIconFileId = peer.verificationIconFileId {
                         currentVerifiedIconContent = .animation(content: .customEmoji(fileId: verificationIconFileId), size: CGSize(width: 32.0, height: 32.0), placeholderColor: item.presentationData.theme.list.mediaPlaceholderColor, themeColor: item.presentationData.theme.list.itemAccentColor, loopMode: .count(0))
                     }
-                    if let badge = bahogramBadge(peerId: peer.id) {
-                        currentVerifiedIconContent = bahogramBadgeContent(badge, sizeType: .compact)
-                        currentBahogramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
+                    if let badge = donutgramBadge(peerId: peer.id) {
+                        currentVerifiedIconContent = donutgramBadgeContent(badge, sizeType: .compact)
+                        currentDonutgramBadge = (badge: badge, peerName: peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder))
                     }
                 }
             }
@@ -3943,7 +3943,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             if case .online = relativeStatus {
                                 online = true
                             }
-                            onlineIsOffline = !online && BGSimpleSettings.shared.showOnlineIndicator
+                            onlineIsOffline = !online && DGSimpleSettings.shared.showOnlineIndicator
                             animateOnline = true
                         } else if case let .channel(channel) = renderedPeer.peer, case .chatList = item.index {
                             onlineIsVoiceChat = true
@@ -4063,7 +4063,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             if !onlineIsVoiceChat {
-                online = BGSimpleSettings.shared.showOnlineIndicator && (online || onlineIsOffline)
+                online = DGSimpleSettings.shared.showOnlineIndicator && (online || onlineIsOffline)
             }
             let (onlineLayout, onlineApply) = onlineLayout(online, onlineIsVoiceChat)
             var animateContent = false
@@ -4491,13 +4491,13 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let onlineIcon: UIImage?
                     let effectiveBackgroundColor: UIColor
                     if strongSelf.reallyHighlighted {
-                        onlineIcon = bahagramPresenceIcon(item.presentationData.theme, state: .highlighted, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
+                        onlineIcon = donutgramPresenceIcon(item.presentationData.theme, state: .highlighted, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
                         effectiveBackgroundColor = item.presentationData.theme.chatList.itemHighlightedBackgroundColor
                     } else if case let .chatList(index) = item.index, index.pinningIndex != nil {
-                        onlineIcon = bahagramPresenceIcon(item.presentationData.theme, state: .pinned, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
+                        onlineIcon = donutgramPresenceIcon(item.presentationData.theme, state: .pinned, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
                         effectiveBackgroundColor = item.presentationData.theme.chatList.pinnedItemBackgroundColor
                     } else {
-                        onlineIcon = bahagramPresenceIcon(item.presentationData.theme, state: .regular, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
+                        onlineIcon = donutgramPresenceIcon(item.presentationData.theme, state: .regular, voiceChat: onlineIsVoiceChat, offline: onlineIsOffline)
                         effectiveBackgroundColor = item.presentationData.theme.chatList.itemBackgroundColor
                     }
                     strongSelf.onlineNode.setImage(onlineIcon, color: item.presentationData.theme.list.itemCheckColors.foregroundColor, transition: .immediate)
@@ -5321,9 +5321,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                         
                         let verifiedAction: (() -> Void)?
-                        if let bahogramBadgeInfo = currentBahogramBadge {
+                        if let donutgramBadgeInfo = currentDonutgramBadge {
                             verifiedAction = {
-                                presentBahogramBadge(bahogramBadgeInfo.badge, context: item.context, peerName: bahogramBadgeInfo.peerName)
+                                presentDonutgramBadge(donutgramBadgeInfo.badge, context: item.context, peerName: donutgramBadgeInfo.peerName)
                             }
                         } else {
                             verifiedAction = nil
@@ -5357,7 +5357,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         )
                         transition.updateFrame(view: verifiedIconView, frame: CGRect(origin: CGPoint(x: iconOrigin, y: floorToScreenPixels(titleFrame.maxY - lastLineRect.height * 0.5 - iconSize.height / 2.0) - UIScreenPixel), size: iconSize))
                         if isAfterTitle {
-                            // A Bahogram badge sits after the title: move the hidden/muted icons past it.
+                            // A Donutgram badge sits after the title: move the hidden/muted icons past it.
                             nextTitleIconOrigin += iconSize.width + 4.0
                         }
                     } else if let verifiedIconView = strongSelf.verifiedIconView {
@@ -5874,7 +5874,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         guard let item = self.item, self.frame.height > 0.0 else {
             return nil
         }
-        // Only a Bahogram badge in this slot has a tap action; it must win over the row's own tap.
+        // Only a Donutgram badge in this slot has a tap action; it must win over the row's own tap.
         if let verifiedIconView = self.verifiedIconView,
            self.verifiedIconComponent?.action != nil,
            let result = verifiedIconView.hitTest(self.view.convert(point, to: verifiedIconView), with: event) {

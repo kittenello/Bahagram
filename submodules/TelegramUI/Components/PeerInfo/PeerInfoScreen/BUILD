@@ -10,8 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Bahogram/BGSimpleSettings:BGSimpleSettings",
-        "//Bahogram/BGSettingsUI:BGSettingsUI",
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
+        "//Donutgram/DGSettingsUI:DGSettingsUI",
         "//submodules/AccountContext",
         "//submodules/AccountUtils",
         "//submodules/ActionSheetPeerItem",

@@ -111,7 +111,7 @@ public extension Message {
     }
     
     var minAutoremoveOrClearTimeout: Int32? {
-        if self.localTags.contains(.bahogramSavedViewOnce) {
+        if self.localTags.contains(.donutgramSavedViewOnce) {
             return nil
         }
         var timeout: Int32?

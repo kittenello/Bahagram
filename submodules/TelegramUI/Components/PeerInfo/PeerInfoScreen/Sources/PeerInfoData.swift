@@ -16,7 +16,7 @@ import PeerInfoVisualMediaPaneNode
 import PhotoResources
 import PeerInfoPaneNode
 import WebUI
-import BGSimpleSettings
+import DGSimpleSettings
 
 enum PeerInfoUpdatingAvatar {
     case none
@@ -1221,7 +1221,7 @@ func peerInfoScreenData(
                     let data = manager.with { manager -> PeerInfoStatusData? in
                         if let presence = manager.currentValue {
                             let timestamp = CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970
-                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !BGSimpleSettings.shared.relativeOnlineTime)
+                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime)
                             var isHiddenStatus = false
                             switch presence.status {
                             case .recently(let isHidden), .lastWeek(let isHidden), .lastMonth(let isHidden):

@@ -111,7 +111,7 @@ import VerifyAlertController
 import GiftViewScreen
 import PeerMessagesMediaPlaylist
 import EdgeEffect
-import BGSimpleSettings
+import DGSimpleSettings
 import Pasteboard
 import AccountPeerContextItem
 
@@ -186,7 +186,7 @@ enum PeerInfoSettingsSection {
     case powerSaving
     case businessSetup
     case profile
-    case bahogram
+    case donutgram
     case premiumManagement
     case stars
     case ton
@@ -286,7 +286,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     let sourceMessageId: MessageId?
     var canDeleteReaction = false
     var dataDisposable: Disposable?
-    private var bahogramSettingsObserver: NSObjectProtocol?
+    private var donutgramSettingsObserver: NSObjectProtocol?
     
     let activeActionDisposable = MetaDisposable()
     let resolveUrlDisposable = MetaDisposable()
@@ -418,12 +418,12 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         
         super.init()
         if peerId == context.account.peerId {
-            self.bahogramSettingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self.donutgramSettingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
                 self?.requestLayout(animated: false)
             }
         }
-        self.headerNode.displayBahogramTeamBadge = { badge, name in
-            presentBahogramBadge(badge, context: context, peerName: name)
+        self.headerNode.displayDonutgramTeamBadge = { badge, name in
+            presentDonutgramBadge(badge, context: context, peerName: name)
         }
         
         self.paneContainerNode.parentController = controller
@@ -2668,8 +2668,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     }
     
     deinit {
-        if let bahogramSettingsObserver = self.bahogramSettingsObserver {
-            NotificationCenter.default.removeObserver(bahogramSettingsObserver)
+        if let donutgramSettingsObserver = self.donutgramSettingsObserver {
+            NotificationCenter.default.removeObserver(donutgramSettingsObserver)
         }
         self.dataDisposable?.dispose()
         self.hiddenMediaDisposable?.dispose()

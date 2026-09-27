@@ -220,7 +220,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
     private var titleRightIcon: ChatTitleIcon = .none
     private var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
     private var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
-    private var bahogramTeamBadge: BahogramBadge?
+    private var donutgramTeamBadge: DonutgramBadge?
     private var titleStatusIcon: ChatTitleCredibilityIcon = .none
     
     private var presenceManager: PeerPresenceStatusManager?
@@ -269,7 +269,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                 var titleRightIcon: ChatTitleIcon = .none
                 var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
                 var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
-                var bahogramTeamBadge: BahogramBadge?
+                var donutgramTeamBadge: DonutgramBadge?
                 var titleStatusIcon: ChatTitleCredibilityIcon = .none
                 var isEnabled = true
                 switch titleContent {
@@ -310,7 +310,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                         titleCredibilityIcon = .fake
                                     } else if peer.isScam {
                                         titleCredibilityIcon = .scam
-                                    } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
+                                    } else if donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
                                         titleCredibilityIcon = .none
                                     } else if !hidePeerStatus, let emojiStatus = peer.emojiStatus {
                                         titleStatusIcon = .emojiStatus(emojiStatus)
@@ -325,9 +325,9 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                         titleVerifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
                                     }
                                 }
-                                if let badge = bahogramBadge(peerId: peer.id) {
+                                if let badge = donutgramBadge(peerId: peer.id) {
                                     titleVerifiedIcon = .verified
-                                    bahogramTeamBadge = badge
+                                    donutgramTeamBadge = badge
                                 }
                             }
                             if peerView.peerId.namespace == Namespaces.Peer.SecretChat {
@@ -465,8 +465,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                     self.titleVerifiedIcon = titleVerifiedIcon
                     updated = true
                 }
-                if bahogramTeamBadge != self.bahogramTeamBadge {
-                    self.bahogramTeamBadge = bahogramTeamBadge
+                if donutgramTeamBadge != self.donutgramTeamBadge {
+                    self.donutgramTeamBadge = donutgramTeamBadge
                     updated = true
                 }
                 
@@ -927,8 +927,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         case .premium:
             titleVerifiedContent = .premium(color: self.theme.list.itemAccentColor)
         case .verified:
-            if let bahogramTeamBadge = self.bahogramTeamBadge {
-                titleVerifiedContent = bahogramBadgeContent(bahogramTeamBadge, sizeType: .large)
+            if let donutgramTeamBadge = self.donutgramTeamBadge {
+                titleVerifiedContent = donutgramBadgeContent(donutgramTeamBadge, sizeType: .large)
             } else {
                 titleVerifiedContent = .verified(fillColor: self.theme.list.itemCheckColors.fillColor, foregroundColor: self.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
             }

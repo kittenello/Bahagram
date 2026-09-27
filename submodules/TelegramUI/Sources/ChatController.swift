@@ -118,7 +118,7 @@ import WallpaperGridScreen
 import VideoMessageCameraScreen
 import TopMessageReactions
 import AudioWaveform
-import BGSimpleSettings
+import DGSimpleSettings
 import PeerNameColorScreen
 import ChatEmptyNode
 import ChatMediaInputStickerGridItem
@@ -769,7 +769,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 self.updateNavigationBarPresentation()
             }
             if self.isNodeLoaded {
-                self.chatDisplayNode.updateBahogramSnowAppearance()
+                self.chatDisplayNode.updateDonutgramSnowAppearance()
             }
         }
         
@@ -6646,7 +6646,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 
                 var chatWallpaper = chatWallpaper
                 var chatTheme = chatTheme
-                if BGSimpleSettings.shared.disableCustomBackgrounds {
+                if DGSimpleSettings.shared.disableCustomBackgrounds {
                     chatWallpaper = nil
                     chatTheme = nil
                 }
@@ -8979,7 +8979,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func shouldDivertMessagesToScheduled(targetPeer: EnginePeer? = nil, messages: [EnqueueMessage]) -> Signal<Bool, NoError> {
-        let settings = BGSimpleSettings.shared
+        let settings = DGSimpleSettings.shared
         return .single(settings.ghostModeEnabled && settings.ghostUseScheduledMessages)
     }
     
@@ -9001,7 +9001,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             
             var messages = messages
             var shouldOpenScheduledMessages = false
-            let isGhostScheduledSend = BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostUseScheduledMessages
+            let isGhostScheduledSend = DGSimpleSettings.shared.ghostModeEnabled && DGSimpleSettings.shared.ghostUseScheduledMessages
             
             if shouldDivert {
                 let delay: Int32 = isGhostScheduledSend ? ghostScheduledMessageDelay : 10 * 24 * 60 * 60
@@ -9029,7 +9029,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 let _ = (enqueueMessages(account: self.context.account, peerId: peerId, messages: self.transformEnqueueMessages(messages, postpone: postpone))
                 |> deliverOnMainQueue).startStandalone(next: { [weak self] _ in
                     if isGhostScheduledSend {
-                        BGSimpleSettings.shared.requestGhostOffline()
+                        DGSimpleSettings.shared.requestGhostOffline()
                     }
                     if let strongSelf = self, strongSelf.presentationInterfaceState.subject != .scheduledMessages {
                         strongSelf.chatDisplayNode.historyNode.scrollToEndOfHistory()

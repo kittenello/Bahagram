@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import TelegramCore
@@ -541,10 +541,10 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             var updatedDateText = arguments.dateText
             if arguments.edited {
                 if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp {
-                } else if BGSimpleSettings.shared.editedIcon {
+                } else if DGSimpleSettings.shared.editedIcon {
                     // A message with saved edit history already has the pencil; one is enough.
-                    if !updatedDateText.contains(bahogramEditedMarker) {
-                        updatedDateText = "\(bahogramEditedMarker)\(updatedDateText)"
+                    if !updatedDateText.contains(donutgramEditedMarker) {
+                        updatedDateText = "\(donutgramEditedMarker)\(updatedDateText)"
                     }
                 } else {
                     updatedDateText = "\(arguments.presentationData.strings.Conversation_MessageEditedLabel) \(updatedDateText)"
@@ -555,7 +555,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             }
             
             let dateFont = Font.regular(floor(arguments.presentationData.fontSize.baseDisplaySize * 11.0 / 17.0))
-            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: bahogramDateAttributedString(updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: donutgramDateAttributedString(updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
             let checkOffset = floor(arguments.presentationData.fontSize.baseDisplaySize * 6.0 / 17.0)
             
@@ -1480,7 +1480,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
 }
 
 public func shouldDisplayInlineDateReactions(message: EngineMessage, isPremium: Bool, forceInline: Bool) -> Bool {
-    let mask = BGSimpleSettings.shared.hiddenReactions
+    let mask = DGSimpleSettings.shared.hiddenReactions
     if mask == 0 {
         return false
     }

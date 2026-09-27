@@ -84,8 +84,8 @@ func managedAutoremoveMessageOperations(network: Network, postbox: Postbox, isRe
                     if let message = transaction.getMessage(entry.messageId) {
                         if message.id.peerId.namespace == Namespaces.Peer.SecretChat || isRemove {
                             _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [entry.messageId])
-                        } else if bahogramKeepsSavedViewOnce(message) {
-                            // Bahogram: a saved view-once message keeps its media. Dropping
+                        } else if donutgramKeepsSavedViewOnce(message) {
+                            // Donutgram: a saved view-once message keeps its media. Dropping
                             // the entry lets the queue move on to the next message.
                             transaction.clearTimestampBasedAttribute(id: entry.messageId, tag: tag)
                             Logger.shared.log("Autoremove", "Keeping saved view-once media for \(entry.messageId)")

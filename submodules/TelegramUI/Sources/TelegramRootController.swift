@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -214,11 +214,11 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         contactsController.switchToChatsController = {  [weak self] in
             self?.openChatsController(activateSearch: false)
         }
-        if BGSimpleSettings.shared.showContactsTab {
+        if DGSimpleSettings.shared.showContactsTab {
             controllers.append(contactsController)
         }
         
-        if showCallsTab && BGSimpleSettings.shared.showCallsTab {
+        if showCallsTab && DGSimpleSettings.shared.showCallsTab {
             controllers.append(callListController)
         }
         controllers.append(chatListController)
@@ -243,7 +243,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         controllers.append(accountSettingsController)
                 
         tabBarController.setControllers(controllers, selectedIndex: restoreSettignsController != nil ? (controllers.count - 1) : (controllers.count - 2))
-        if BGSimpleSettings.shared.hideTabBar {
+        if DGSimpleSettings.shared.hideTabBar {
             tabBarController.updateIsTabBarHidden(true, transition: .immediate)
         }
         
@@ -260,10 +260,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             return
         }
         var controllers: [ViewController] = []
-        if BGSimpleSettings.shared.showContactsTab {
+        if DGSimpleSettings.shared.showContactsTab {
             controllers.append(self.contactsController!)
         }
-        if showCallsTab && BGSimpleSettings.shared.showCallsTab {
+        if showCallsTab && DGSimpleSettings.shared.showCallsTab {
             controllers.append(self.callListController!)
         }
         controllers.append(self.chatListController!)

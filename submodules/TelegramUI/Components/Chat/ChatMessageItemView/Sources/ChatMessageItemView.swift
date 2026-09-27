@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -691,9 +691,9 @@ open class ChatMessageItemView: ListViewItemNode, ChatMessageItemNodeProtocol {
     open func setupItem(_ item: ChatMessageItem, synchronousLoad: Bool) {
         self.item = item
         let isDeleted = item.content.contains(where: { element in
-            element.0.localTags.contains(.bahogramDeleted)
+            element.0.localTags.contains(.donutgramDeleted)
         })
-        self.alpha = isDeleted && BGSimpleSettings.shared.semiTransparentDeletedMessages ? 0.55 : 1.0
+        self.alpha = isDeleted && DGSimpleSettings.shared.semiTransparentDeletedMessages ? 0.55 : 1.0
     }
     
     open func updateAccessibilityData(_ accessibilityData: ChatMessageAccessibilityData) {

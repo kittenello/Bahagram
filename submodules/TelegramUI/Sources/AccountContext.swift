@@ -24,7 +24,7 @@ import DCTAnimationCacheImpl
 import DCTMultiAnimationRendererImpl
 import AppBundle
 import DirectMediaImageCache
-import BGSimpleSettings
+import DGSimpleSettings
 
 private final class DeviceSpecificContactImportContext {
     let disposable = MetaDisposable()
@@ -821,20 +821,20 @@ public final class AccountContextImpl: AccountContext {
     }
     
     public func requestCall(peerId: PeerId, isVideo: Bool, completion: @escaping () -> Void) {
-        if BGSimpleSettings.shared.confirmCalls {
+        if DGSimpleSettings.shared.confirmCalls {
             let presentationData = self.sharedContext.currentPresentationData.with { $0 }
             self.sharedContext.mainWindow?.present(textAlertController(context: self, title: isVideo ? "Начать видеозвонок?" : "Начать звонок?", text: "", actions: [
                 TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_Cancel, action: {}),
                 TextAlertAction(type: .genericAction, title: presentationData.strings.Common_OK, action: { [weak self] in
-                    self?.requestCallWithoutBahogramConfirmation(peerId: peerId, isVideo: isVideo, completion: completion)
+                    self?.requestCallWithoutDonutgramConfirmation(peerId: peerId, isVideo: isVideo, completion: completion)
                 })
             ]), on: .root)
             return
         }
-        self.requestCallWithoutBahogramConfirmation(peerId: peerId, isVideo: isVideo, completion: completion)
+        self.requestCallWithoutDonutgramConfirmation(peerId: peerId, isVideo: isVideo, completion: completion)
     }
 
-    private func requestCallWithoutBahogramConfirmation(peerId: PeerId, isVideo: Bool, completion: @escaping () -> Void) {
+    private func requestCallWithoutDonutgramConfirmation(peerId: PeerId, isVideo: Bool, completion: @escaping () -> Void) {
         guard let callResult = self.sharedContext.callManager?.requestCall(context: self, peerId: peerId, isVideo: isVideo, endCurrentIfAny: false) else {
             return
         }

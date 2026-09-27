@@ -29,7 +29,7 @@ import LiveLocationHeaderPanelComponent
 import ChatListHeaderNoticeComponent
 import ChatListFilterTabContainerNode
 import GlassControls
-import BGSimpleSettings
+import DGSimpleSettings
 
 public enum ChatListContainerNodeFilter: Equatable {
     case all
@@ -2220,7 +2220,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                                 
                                 if isPrimary {
                                     if let controller = self.controller, case .chatList(.root) = controller.location,
-                                       BGSimpleSettings.shared.hideArchive && BGSimpleSettings.shared.openArchiveOnPull,
+                                       DGSimpleSettings.shared.hideArchive && DGSimpleSettings.shared.openArchiveOnPull,
                                        self.mainContainerNode.currentItemNode.hasItemsToBeRevealed() {
                                         self.mainContainerNode.groupSelected?(.archive)
                                     } else {
@@ -2466,7 +2466,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
 }
 
 func shouldDisplayStoriesInChatListHeader(storySubscriptions: EngineStorySubscriptions, isHidden: Bool) -> Bool {
-    if BGSimpleSettings.shared.hideStories {
+    if DGSimpleSettings.shared.hideStories {
         return false
     }
     if !storySubscriptions.items.isEmpty {

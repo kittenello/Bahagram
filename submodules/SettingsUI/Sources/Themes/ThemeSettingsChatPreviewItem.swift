@@ -119,9 +119,9 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
 }
 
-public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemListSectionId) -> ListViewItem {
+public func donutgramMessagePreviewItem(context: AccountContext, sectionId: ItemListSectionId) -> ListViewItem {
     let current = context.sharedContext.currentPresentationData.with { $0 }
-    // The bubbles apply the Bahogram tail/seconds/reply settings themselves, so keep the real corners (hasTails = false
+    // The bubbles apply the Donutgram tail/seconds/reply settings themselves, so keep the real corners (hasTails = false
     // would also hide the time) and a non-blue reply author, which stays distinguishable from the accent when colors are off.
     return ThemeSettingsChatPreviewItem(
         context: context,

@@ -3,7 +3,7 @@ import TelegramApi
 import Postbox
 import SwiftSignalKit
 import MtProtoKit
-import BGSimpleSettings
+import DGSimpleSettings
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
@@ -38,7 +38,7 @@ private final class AccountPresenceManagerImpl {
             }
         })
 
-        self.settingsObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.didChangeNotification, object: BGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
+        self.settingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: DGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
             guard let self else {
                 return
             }
@@ -52,7 +52,7 @@ private final class AccountPresenceManagerImpl {
                 self.updatePresence(self.wasOnline)
             }
         })
-        self.offlineRequestObserver = NotificationCenter.default.addObserver(forName: BGSimpleSettings.requestOfflineNotification, object: BGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
+        self.offlineRequestObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.requestOfflineNotification, object: DGSimpleSettings.shared, queue: nil, using: { [weak self] _ in
             self?.queue.async { [weak self] in
                 self?.requestOfflinePresence()
             }
@@ -86,7 +86,7 @@ private final class AccountPresenceManagerImpl {
     }
     
     private func updatePresence(_ isOnline: Bool) {
-        let ghost = BGSimpleSettings.shared
+        let ghost = DGSimpleSettings.shared
         let effectiveOnline = isOnline && !(ghost.ghostModeEnabled && !ghost.ghostSendOnline)
         let request: Signal<Api.Bool, MTRpcError>
         if effectiveOnline {

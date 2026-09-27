@@ -44,7 +44,7 @@ import PlainButtonComponent
 import BundleIconComponent
 import MarqueeComponent
 import EdgeEffect
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 
 final class PeerInfoHeaderNavigationTransition {
@@ -177,7 +177,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     var displayAvatarContextMenu: ((ASDisplayNode, ContextGesture?) -> Void)?
     var displayCopyContextMenu: ((ASDisplayNode, Bool, Bool) -> Void)?
     var displayEmojiPackTooltip: (() -> Void)?
-    var displayBahogramTeamBadge: ((BahogramBadge, String) -> Void)?
+    var displayDonutgramTeamBadge: ((DonutgramBadge, String) -> Void)?
     
     var displaySavedMusic: (() -> Void)?
     
@@ -492,7 +492,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     
     private var currentCredibilityIcon: CredibilityIcon?
     private var currentVerifiedIcon: CredibilityIcon?
-    private var currentBahogramTeamPeerName: String?
+    private var currentDonutgramTeamPeerName: String?
     private var currentStatusIcon: CredibilityIcon?
     
     private var currentPanelStatusData: PeerInfoStatusData?
@@ -606,7 +606,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 credibilityIcon = .fake
             } else if peer.isScam {
                 credibilityIcon = .scam
-            } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
+            } else if donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: self.context.account.peerId) {
                 credibilityIcon = .none
             } else if let emojiStatus = peer.emojiStatus {
                 statusIcon = .emojiStatus(emojiStatus)
@@ -621,7 +621,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             if let verificationIconFileId = peer.verificationIconFileId {
                 verifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
             }
-            if bahogramBadge(peerId: peer.id) != nil {
+            if donutgramBadge(peerId: peer.id) != nil {
                 verifiedIcon = .verified
             }
         }
@@ -1093,13 +1093,13 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         
         do {
             self.currentVerifiedIcon = verifiedIcon
-            let teamBadge = peer.flatMap { bahogramBadge(peerId: $0.id) }
+            let teamBadge = peer.flatMap { donutgramBadge(peerId: $0.id) }
             let teamPeerName = teamBadge == nil ? nil : peer?.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
-            self.currentBahogramTeamPeerName = teamPeerName
+            self.currentDonutgramTeamPeerName = teamPeerName
             var teamBadgeAction: (() -> Void)?
             if let teamBadge, let teamPeerName {
                 teamBadgeAction = { [weak self] in
-                    self?.displayBahogramTeamBadge?(teamBadge, teamPeerName)
+                    self?.displayDonutgramTeamBadge?(teamBadge, teamPeerName)
                 }
             }
             
@@ -1108,8 +1108,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             switch verifiedIcon {
             case .verified:
                 if let teamBadge {
-                    emojiRegularStatusContent = bahogramBadgeContent(teamBadge, sizeType: .large)
-                    emojiExpandedStatusContent = bahogramBadgeContent(teamBadge, sizeType: .large)
+                    emojiRegularStatusContent = donutgramBadgeContent(teamBadge, sizeType: .large)
+                    emojiExpandedStatusContent = donutgramBadgeContent(teamBadge, sizeType: .large)
                 } else {
                     emojiRegularStatusContent = .verified(fillColor: presentationData.theme.list.itemCheckColors.fillColor, foregroundColor: presentationData.theme.list.itemCheckColors.foregroundColor, sizeType: .large)
                     emojiExpandedStatusContent = .verified(fillColor: navigationContentsAccentColor, foregroundColor: .clear, sizeType: .large)
@@ -1245,7 +1245,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 title = "" //"\u{00A0}"
             }
             if title.isEmpty {
-                if !BGSimpleSettings.shared.hidePhoneNumber, case let .user(user) = peer, let phone = user.phone {
+                if !DGSimpleSettings.shared.hidePhoneNumber, case let .user(user) = peer, let phone = user.phone {
                     title = formatPhoneNumber(context: self.context, number: phone)
                 } else if let addressName = peer.addressName {
                     title = "@\(addressName)"
@@ -1259,9 +1259,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
             
             if self.isSettings, case let .user(user) = peer {
-                let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-                let phone = BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : (user.phone ?? "")
-                var subtitle = BGSimpleSettings.shared.hidePhoneNumber ? "" : formatPhoneNumber(context: self.context, number: phone)
+                let visualPhone = DGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+                let phone = DGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : (user.phone ?? "")
+                var subtitle = DGSimpleSettings.shared.hidePhoneNumber ? "" : formatPhoneNumber(context: self.context, number: phone)
                 
                 if let mainUsername = user.addressName, !mainUsername.isEmpty {
                     subtitle = subtitle.isEmpty ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
@@ -2060,7 +2060,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             self.currentPendingStarRating = nil
         }
         if peer?.id == self.context.account.peerId,
-           let visualLevel = BGSimpleSettings.shared.visualRatingLevel(accountId: self.context.account.peerId.toInt64()) {
+           let visualLevel = DGSimpleSettings.shared.visualRatingLevel(accountId: self.context.account.peerId.toInt64()) {
             let realRating = self.currentStarRating
             self.currentStarRating = TelegramStarRating(
                 level: Int32(visualLevel),
@@ -2826,7 +2826,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         }
         
         if !(self.state?.isEditing ?? false) {
-            if self.currentBahogramTeamPeerName != nil {
+            if self.currentDonutgramTeamPeerName != nil {
                 let iconFrame = self.titleVerifiedIconView.convert(self.titleVerifiedIconView.bounds, to: self.view)
                 let expandedIconFrame = self.titleExpandedVerifiedIconView.convert(self.titleExpandedVerifiedIconView.bounds, to: self.view)
                 if expandedIconFrame.contains(point) && self.isAvatarExpanded {

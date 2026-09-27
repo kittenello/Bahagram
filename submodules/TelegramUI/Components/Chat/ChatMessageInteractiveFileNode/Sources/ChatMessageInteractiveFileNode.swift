@@ -23,7 +23,7 @@ import ShimmerEffect
 import LocalAudioTranscription
 import TextSelectionNode
 import AudioTranscriptionPendingIndicatorComponent
-import BGSimpleSettings
+import DGSimpleSettings
 import UndoUI
 import TelegramNotices
 import ChatControllerInteraction
@@ -388,7 +388,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         }
         
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
-        let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: voiceMessageDuration(arguments.file), premiumConfiguration: premiumConfiguration))
+        let useAppleTranscription = DGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: voiceMessageDuration(arguments.file), premiumConfiguration: premiumConfiguration))
         
         if !context.isPremium && !useAppleTranscription, case .inProgress = self.audioTranscriptionState {
             return
@@ -467,7 +467,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         strongSelf.transcribeDisposable?.dispose()
                         strongSelf.transcribeDisposable = nil
                         
-                        if BGSimpleSettings.shared.transcriptionBackend != .telegram {
+                        if DGSimpleSettings.shared.transcriptionBackend != .telegram {
                             // Outside explicit Telegram mode the free-trial limits stay hidden: when Telegram refuses (e.g. the free attempts were used up on another device), transcribe on device instead.
                             if case .error = result {
                                 strongSelf.startLocalTranscription()
@@ -552,7 +552,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         if case .notAuthorized = error {
             openSettingsText = "Настройки"
         }
-        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.bahogramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
+        let tipController = UndoOverlayController(presentationData: presentationData, content: .universal(animation: "anim_voiceToText", scale: 0.065, colors: [:], title: nil, text: error.donutgramText, customUndoText: openSettingsText, timeout: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { action in
             if case .undo = action {
                 context.sharedContext.applicationBindings.openSettings()
             }
@@ -821,7 +821,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 var updatedAudioTranscriptionState: AudioTranscriptionButtonComponent.TranscriptionState?
                 
                 let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
-                let useAppleTranscription = BGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: audioDuration, premiumConfiguration: premiumConfiguration))
+                let useAppleTranscription = DGSimpleSettings.shared.usesAppleTranscription(telegramCanTranscribe: telegramCanTranscribeVoice(associatedData: arguments.associatedData, incoming: arguments.incoming, audioDuration: audioDuration, premiumConfiguration: premiumConfiguration))
                 
                 var displayTranscribe = false
                 if Namespaces.Message.allNonRegular.contains(arguments.message.id.namespace) {

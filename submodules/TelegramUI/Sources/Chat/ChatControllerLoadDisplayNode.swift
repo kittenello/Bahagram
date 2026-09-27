@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import Postbox
 import SwiftSignalKit
@@ -1043,7 +1043,7 @@ extension ChatControllerImpl {
                 let effectiveSilentPosting = silentPosting ?? strongSelf.presentationInterfaceState.interfaceState.silentPosting
                 let transformedMessages = strongSelf.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)
                 
-                if strongSelf.bahogramInterceptLinkSend(transformedMessages, peerId: peerId) {
+                if strongSelf.donutgramInterceptLinkSend(transformedMessages, peerId: peerId) {
                     return
                 }
                 
@@ -1070,7 +1070,7 @@ extension ChatControllerImpl {
                 |> deliverOnMainQueue).start(next: { shouldDivert in
                     let signal: Signal<[MessageId?], NoError>
                     var shouldFlushSendAction = false
-                    let isGhostScheduledSend = BGSimpleSettings.shared.ghostModeEnabled && BGSimpleSettings.shared.ghostUseScheduledMessages
+                    let isGhostScheduledSend = DGSimpleSettings.shared.ghostModeEnabled && DGSimpleSettings.shared.ghostUseScheduledMessages
                     let divertedScheduleDelay: Int32 = isGhostScheduledSend ? ghostScheduledMessageDelay : 10 * 24 * 60 * 60
                     if forwardSourcePeerIds.count > 1 {
                         var forwardedMessages = forwardedMessages

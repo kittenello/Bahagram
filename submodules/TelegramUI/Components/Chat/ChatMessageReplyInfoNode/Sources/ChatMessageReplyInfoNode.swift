@@ -18,7 +18,7 @@ import ChatMessageItemCommon
 import MessageInlineBlockBackgroundView
 import CheckNode
 import EmojiTextAttachmentView
-import BGSimpleSettings
+import DGSimpleSettings
 
 public enum ChatMessageReplyInfoType {
     case bubble(incoming: Bool)
@@ -227,7 +227,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
             }
             
             var giftEmojiFileId: Int64?
-            if !BGSimpleSettings.shared.disableColoredReplies {
+            if !DGSimpleSettings.shared.disableColoredReplies {
             switch author?.nameColor {
             case let .preset(nameColor):
                 let colors = arguments.context.peerNameColors.get(nameColor, dark: arguments.presentationData.theme.theme.overallDarkAppearance)

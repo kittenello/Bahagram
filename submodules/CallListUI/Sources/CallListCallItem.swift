@@ -539,7 +539,7 @@ class CallListCallItemNode: ItemListRevealOptionsItemNode {
                     currentCredibilityIconImage = PresentationResourcesChatList.fakeIcon(item.presentationData.theme, strings: item.presentationData.strings, type: .regular)
                 } else if peer.isVerified {
                     currentCredibilityIconImage = PresentationResourcesChatList.verifiedIcon(item.presentationData.theme)
-                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && !bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
+                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && !donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId) {
                     currentCredibilityIconImage = PresentationResourcesChatList.premiumIcon(item.presentationData.theme)
                 }
             }

@@ -117,7 +117,7 @@ let colorGray = UIColor(rgb: 0x8E8E93)
 let colorViolet = UIColor(rgb: 0x5E5CE6)
 
 public struct PresentationResourcesSettings {
-    public static func bahogramOutlineIcon(_ symbolName: String, color: UIColor, backgroundColor: UIColor? = nil) -> UIImage? {
+    public static func donutgramOutlineIcon(_ symbolName: String, color: UIColor, backgroundColor: UIColor? = nil) -> UIImage? {
         let configuration = UIImage.SymbolConfiguration(pointSize: 19.0, weight: .regular)
         guard let symbol = (UIImage(systemName: symbolName, withConfiguration: configuration) ?? UIImage(systemName: "gearshape", withConfiguration: configuration))?.withTintColor(color, renderingMode: .alwaysOriginal) else {
             return nil
