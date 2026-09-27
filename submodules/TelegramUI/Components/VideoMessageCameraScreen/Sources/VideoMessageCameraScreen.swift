@@ -880,6 +880,11 @@ public class VideoMessageCameraScreen: ViewController {
         fileprivate var additionalPreviewView: CameraSimplePreviewView
         private var progressView: RecordingProgressView
         private let loadingView: LoadingEffectView
+        private let zoomButtonsView = UIStackView()
+        private var zoomButtons: [UIButton] = []
+        private let zoomSlider = UISlider()
+        private let zoomLabel = UILabel()
+        private var displayedZoom: CGFloat = 1.0
         
         private var resultPreviewView: ResultPreviewView?
         
@@ -951,7 +956,9 @@ public class VideoMessageCameraScreen: ViewController {
             self.previewContainerView.addSubview(self.previewContainerContentView)
                         
             let isDualCameraEnabled = Camera.isDualCameraSupported(forRoundVideo: true)
-            let isFrontPosition = !BGSimpleSettings.shared.startRoundVideoWithRearCamera
+            let cameraSettings = BGSimpleSettings.shared
+            let initialCamera = cameraSettings.rememberRoundVideoCamera ? cameraSettings.lastRoundVideoCamera : cameraSettings.roundVideoCamera
+            let isFrontPosition = initialCamera != .rear
             
             self.mainPreviewView = CameraSimplePreviewView(frame: .zero, main: true, roundVideo: true)
             self.additionalPreviewView = CameraSimplePreviewView(frame: .zero, main: false, roundVideo: true)
@@ -991,6 +998,37 @@ public class VideoMessageCameraScreen: ViewController {
             self.view.addSubview(self.containerView)
             
             self.containerView.addSubview(self.previewContainerView)
+
+            self.zoomButtonsView.axis = .horizontal
+            self.zoomButtonsView.spacing = 4.0
+            self.zoomButtonsView.distribution = .fillEqually
+            self.zoomButtonsView.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
+            self.zoomButtonsView.layer.cornerRadius = 22.0
+            self.zoomButtonsView.clipsToBounds = true
+            for zoom in [1, 2, 5] {
+                let button = UIButton(type: .system)
+                button.tag = zoom
+                button.setTitle(zoom == 1 ? "1×" : "\(zoom)", for: .normal)
+                button.setTitleColor(.white, for: .normal)
+                button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
+                self.zoomButtonsView.addArrangedSubview(button)
+                self.zoomButtons.append(button)
+            }
+            self.containerView.addSubview(self.zoomButtonsView)
+            self.zoomSlider.minimumValue = 1.0
+            self.zoomSlider.maximumValue = 5.0
+            self.zoomSlider.value = 1.0
+            self.zoomSlider.addTarget(self, action: #selector(self.zoomSliderChanged(_:)), for: .valueChanged)
+            self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
+            self.zoomSlider.layer.cornerRadius = 22.0
+            self.containerView.addSubview(self.zoomSlider)
+            self.zoomLabel.textAlignment = .center
+            self.zoomLabel.textColor = .white
+            self.zoomLabel.backgroundColor = .systemBlue
+            self.zoomLabel.layer.cornerRadius = 17.0
+            self.zoomLabel.clipsToBounds = true
+            self.containerView.addSubview(self.zoomLabel)
+            self.updateZoomControls()
 
             self.previewContainerContentView.addSubview(self.mainPreviewView)
             if isDualCameraEnabled {
@@ -1093,6 +1131,9 @@ public class VideoMessageCameraScreen: ViewController {
                     return
                 }
                 self.cameraState = self.cameraState.updatedPosition(position).updatedFlashMode(flashMode)
+                if BGSimpleSettings.shared.rememberRoundVideoCamera {
+                    BGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
+                }
                 
                 if !self.cameraState.isDualCameraEnabled {
                     self.animatePositionChange()
@@ -1119,11 +1160,48 @@ public class VideoMessageCameraScreen: ViewController {
             case .changed:
                 let scale = gestureRecognizer.scale
                 camera.setZoomDelta(scale)
+                self.displayedZoom = min(max(self.displayedZoom * scale, 1.0), CGFloat(camera.metrics.zoomLevels.max() ?? 5.0))
+                self.updateZoomControls()
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
-                camera.rampZoom(1.0, rate: 8.0)
+                if !BGSimpleSettings.shared.staticRoundVideoZoom {
+                    camera.rampZoom(1.0, rate: 8.0)
+                    self.displayedZoom = 1.0
+                    self.updateZoomControls()
+                }
             default:
                 break
+            }
+        }
+
+        @objc private func zoomButtonPressed(_ sender: UIButton) {
+            self.setDisplayedZoom(CGFloat(sender.tag))
+        }
+
+        @objc private func zoomSliderChanged(_ sender: UISlider) {
+            self.setDisplayedZoom(CGFloat(sender.value))
+        }
+
+        private func setDisplayedZoom(_ value: CGFloat) {
+            let maximum = CGFloat(self.camera?.metrics.zoomLevels.max() ?? 5.0)
+            self.displayedZoom = min(max(value, 1.0), maximum)
+            self.camera?.setZoomLevel(self.displayedZoom - 1.0)
+            self.updateZoomControls()
+        }
+
+        private func updateZoomControls() {
+            let enabled = BGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil
+            let expanded = self.displayedZoom > 1.05
+            self.zoomButtonsView.isHidden = !enabled || expanded
+            self.zoomSlider.isHidden = !enabled || !expanded
+            self.zoomLabel.isHidden = !enabled || !expanded
+            let maximum = self.camera.map { CGFloat($0.metrics.zoomLevels.max() ?? 5.0) } ?? 5.0
+            self.zoomSlider.maximumValue = Float(maximum)
+            self.zoomSlider.value = Float(self.displayedZoom)
+            self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
+            for button in self.zoomButtons {
+                button.isHidden = CGFloat(button.tag) > maximum
+                button.backgroundColor = abs(self.displayedZoom - CGFloat(button.tag)) < 0.05 ? .systemBlue : .clear
             }
         }
                 
@@ -1519,6 +1597,11 @@ public class VideoMessageCameraScreen: ViewController {
                 transition.setFrame(view: self.previewContainerView, frame: previewFrame)
                 transition.setFrame(view: self.previewContainerContentView, frame: CGRect(origin: CGPoint(), size: previewFrame.size))
             }
+            let zoomY = min(previewFrame.maxY + 18.0, backgroundFrame.height - 55.0)
+            self.zoomButtonsView.frame = CGRect(x: (backgroundFrame.width - 132.0) / 2.0, y: zoomY, width: 132.0, height: 44.0)
+            self.zoomSlider.frame = CGRect(x: 36.0, y: zoomY, width: backgroundFrame.width - 72.0, height: 44.0)
+            self.zoomLabel.frame = CGRect(x: (backgroundFrame.width - 72.0) / 2.0, y: zoomY - 44.0, width: 72.0, height: 34.0)
+            self.updateZoomControls()
             transition.setCornerRadius(layer: self.previewContainerContentView.layer, cornerRadius: previewSide / 2.0)
                         
             let previewBounds = CGRect(origin: .zero, size: previewFrame.size)
@@ -1648,6 +1731,8 @@ public class VideoMessageCameraScreen: ViewController {
     fileprivate let completion: (EnqueueMessage?, Bool?, Int32?, Int32?) -> Void
     
     private var audioSessionDisposable: Disposable?
+    private var audioSessionReady = false
+    private var didConfigureCamera = false
     
     private let hapticFeedback = HapticFeedback()
     
@@ -1826,6 +1911,32 @@ public class VideoMessageCameraScreen: ViewController {
     
     deinit {
         self.audioSessionDisposable?.dispose()
+    }
+
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        self.configureCameraIfReady()
+    }
+
+    private func configureCameraIfReady() {
+        guard self.audioSessionReady, !self.didConfigureCamera, self.view.window != nil else { return }
+        self.didConfigureCamera = true
+        if BGSimpleSettings.shared.roundVideoCamera == .ask {
+            let chooser = UIAlertController(title: "Камера в кружках", message: nil, preferredStyle: .alert)
+            for (title, position) in [("Фронтальная", Camera.Position.front), ("Основная", Camera.Position.back)] {
+                chooser.addAction(UIAlertAction(title: title, style: .default, handler: { [weak self] _ in
+                    guard let self else { return }
+                    self.node.cameraState = self.node.cameraState.updatedPosition(position)
+                    if BGSimpleSettings.shared.rememberRoundVideoCamera {
+                        BGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
+                    }
+                    self.node.setupCamera()
+                }))
+            }
+            self.present(chooser, animated: true)
+        } else {
+            self.node.setupCamera()
+        }
     }
 
     override public func loadDisplayNode() {
@@ -2115,7 +2226,8 @@ public class VideoMessageCameraScreen: ViewController {
         self.audioSessionDisposable = self.context.sharedContext.mediaManager.audioSession.push(audioSessionType: audioSessionType, activate: { [weak self] _ in
             if let self {
                 Queue.mainQueue().after(0.05) {
-                    self.node.setupCamera()
+                    self.audioSessionReady = true
+                    self.configureCameraIfReady()
                 }
             }
         }, deactivate: { _ in

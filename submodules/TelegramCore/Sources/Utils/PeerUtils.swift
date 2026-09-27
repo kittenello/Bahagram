@@ -1,5 +1,6 @@
 import Foundation
 import Postbox
+import BGSimpleSettings
 
 public let anonymousSavedMessagesId: Int64 = 2666000
 
@@ -227,7 +228,7 @@ public extension Peer {
     var isPremium: Bool {
         switch self {
         case let user as TelegramUser:
-            return user.flags.contains(.isPremium)
+            return user.flags.contains(.isPremium) || BGSimpleSettings.shared.localPremium(accountId: user.id.toInt64())
         default:
             return false
         }

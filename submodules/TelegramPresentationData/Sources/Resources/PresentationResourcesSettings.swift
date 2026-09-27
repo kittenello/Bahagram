@@ -117,18 +117,24 @@ let colorGray = UIColor(rgb: 0x8E8E93)
 let colorViolet = UIColor(rgb: 0x5E5CE6)
 
 public struct PresentationResourcesSettings {
-    public static func bahogramOutlineIcon(_ symbolName: String, color: UIColor) -> UIImage? {
+    public static func bahogramOutlineIcon(_ symbolName: String, color: UIColor, backgroundColor: UIColor? = nil) -> UIImage? {
         let configuration = UIImage.SymbolConfiguration(pointSize: 19.0, weight: .regular)
         guard let symbol = (UIImage(systemName: symbolName, withConfiguration: configuration) ?? UIImage(systemName: "gearshape", withConfiguration: configuration))?.withTintColor(color, renderingMode: .alwaysOriginal) else {
             return nil
         }
-        return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
-            let symbolSize = symbol.size
-            let rect = CGRect(x: floor((size.width - symbolSize.width) / 2.0), y: floor((size.height - symbolSize.height) / 2.0), width: symbolSize.width, height: symbolSize.height)
-            UIGraphicsPushContext(context)
+        let size = CGSize(width: 30.0, height: 30.0)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: size, format: format).image { rendererContext in
+            let bounds = CGRect(origin: .zero, size: size)
+            rendererContext.cgContext.clear(bounds)
+            if let backgroundColor {
+                backgroundColor.setFill()
+                UIBezierPath(roundedRect: bounds, cornerRadius: 8.0).fill()
+            }
+            let rect = CGRect(x: floor((size.width - symbol.size.width) / 2.0), y: floor((size.height - symbol.size.height) / 2.0), width: symbol.size.width, height: symbol.size.height)
             symbol.draw(in: rect)
-            UIGraphicsPopContext()
-        })
+        }
     }
 
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])

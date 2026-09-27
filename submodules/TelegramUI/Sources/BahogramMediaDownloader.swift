@@ -369,8 +369,7 @@ final class BahogramMediaDownloader {
                     resultLock.unlock()
                     return
                 }
-                let httpResponse = response as? HTTPURLResponse
-                let mimeType = httpResponse?.mimeType ?? self.mimeType(for: item.filename ?? item.url.lastPathComponent)
+                let mimeType = response.mimeType ?? self.mimeType(for: item.filename ?? item.url.lastPathComponent)
                 let filename = item.filename ?? self.filename(for: item.url, mimeType: mimeType, index: index)
                 resultLock.lock()
                 results[index] = BahogramDownloadedMedia(data: data, kind: item.kind, filename: filename, mimeType: mimeType)
