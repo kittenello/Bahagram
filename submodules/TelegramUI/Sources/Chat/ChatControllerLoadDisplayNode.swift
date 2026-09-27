@@ -1043,6 +1043,10 @@ extension ChatControllerImpl {
                 let effectiveSilentPosting = silentPosting ?? strongSelf.presentationInterfaceState.interfaceState.silentPosting
                 let transformedMessages = strongSelf.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)
                 
+                if strongSelf.bahogramInterceptLinkSend(transformedMessages, peerId: peerId) {
+                    return
+                }
+                
                 var forwardedMessages: [[EnqueueMessage]] = []
                 var forwardSourcePeerIds = Set<PeerId>()
                 for message in transformedMessages {
