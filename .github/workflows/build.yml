@@ -5,7 +5,16 @@ on:
   push:
     branches:
       - master
-      - feature/spy-mode
+  pull_request:
+    branches:
+      - master
+
+# A new push to a PR, or a new dispatch on the same branch, cancels that
+# branch's unfinished build. A running master build is never cancelled:
+# the next master push waits for it (only the newest waiting push runs).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
   contents: read
@@ -62,7 +71,8 @@ jobs:
           sw_vers
 
       - name: Restore Bazel disk cache
-        uses: actions/cache@v4
+        id: bazel-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/telegram-bazel-cache
           key: bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-${{ github.sha }}
@@ -172,3 +182,13 @@ jobs:
           path: build-artifacts/Bahogram.ipa
           if-no-files-found: error
           retention-days: 14
+
+      # Only master saves the ~6 GB cache. The repository cache limit is 10 GB,
+      # so an entry saved by a branch evicts master's, while other branches
+      # cannot restore a branch's entry and fall back to a cold build.
+      - name: Save Bazel disk cache
+        if: github.ref == 'refs/heads/master' && steps.bazel-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/telegram-bazel-cache
+          key: ${{ steps.bazel-cache.outputs.cache-primary-key }}
