@@ -330,6 +330,31 @@ final class CameraDevice {
         }
     }
     
+    // Bahogram: `zoomFactor` is relative to the wide-angle lens (1.0 is «1×») on single-lens and virtual
+    // multi-lens devices alike. `setZoomLevel` adds to the neutral factor instead: on a virtual device whose
+    // raw 1.0 is the ultra-wide lens, the wide lens sits at 2.0, so a «2×» level gives 1.5×.
+    func setZoomFactor(_ zoomFactor: CGFloat, rampRate: CGFloat?) {
+        guard let device = self.videoDevice else {
+            return
+        }
+        self.transaction(device) { device in
+            let target = self.clampedZoomFactor(device.neutralZoomFactor * zoomFactor, for: device)
+            if let rampRate {
+                device.ramp(toVideoZoomFactor: target, withRate: Float(rampRate))
+            } else {
+                device.videoZoomFactor = target
+            }
+        }
+    }
+    
+    // Bahogram: the largest `setZoomFactor` value the active format allows.
+    var maxZoomFactor: CGFloat {
+        guard let device = self.videoDevice else {
+            return 1.0
+        }
+        return device.maxAvailableVideoZoomFactor / device.neutralZoomFactor
+    }
+    
     func resetZoom(neutral: Bool = true) {
         guard let device = self.videoDevice else {
             return

@@ -548,6 +548,24 @@ private final class CameraContext {
         }
     }
     
+    // Bahogram: the device on screen. A round-video dual session shows the front camera through the additional
+    // context, but the single-camera session (for example in Low Power Mode) has only the main one, where
+    // the position-based routing above does nothing for the front camera.
+    private var visibleZoomDevice: CameraDevice? {
+        if self.initialConfiguration.isRoundVideo, self.positionValue == .front, let additionalDeviceContext = self.additionalDeviceContext {
+            return additionalDeviceContext.device
+        }
+        return self.mainDeviceContext?.device
+    }
+    
+    func setZoomFactor(_ zoomFactor: CGFloat, rampRate: CGFloat?) {
+        self.visibleZoomDevice?.setZoomFactor(zoomFactor, rampRate: rampRate)
+    }
+    
+    var maxZoomFactor: CGFloat {
+        return self.visibleZoomDevice?.maxZoomFactor ?? 1.0
+    }
+    
     func takePhoto() -> Signal<PhotoCaptureResult, NoError> {
         guard let mainDeviceContext = self.mainDeviceContext else {
             return .complete()
@@ -978,6 +996,28 @@ public final class Camera {
             if let context = self.contextRef?.takeUnretainedValue() {
                 context.rampZoom(zoomLevel, rate: rate)
             }
+        }
+    }
+    
+    /// Bahogram: zooms the camera on screen; 1.0 is the wide-angle lens («1×») on every device type.
+    public func setZoomFactor(_ zoomFactor: CGFloat, rampRate: CGFloat? = nil) {
+        self.queue.async {
+            if let context = self.contextRef?.takeUnretainedValue() {
+                context.setZoomFactor(zoomFactor, rampRate: rampRate)
+            }
+        }
+    }
+    
+    /// Bahogram: the largest `setZoomFactor` value of the camera on screen. Emits once, so query it again after a flip.
+    public var maxZoomFactor: Signal<CGFloat, NoError> {
+        return Signal { subscriber in
+            self.queue.async {
+                if let context = self.contextRef?.takeUnretainedValue() {
+                    subscriber.putNext(context.maxZoomFactor)
+                }
+                subscriber.putCompletion()
+            }
+            return EmptyDisposable
         }
     }
     

@@ -32,6 +32,10 @@ import BGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
+// Bahogram: upper bound of the round-video zoom when the camera allows more. The camera's own digital limit
+// can be far higher, and on a linear slider that would squeeze the useful 1–5× into its first few percent.
+private let maxRoundVideoZoom: CGFloat = 10.0
+
 struct CameraState: Equatable {
     enum Recording: Equatable {
         case none
@@ -885,6 +889,9 @@ public class VideoMessageCameraScreen: ViewController {
         private let zoomSlider = UISlider()
         private let zoomLabel = UILabel()
         private var displayedZoom: CGFloat = 1.0
+        private var maxZoom: CGFloat = 1.0
+        private var zoomPosition: Camera.Position?
+        private let maxZoomDisposable = MetaDisposable()
         
         private var resultPreviewView: ResultPreviewView?
         
@@ -1016,7 +1023,6 @@ public class VideoMessageCameraScreen: ViewController {
             }
             self.containerView.addSubview(self.zoomButtonsView)
             self.zoomSlider.minimumValue = 1.0
-            self.zoomSlider.maximumValue = 5.0
             self.zoomSlider.value = 1.0
             self.zoomSlider.addTarget(self, action: #selector(self.zoomSliderChanged(_:)), for: .valueChanged)
             self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
@@ -1063,6 +1069,7 @@ public class VideoMessageCameraScreen: ViewController {
         deinit {
             self.cameraStateDisposable?.dispose()
             self.idleTimerExtensionDisposable.dispose()
+            self.maxZoomDisposable.dispose()
             self.backgroundView.removeFromSuperview()
         }
         
@@ -1121,6 +1128,8 @@ public class VideoMessageCameraScreen: ViewController {
                 previewView: self.mainPreviewView,
                 secondaryPreviewView: self.additionalPreviewView
             )
+            // Assigned before subscribing: the position callback resets the zoom through `self.camera`.
+            self.camera = camera
             
             self.cameraStateDisposable = combineLatest(
                 queue: Queue.mainQueue(),
@@ -1134,6 +1143,10 @@ public class VideoMessageCameraScreen: ViewController {
                 if BGSimpleSettings.shared.rememberRoundVideoCamera {
                     BGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
                 }
+                if self.zoomPosition != position {
+                    self.zoomPosition = position
+                    self.resetZoomForVisibleCamera()
+                }
                 
                 if !self.cameraState.isDualCameraEnabled {
                     self.animatePositionChange()
@@ -1145,29 +1158,23 @@ public class VideoMessageCameraScreen: ViewController {
             camera.focus(at: CGPoint(x: 0.5, y: 0.5), autoFocus: true)
             camera.startCapture()
             
-            self.camera = camera
-            
             Queue.mainQueue().justDispatch {
                 self.startRecording.invoke(Void())
             }
         }
         
+        // Pinch, buttons and slider all go through `setDisplayedZoom`, so the camera is always at the value shown.
         @objc private func handlePinch(_ gestureRecognizer: UIPinchGestureRecognizer) {
-            guard let camera = self.camera else {
+            guard self.camera != nil else {
                 return
             }
             switch gestureRecognizer.state {
             case .changed:
-                let scale = gestureRecognizer.scale
-                camera.setZoomDelta(scale)
-                self.displayedZoom = min(max(self.displayedZoom * scale, 1.0), CGFloat(camera.metrics.zoomLevels.max() ?? 5.0))
-                self.updateZoomControls()
+                self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
                 if !BGSimpleSettings.shared.staticRoundVideoZoom {
-                    camera.rampZoom(1.0, rate: 8.0)
-                    self.displayedZoom = 1.0
-                    self.updateZoomControls()
+                    self.setDisplayedZoom(1.0, rampRate: 8.0)
                 }
             default:
                 break
@@ -1182,25 +1189,42 @@ public class VideoMessageCameraScreen: ViewController {
             self.setDisplayedZoom(CGFloat(sender.value))
         }
 
-        private func setDisplayedZoom(_ value: CGFloat) {
-            let maximum = CGFloat(self.camera?.metrics.zoomLevels.max() ?? 5.0)
-            self.displayedZoom = min(max(value, 1.0), maximum)
-            self.camera?.setZoomLevel(self.displayedZoom - 1.0)
+        private func setDisplayedZoom(_ value: CGFloat, rampRate: CGFloat? = nil) {
+            self.displayedZoom = min(max(value, 1.0), self.maxZoom)
+            self.camera?.setZoomFactor(self.displayedZoom, rampRate: rampRate)
             self.updateZoomControls()
         }
 
+        // Each camera has its own zoom and limit, so a flip starts over at 1×. The limit comes from the camera,
+        // not from `camera.metrics.zoomLevels`: those are the story camera's lens presets, which end at 2× on
+        // every iPhone except the Pro models from the 14 Pro on.
+        private func resetZoomForVisibleCamera() {
+            guard let camera = self.camera else {
+                return
+            }
+            self.setDisplayedZoom(1.0)
+            self.maxZoomDisposable.set((camera.maxZoomFactor
+            |> deliverOnMainQueue).startStrict(next: { [weak self] maxZoomFactor in
+                guard let self else {
+                    return
+                }
+                self.maxZoom = max(1.0, min(maxZoomFactor, maxRoundVideoZoom))
+                // Re-clamps a value set while the previous camera's limit still applied.
+                self.setDisplayedZoom(self.displayedZoom)
+            }))
+        }
+
         private func updateZoomControls() {
-            let enabled = BGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil
+            let enabled = BGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > 1.0
             let expanded = self.displayedZoom > 1.05
             self.zoomButtonsView.isHidden = !enabled || expanded
             self.zoomSlider.isHidden = !enabled || !expanded
             self.zoomLabel.isHidden = !enabled || !expanded
-            let maximum = self.camera.map { CGFloat($0.metrics.zoomLevels.max() ?? 5.0) } ?? 5.0
-            self.zoomSlider.maximumValue = Float(maximum)
+            self.zoomSlider.maximumValue = Float(self.maxZoom)
             self.zoomSlider.value = Float(self.displayedZoom)
             self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
             for button in self.zoomButtons {
-                button.isHidden = CGFloat(button.tag) > maximum
+                button.isHidden = CGFloat(button.tag) > self.maxZoom
                 button.backgroundColor = abs(self.displayedZoom - CGFloat(button.tag)) < 0.05 ? .systemBlue : .clear
             }
         }
