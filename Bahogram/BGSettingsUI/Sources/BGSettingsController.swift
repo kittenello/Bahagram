@@ -111,7 +111,7 @@ enum BGListEntry: ItemListNodeEntry {
         case let .header(_, _, title):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: title, sectionId: self.section)
         case let .toggle(_, _, key, title, value, enabled):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title, enabled: enabled), title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) })
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title, enabled: enabled), title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, maximumNumberOfLines: 0, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) })
         case let .disclosure(_, _, key, title, label):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title), title: title, label: label, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.open(key) })
         case let .checkbox(_, _, key, title, checked):
