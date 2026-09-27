@@ -1245,7 +1245,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 title = "" //"\u{00A0}"
             }
             if title.isEmpty {
-                if case let .user(user) = peer, let phone = user.phone {
+                if !BGSimpleSettings.shared.hidePhoneNumber, case let .user(user) = peer, let phone = user.phone {
                     title = formatPhoneNumber(context: self.context, number: phone)
                 } else if let addressName = peer.addressName {
                     title = "@\(addressName)"
@@ -1261,10 +1261,10 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             if self.isSettings, case let .user(user) = peer {
                 let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
                 let phone = BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : (user.phone ?? "")
-                var subtitle = formatPhoneNumber(context: self.context, number: phone)
+                var subtitle = BGSimpleSettings.shared.hidePhoneNumber ? "" : formatPhoneNumber(context: self.context, number: phone)
                 
                 if let mainUsername = user.addressName, !mainUsername.isEmpty {
-                    subtitle = "\(subtitle) • @\(mainUsername)"
+                    subtitle = subtitle.isEmpty ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
                 }
                 subtitleStringText = subtitle
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: .white)

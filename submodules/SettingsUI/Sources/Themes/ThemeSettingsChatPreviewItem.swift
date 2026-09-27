@@ -10,6 +10,7 @@ import ItemListUI
 import PresentationDataUtils
 import AccountContext
 import WallpaperBackgroundNode
+import Postbox
 
 struct ChatPreviewMessageItem: Equatable {
     static func == (lhs: ChatPreviewMessageItem, rhs: ChatPreviewMessageItem) -> Bool {
@@ -24,6 +25,9 @@ struct ChatPreviewMessageItem: Equatable {
         if lhs.text != rhs.text {
             return false
         }
+        if lhs.timestamp != rhs.timestamp || lhs.edited != rhs.edited {
+            return false
+        }
         if lhs.nameColor != rhs.nameColor {
             return false
         }
@@ -36,8 +40,20 @@ struct ChatPreviewMessageItem: Equatable {
     let outgoing: Bool
     let reply: (String, String)?
     let text: String
+    let timestamp: Int32
+    let edited: Bool
     let nameColor: PeerColor
     let backgroundEmojiId: Int64?
+
+    init(outgoing: Bool, reply: (String, String)?, text: String, timestamp: Int32 = 66000, edited: Bool = false, nameColor: PeerColor, backgroundEmojiId: Int64?) {
+        self.outgoing = outgoing
+        self.reply = reply
+        self.text = text
+        self.timestamp = timestamp
+        self.edited = edited
+        self.nameColor = nameColor
+        self.backgroundEmojiId = backgroundEmojiId
+    }
 }
 
 class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
@@ -120,8 +136,8 @@ public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemL
         dateTimeFormat: current.dateTimeFormat,
         nameDisplayOrder: current.nameDisplayOrder,
         messageItems: [
-            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", nameColor: .preset(.red), backgroundEmojiId: nil),
-            ChatPreviewMessageItem(outgoing: true, reply: nil, text: "И исходящее сообщение", nameColor: .preset(.blue), backgroundEmojiId: nil)
+            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", timestamp: 66000, edited: false, nameColor: .preset(.red), backgroundEmojiId: nil),
+            ChatPreviewMessageItem(outgoing: true, reply: nil, text: "И исходящее сообщение", timestamp: 66000, edited: true, nameColor: .preset(.blue), backgroundEmojiId: nil)
         ]
     )
 }
@@ -191,7 +207,14 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                     messages[replyMessageId] = EngineRawMessage(stableId: 3, stableVersion: 0, id: replyMessageId, globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: 66000, flags: [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: peers[peerId], text: text, attributes: [], media: [], peers: peers, associatedMessages: EngineSimpleDictionary(), associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
                 }
                 
-                let message = EngineRawMessage(stableId: 1, stableVersion: 0, id: EngineMessage.Id(peerId: messageItem.outgoing ? otherPeerId : peerId, namespace: 0, id: 1), globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: 66000, flags: messageItem.outgoing ? [] : [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: messageItem.outgoing ? TelegramUser(id: otherPeerId, accessHash: nil, firstName: "", lastName: "", username: nil, phone: nil, photo: [], botInfo: nil, restrictionInfo: nil, flags: [], emojiStatus: nil, usernames: [], storiesHidden: nil, nameColor: nil, backgroundEmojiId: nil, profileColor: nil, profileBackgroundEmojiId: nil, subscriberCount: nil, verificationIconFileId: nil) : nil, text: messageItem.text, attributes: messageItem.reply != nil ? [ReplyMessageAttribute(messageId: replyMessageId, threadMessageId: nil, quote: nil, isQuote: false, innerSubject: nil)] : [], media: [], peers: peers, associatedMessages: messages, associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
+                var attributes: [MessageAttribute] = []
+                if messageItem.reply != nil {
+                    attributes.append(ReplyMessageAttribute(messageId: replyMessageId, threadMessageId: nil, quote: nil, isQuote: false, innerSubject: nil))
+                }
+                if messageItem.edited {
+                    attributes.append(EditedMessageAttribute(date: messageItem.timestamp, isHidden: false))
+                }
+                let message = EngineRawMessage(stableId: 1, stableVersion: 0, id: EngineMessage.Id(peerId: messageItem.outgoing ? otherPeerId : peerId, namespace: 0, id: 1), globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: messageItem.timestamp, flags: messageItem.outgoing ? [] : [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: messageItem.outgoing ? TelegramUser(id: otherPeerId, accessHash: nil, firstName: "", lastName: "", username: nil, phone: nil, photo: [], botInfo: nil, restrictionInfo: nil, flags: [], emojiStatus: nil, usernames: [], storiesHidden: nil, nameColor: nil, backgroundEmojiId: nil, profileColor: nil, profileBackgroundEmojiId: nil, subscriberCount: nil, verificationIconFileId: nil) : nil, text: messageItem.text, attributes: attributes, media: [], peers: peers, associatedMessages: messages, associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
                 items.append(item.context.sharedContext.makeChatMessagePreviewItem(context: item.context, messages: [message], theme: item.componentTheme, strings: item.strings, wallpaper: item.wallpaper, fontSize: item.fontSize, chatBubbleCorners: item.chatBubbleCorners, dateTimeFormat: item.dateTimeFormat, nameOrder: item.nameDisplayOrder, forcedResourceStatus: nil, tapMessage: nil, clickThroughMessage: nil, backgroundNode: currentBackgroundNode, availableReactions: nil, accountPeer: nil, isCentered: false, isPreview: true, isStandalone: false, rank: nil, rankRole: nil))
             }
             

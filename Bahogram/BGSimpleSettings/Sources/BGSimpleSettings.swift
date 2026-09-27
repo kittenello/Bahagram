@@ -42,6 +42,11 @@ public final class BGSimpleSettings {
         case ask = 2
     }
 
+    public enum DialogIdFormat: Int {
+        case telegramApi = 0
+        case botApi = 1
+    }
+
     private enum Key {
         static let saveDeletedMessages = "bahogram.spy.saveDeletedMessages"
         static let semiTransparentDeletedMessages = "bahogram.spy.semiTransparentDeletedMessages"
@@ -68,6 +73,9 @@ public final class BGSimpleSettings {
         static let showCallsTab = "bahogram.appearance.showCallsTab"
         static let wideTabBar = "bahogram.appearance.wideTabBar"
         static let showProfileId = "bahogram.appearance.showProfileId"
+        static let dialogIdFormat = "bahogram.appearance.dialogIdFormat"
+        static let relativeOnlineTime = "bahogram.appearance.relativeOnlineTime"
+        static let hidePhoneNumber = "bahogram.appearance.hidePhoneNumber"
         static let showDc = "bahogram.appearance.showDc"
         static let showRegistrationDate = "bahogram.appearance.showRegistrationDate"
         static let showChatCreationDate = "bahogram.appearance.showChatCreationDate"
@@ -104,6 +112,9 @@ public final class BGSimpleSettings {
         static let hideGreetingSticker = "bahogram.chats.hideGreetingSticker"
         static let commaAfterMention = "bahogram.chats.commaAfterMention"
         static let hideArchive = "bahogram.chats.hideArchive"
+        static let openArchiveOnPull = "bahogram.chats.openArchiveOnPull"
+        static let downloadAcceleration = "bahogram.network.downloadAcceleration"
+        static let accelerateUpload = "bahogram.network.accelerateUpload"
     }
 
     private let defaults: UserDefaults
@@ -313,6 +324,9 @@ public final class BGSimpleSettings {
     public var showCallsTab: Bool { get { bool(Key.showCallsTab) } set { setBool(newValue, Key.showCallsTab) } }
     public var wideTabBar: Bool { get { bool(Key.wideTabBar) } set { setBool(newValue, Key.wideTabBar) } }
     public var showProfileId: Bool { get { bool(Key.showProfileId) } set { setBool(newValue, Key.showProfileId) } }
+    public var dialogIdFormat: DialogIdFormat { get { DialogIdFormat(rawValue: integer(Key.dialogIdFormat)) ?? .telegramApi } set { setInteger(newValue.rawValue, Key.dialogIdFormat) } }
+    public var relativeOnlineTime: Bool { get { bool(Key.relativeOnlineTime) } set { setBool(newValue, Key.relativeOnlineTime) } }
+    public var hidePhoneNumber: Bool { get { bool(Key.hidePhoneNumber) } set { setBool(newValue, Key.hidePhoneNumber) } }
     public var showDc: Bool { get { bool(Key.showDc) } set { setBool(newValue, Key.showDc) } }
     public var showRegistrationDate: Bool { get { bool(Key.showRegistrationDate) } set { setBool(newValue, Key.showRegistrationDate) } }
     public var showChatCreationDate: Bool { get { bool(Key.showChatCreationDate) } set { setBool(newValue, Key.showChatCreationDate) } }
@@ -375,6 +389,10 @@ public final class BGSimpleSettings {
     public var hideGreetingSticker: Bool { get { bool(Key.hideGreetingSticker) } set { setBool(newValue, Key.hideGreetingSticker) } }
     public var commaAfterMention: Bool { get { bool(Key.commaAfterMention) } set { setBool(newValue, Key.commaAfterMention) } }
     public var hideArchive: Bool { get { bool(Key.hideArchive) } set { setBool(newValue, Key.hideArchive) } }
+    public var openArchiveOnPull: Bool { get { bool(Key.openArchiveOnPull) } set { setBool(newValue, Key.openArchiveOnPull) } }
+    /// 0: standard, 1: fast, 2: ultra. Values outside this range fall back to standard.
+    public var downloadAcceleration: Int { get { min(max(integer(Key.downloadAcceleration), 0), 2) } set { setInteger(min(max(newValue, 0), 2), Key.downloadAcceleration) } }
+    public var accelerateUpload: Bool { get { bool(Key.accelerateUpload) } set { setBool(newValue, Key.accelerateUpload) } }
     public var transcriptionBackend: TranscriptionBackend {
         get { TranscriptionBackend(rawValue: string(Key.transcriptionBackend)) ?? .auto }
         set { setString(newValue.rawValue, Key.transcriptionBackend) }

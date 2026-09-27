@@ -47,7 +47,9 @@ private func bgSettingsSymbol(key: String, title: String) -> String {
     case "hideTabBar", "wideTabBar": return "rectangle.split.3x1"
     case "contacts", "mutualContact": return "person.2"
     case "calls", "confirmCalls": return "phone"
-    case "profileId", "visualId": return "number"
+    case "profileId", "visualId", "dialogIdFormat": return "number"
+    case "relativeOnlineTime": return "clock.arrow.circlepath"
+    case "hidePhoneNumber": return "phone.down"
     case "dc": return "network"
     case "regDate", "chatDate": return "calendar"
     case "disableAds": return "xmark.rectangle"
@@ -62,7 +64,9 @@ private func bgSettingsSymbol(key: String, title: String) -> String {
     case "greetingSticker": return "hand.wave"
     case "mentionComma": return "at"
     case "snow": return "snowflake"
-    case "hideArchive": return "archivebox"
+    case "hideArchive", "openArchiveOnPull": return "archivebox"
+    case "downloadAcceleration": return "arrow.down.circle"
+    case "accelerateUpload": return "arrow.up.circle"
     case "localPremium": return "star"
     case "visualPhone", "number": return "phone"
     case "visualRating": return "star"
@@ -88,15 +92,16 @@ enum BGListEntry: ItemListNodeEntry {
     // The flags (tails, seconds, colored replies) are only a diff key: the bubbles read BGSimpleSettings at layout time.
     case messagePreview(Int32, Int32, Bool, Bool, Bool)
     case appIcons(Int32, Int32)
+    case speedSlider(Int32, Int32, Int)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _), let .appIcons(_, section): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _), let .appIcons(_, section), let .speedSlider(_, section, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _), let .appIcons(id, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _), let .appIcons(id, _), let .speedSlider(id, _, _): return id
         }
     }
     static func < (lhs: BGListEntry, rhs: BGListEntry) -> Bool { lhs.stableId < rhs.stableId }
@@ -124,6 +129,8 @@ enum BGListEntry: ItemListNodeEntry {
             return bahogramMessagePreviewItem(context: arguments.context, sectionId: self.section)
         case .appIcons:
             return bahogramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
+        case let .speedSlider(_, _, value):
+            return BGSpeedSliderItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("downloadAcceleration:\($0)") })
         }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import BGSimpleSettings
 import UIKit
 import Display
 import AccountContext
@@ -86,7 +87,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
             items[.phone]!.append(PeerInfoScreenActionItem(id: 1, text: "Restore Subscription", action: {
                 interaction.openSettings(.premiumManagement)
             }))
-        } else if settings.suggestPhoneNumberConfirmation, case let .user(peer) = data.peer {
+        } else if settings.suggestPhoneNumberConfirmation && !BGSimpleSettings.shared.hidePhoneNumber, case let .user(peer) = data.peer {
             let phoneNumber = formatPhoneNumber(context: context, number: peer.phone ?? "")
             items[.phone]!.append(PeerInfoScreenInfoItem(id: 0, title: presentationData.strings.Settings_CheckPhoneNumberTitle(phoneNumber).string, text: .markdown(presentationData.strings.Settings_CheckPhoneNumberText), linkAction: { link in
                 if case .tap = link {
@@ -449,7 +450,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
     }
     
     if case let .user(user) = data.peer {
-        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? ""), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
+        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(BGSimpleSettings.shared.hidePhoneNumber ? "" : (user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? "")), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
             interaction.openSettings(.phoneNumber)
         }))
     }

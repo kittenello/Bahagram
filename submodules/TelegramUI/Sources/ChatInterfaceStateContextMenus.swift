@@ -2323,28 +2323,14 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     let _ = (bahogramMessageRevisions(postbox: context.account.postbox, messageId: message.id)
                     |> deliverOnMainQueue).start(next: { revisions in
                         c?.dismiss(completion: {
-                            let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                            let visibleRevisions = revisions.suffix(20)
-                            var parts: [String] = []
-                            let firstIndex = max(1, revisions.count - visibleRevisions.count + 1)
-                            for (offset, revision) in visibleRevisions.enumerated() {
-                                let text = revision.text.isEmpty ? "‹пустое сообщение›" : revision.text
-                                parts.append("Версия \(firstIndex + offset):\n\(text)")
-                            }
-                            let currentText = message.text.isEmpty ? "‹пустое сообщение›" : message.text
-                            parts.append("Текущая версия:\n\(currentText)")
-
-                            let historyText = parts.joined(separator: "\n\n")
-                            controllerInteraction.presentController(
-                                textAlertController(
+                            controllerInteraction.navigationController()?.pushViewController(
+                                bahogramEditHistoryController(
                                     context: context,
-                                    title: "История правок",
-                                    text: historyText,
-                                    actions: [
-                                        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-                                    ]
-                                ),
-                                nil
+                                    revisions: revisions,
+                                    currentText: message.text,
+                                    currentTimestamp: message.editedTime ?? message.timestamp,
+                                    incoming: message.flags.contains(.Incoming)
+                                )
                             )
                         })
                     })
