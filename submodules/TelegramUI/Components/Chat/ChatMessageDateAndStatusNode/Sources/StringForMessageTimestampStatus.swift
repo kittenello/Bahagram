@@ -251,7 +251,8 @@ public func stringForMessageTimestampStatus(
     }
 
     if message.localTags.contains(.bahogramHasEditHistory) {
-        dateText = "✎ \(dateText)"
+        // Drawn by bahogramDateAttributedString as an outline pencil icon.
+        dateText = "\(bahogramEditedMarker)\(dateText)"
     }
     if message.localTags.contains(.bahogramSavedViewOnce) {
         dateText = "1 просмотр · \(dateText)"

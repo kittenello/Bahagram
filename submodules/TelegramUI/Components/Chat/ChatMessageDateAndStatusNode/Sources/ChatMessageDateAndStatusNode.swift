@@ -541,9 +541,13 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             var updatedDateText = arguments.dateText
             if arguments.edited {
                 if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp {
+                } else if BGSimpleSettings.shared.editedIcon {
+                    // A message with saved edit history already has the pencil; one is enough.
+                    if !updatedDateText.contains(bahogramEditedMarker) {
+                        updatedDateText = "\(bahogramEditedMarker)\(updatedDateText)"
+                    }
                 } else {
-                    let editedMarker = BGSimpleSettings.shared.editedIcon ? "✎" : arguments.presentationData.strings.Conversation_MessageEditedLabel
-                    updatedDateText = "\(editedMarker) \(updatedDateText)"
+                    updatedDateText = "\(arguments.presentationData.strings.Conversation_MessageEditedLabel) \(updatedDateText)"
                 }
             }
             if let impressionCount = arguments.impressionCount {
