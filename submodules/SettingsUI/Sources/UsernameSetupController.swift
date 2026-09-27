@@ -10,7 +10,7 @@ import AccountContext
 import UndoUI
 import InviteLinksUI
 import TextFormat
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 
 private final class UsernameSetupControllerArguments {
@@ -348,7 +348,7 @@ private func usernameSetupControllerEntries(presentationData: PresentationData, 
         
         var isBot = false
         
-        let visualUsernames: [BGVisualUsername] = mode == .account ? BGSimpleSettings.shared.visualUsernames(accountId: accountId).filter { visual in
+        let visualUsernames: [DGVisualUsername] = mode == .account ? DGSimpleSettings.shared.visualUsernames(accountId: accountId).filter { visual in
             peer.addressName?.caseInsensitiveCompare(visual.name) != .orderedSame && !peer.usernames.contains(where: { $0.username.caseInsensitiveCompare(visual.name) == .orderedSame })
         } : []
         let otherUsernames = peer.usernames.filter { !$0.flags.contains(.isEditable) }
@@ -376,7 +376,7 @@ private func usernameSetupControllerEntries(presentationData: PresentationData, 
             var usernames = peer.usernames + visualUsernames.map { visual in
                 TelegramPeerUsername(flags: visual.isActive ? [.isActive] : [], username: visual.name)
             }
-            let preferredOrder = temporaryOrder ?? BGSimpleSettings.shared.visualUsernameOrder(accountId: accountId)
+            let preferredOrder = temporaryOrder ?? DGSimpleSettings.shared.visualUsernameOrder(accountId: accountId)
             if !preferredOrder.isEmpty {
                 var usernamesMap: [String: TelegramPeerUsername] = [:]
                 for username in usernames {
@@ -512,7 +512,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
         })
     }, activateLink: { name, isVisual in
         if isVisual {
-            BGSimpleSettings.shared.setVisualUsernameActive(name, isActive: true, accountId: context.account.peerId.toInt64())
+            DGSimpleSettings.shared.setVisualUsernameActive(name, isActive: true, accountId: context.account.peerId.toInt64())
             refreshVisual()
             return
         }
@@ -543,7 +543,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
         })]), nil)
     }, deactivateLink: { name, isVisual in
         if isVisual {
-            BGSimpleSettings.shared.setVisualUsernameActive(name, isActive: false, accountId: context.account.peerId.toInt64())
+            DGSimpleSettings.shared.setVisualUsernameActive(name, isActive: false, accountId: context.account.peerId.toInt64())
             refreshVisual()
             return
         }
@@ -761,7 +761,7 @@ public func usernameSetupController(context: AccountContext, mode: UsernameSetup
             }
         }
         if case .account = mode {
-            BGSimpleSettings.shared.setVisualUsernameOrder(combinedOrder, accountId: context.account.peerId.toInt64())
+            DGSimpleSettings.shared.setVisualUsernameOrder(combinedOrder, accountId: context.account.peerId.toInt64())
         }
         if currentUsernames.isEmpty {
             temporaryOrder.set(.single(nil))

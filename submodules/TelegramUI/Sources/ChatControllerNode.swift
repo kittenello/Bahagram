@@ -75,7 +75,7 @@ import RichTextEditorUIKit
 import RichTextEditorMediaView
 import InstantPageUI
 import ChatRichTextEditorComposer
-import BGSnowEffect
+import DGSnowEffect
 
 final class VideoNavigationControllerDropContentItem: NavigationControllerDropContentItem {
     let itemNode: OverlayMediaItemNode
@@ -348,7 +348,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
 
     var messageTransitionNode: ChatMessageTransitionNodeImpl
 
-    private var bahogramSnowView: BGSnowView?
+    private var donutgramSnowView: DGSnowView?
 
     private let presentationContextMarker = ASDisplayNode()
     
@@ -1170,28 +1170,28 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.wrappingNode.update(size: layout.size, cornerRadius: layout.deviceMetrics.screenCornerRadius, transition: .immediate)
     }
     
-    /// Bahogram «Снег» above the messages but below the header and the input panel, so it never covers the
+    /// Donutgram «Снег» above the messages but below the header and the input panel, so it never covers the
     /// text being typed. Regular chats only: no previews, overlays or embedded chats.
-    private func updateBahogramSnow(size: CGSize) {
+    private func updateDonutgramSnow(size: CGSize) {
         guard case .standard(.default) = self.chatPresentationInterfaceState.mode else {
             return
         }
-        let snowView: BGSnowView
-        if let current = self.bahogramSnowView {
+        let snowView: DGSnowView
+        if let current = self.donutgramSnowView {
             snowView = current
         } else {
-            snowView = BGSnowView()
+            snowView = DGSnowView()
             // A replacement message transition node is inserted right above the old one, so this stays above both.
             self.contentContainerNode.contentNode.view.insertSubview(snowView, aboveSubview: self.messageTransitionNode.view)
-            self.bahogramSnowView = snowView
+            self.donutgramSnowView = snowView
         }
         snowView.frame = CGRect(origin: CGPoint(), size: size)
-        self.updateBahogramSnowAppearance()
+        self.updateDonutgramSnowAppearance()
     }
     
     /// White snow over a dark wallpaper, blue over a light one; the theme decides until the wallpaper is measured.
-    func updateBahogramSnowAppearance() {
-        self.bahogramSnowView?.update(isDark: self.backgroundNode.contentStats?.isDark ?? self.chatPresentationInterfaceState.theme.overallDarkAppearance)
+    func updateDonutgramSnowAppearance() {
+        self.donutgramSnowView?.update(isDark: self.backgroundNode.contentStats?.isDark ?? self.chatPresentationInterfaceState.theme.overallDarkAppearance)
     }
     
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition protoTransition: ContainedViewLayoutTransition, listViewTransaction: (ListViewUpdateSizeAndInsets, CGFloat, Bool, @escaping () -> Void) -> Void, updateExtraNavigationBarBackgroundHeight: (CGFloat, CGFloat, CGSize?, ContainedViewLayoutTransition) -> Void) {
@@ -1249,7 +1249,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
 
         self.messageTransitionNode.frame = CGRect(origin: CGPoint(), size: layout.size)
         self.contentContainerNode.frame = CGRect(origin: CGPoint(), size: layout.size)
-        self.updateBahogramSnow(size: layout.size)
+        self.updateDonutgramSnow(size: layout.size)
         
         let isOverlay: Bool
         switch self.chatPresentationInterfaceState.mode {

@@ -2,7 +2,7 @@ import Foundation
 import Postbox
 import SwiftSignalKit
 import TelegramApi
-import BGSimpleSettings
+import DGSimpleSettings
 
 public class AdPeer: Equatable {
     public let opaqueId: Data
@@ -40,7 +40,7 @@ public class AdPeer: Equatable {
 }
 
 func _internal_searchAdPeers(account: Account, query: String) -> Signal<[AdPeer], NoError> {
-    if BGSimpleSettings.shared.disableAds {
+    if DGSimpleSettings.shared.disableAds {
         return .single([])
     }
     return account.network.request(Api.functions.contacts.getSponsoredPeers(q: query))

@@ -980,7 +980,7 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                     }
                 case "bg":
                     if parsedUrl.pathComponents.last == "spy" {
-                        handleResolvedUrl(.settings(.path("bahogram/spy")))
+                        handleResolvedUrl(.settings(.path("donutgram/spy")))
                     }
                 default:
                     break

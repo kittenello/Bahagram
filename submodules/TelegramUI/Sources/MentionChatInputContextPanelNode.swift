@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import TelegramCore
@@ -151,7 +151,7 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
             if let strongSelf = self, let interfaceInteraction = strongSelf.interfaceInteraction {
                 let isBot: Bool
                 if case let .user(user) = peer { isBot = user.botInfo != nil } else { isBot = false }
-                let mentionSuffix = BGSimpleSettings.shared.commaAfterMention && !isBot ? ", " : " "
+                let mentionSuffix = DGSimpleSettings.shared.commaAfterMention && !isBot ? ", " : " "
                 switch strongSelf.mode {
                     case .input:
                         interfaceInteraction.updateTextInputStateAndMode { textInputState, inputMode in

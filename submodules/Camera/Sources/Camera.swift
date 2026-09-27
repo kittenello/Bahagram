@@ -548,7 +548,7 @@ private final class CameraContext {
         }
     }
     
-    // Bahogram: the device on screen. A round-video dual session shows the front camera through the additional
+    // Donutgram: the device on screen. A round-video dual session shows the front camera through the additional
     // context, but the single-camera session (for example in Low Power Mode) has only the main one, where
     // the position-based routing above does nothing for the front camera.
     private var visibleZoomDevice: CameraDevice? {
@@ -999,7 +999,7 @@ public final class Camera {
         }
     }
     
-    /// Bahogram: zooms the camera on screen; 1.0 is the wide-angle lens («1×») on every device type.
+    /// Donutgram: zooms the camera on screen; 1.0 is the wide-angle lens («1×») on every device type.
     public func setZoomFactor(_ zoomFactor: CGFloat, rampRate: CGFloat? = nil) {
         self.queue.async {
             if let context = self.contextRef?.takeUnretainedValue() {
@@ -1008,7 +1008,7 @@ public final class Camera {
         }
     }
     
-    /// Bahogram: the largest `setZoomFactor` value of the camera on screen. Emits once, so query it again after a flip.
+    /// Donutgram: the largest `setZoomFactor` value of the camera on screen. Emits once, so query it again after a flip.
     public var maxZoomFactor: Signal<CGFloat, NoError> {
         return Signal { subscriber in
             self.queue.async {

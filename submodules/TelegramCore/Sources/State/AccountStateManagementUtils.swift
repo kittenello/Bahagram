@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 import SwiftSignalKit
 import TelegramApi
@@ -4258,8 +4258,8 @@ func replayFinalState(
                     }
                 }
             
-                // Bahogram: an update can resend a stored message; keep saved view-once media.
-                messages = bahogramPreservingSavedViewOnceMedia(transaction: transaction, messages: messages)
+                // Donutgram: an update can resend a stored message; keep saved view-once media.
+                messages = donutgramPreservingSavedViewOnceMedia(transaction: transaction, messages: messages)
                 let _ = transaction.addMessages(messages, location: location)
                 if case .UpperHistoryBlock = location {
                     for message in messages {
@@ -4445,8 +4445,8 @@ func replayFinalState(
             case let .DeleteMessagesWithGlobalIds(ids):
                 var idsToDelete: [Int32] = []
                 for globalId in ids {
-                    if let messageId = transaction.messageIdsForGlobalIds([globalId]).first, bahogramPreserveDeletedMessage(transaction: transaction, messageId: messageId) {
-                        // Bahogram keeps this message as a local snapshot.
+                    if let messageId = transaction.messageIdsForGlobalIds([globalId]).first, donutgramPreserveDeletedMessage(transaction: transaction, messageId: messageId) {
+                        // Donutgram keeps this message as a local snapshot.
                     } else {
                         idsToDelete.append(globalId)
                     }
@@ -4465,8 +4465,8 @@ func replayFinalState(
             case let .DeleteMessages(ids):
                 var idsToDelete: [MessageId] = []
                 for id in ids {
-                    if bahogramPreserveDeletedMessage(transaction: transaction, messageId: id) {
-                        // Bahogram keeps this message as a local snapshot.
+                    if donutgramPreserveDeletedMessage(transaction: transaction, messageId: id) {
+                        // Donutgram keeps this message as a local snapshot.
                     } else {
                         idsToDelete.append(id)
                     }
@@ -4512,20 +4512,20 @@ func replayFinalState(
                 }
             case let .EditMessage(id, message):
                 var generatedEvent: (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)?
-                let bahogramHasStoredRevision: Bool
+                let donutgramHasStoredRevision: Bool
                 if let previousMessage = transaction.getMessage(id) {
-                    if previousMessage.localTags.contains(.bahogramPseudoReply) {
+                    if previousMessage.localTags.contains(.donutgramPseudoReply) {
                         // The server's quote prefix is not a user edit to the local reply.
-                        bahogramHasStoredRevision = false
+                        donutgramHasStoredRevision = false
                     } else {
-                        bahogramHasStoredRevision = bahogramStorePreviousMessageRevision(
+                        donutgramHasStoredRevision = donutgramStorePreviousMessageRevision(
                             transaction: transaction,
                             previousMessage: previousMessage,
                             updatedText: message.text
                         )
                     }
                 } else {
-                    bahogramHasStoredRevision = false
+                    donutgramHasStoredRevision = false
                 }
 
                 transaction.updateMessage(id, update: { previousMessage in
@@ -4533,17 +4533,17 @@ func replayFinalState(
                     var updatedLocalTags = message.localTags
                     var updatedAttributes = message.attributes
 
-                    if bahogramHasStoredRevision || previousMessage.localTags.contains(.bahogramHasEditHistory) {
-                        updatedLocalTags.insert(.bahogramHasEditHistory)
+                    if donutgramHasStoredRevision || previousMessage.localTags.contains(.donutgramHasEditHistory) {
+                        updatedLocalTags.insert(.donutgramHasEditHistory)
                     }
-                    if previousMessage.localTags.contains(.bahogramDeleted) {
-                        updatedLocalTags.insert(.bahogramDeleted)
+                    if previousMessage.localTags.contains(.donutgramDeleted) {
+                        updatedLocalTags.insert(.donutgramDeleted)
                     }
-                    if previousMessage.localTags.contains(.bahogramSavedViewOnce) {
-                        updatedLocalTags.insert(.bahogramSavedViewOnce)
+                    if previousMessage.localTags.contains(.donutgramSavedViewOnce) {
+                        updatedLocalTags.insert(.donutgramSavedViewOnce)
                     }
-                    if previousMessage.localTags.contains(.bahogramPseudoReply) {
-                        updatedLocalTags.insert(.bahogramPseudoReply)
+                    if previousMessage.localTags.contains(.donutgramPseudoReply) {
+                        updatedLocalTags.insert(.donutgramPseudoReply)
                         updatedAttributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
                         updatedAttributes.append(contentsOf: previousMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
                     }
@@ -4589,10 +4589,10 @@ func replayFinalState(
                         updatedMedia = previousMessage.media
                     }
                     
-                    // Bahogram: keep the media of a saved view-once message that the server
+                    // Donutgram: keep the media of a saved view-once message that the server
                     // copy only carries as an "expired" placeholder.
-                    let updatedText = previousMessage.localTags.contains(.bahogramPseudoReply) ? previousMessage.text : message.text
-                    return .update(bahogramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia).withUpdatedText(updatedText)))
+                    let updatedText = previousMessage.localTags.contains(.donutgramPseudoReply) ? previousMessage.text : message.text
+                    return .update(donutgramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia).withUpdatedText(updatedText)))
                 })
                 if let generatedEvent = generatedEvent {
                     addedReactionEvents.append(generatedEvent)
@@ -5928,7 +5928,7 @@ func replayFinalState(
         }).map({ $0.1 })
         for file in stickerFiles {
             if let entry = CodableEntry(RecentMediaItem(file)) {
-                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: BGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
+                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: DGSimpleSettings.shared.infiniteRecentStickers ? nil : 20)
             }
         }
     }

@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import Display
 import AccountContext
@@ -20,7 +20,7 @@ enum SettingsSection: Int, CaseIterable {
     case accounts
     case myProfile
     case proxy
-    case bahogram
+    case donutgram
     case apps
     case shortcuts
     case advanced
@@ -87,7 +87,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
             items[.phone]!.append(PeerInfoScreenActionItem(id: 1, text: "Restore Subscription", action: {
                 interaction.openSettings(.premiumManagement)
             }))
-        } else if settings.suggestPhoneNumberConfirmation && !BGSimpleSettings.shared.hidePhoneNumber, case let .user(peer) = data.peer {
+        } else if settings.suggestPhoneNumberConfirmation && !DGSimpleSettings.shared.hidePhoneNumber, case let .user(peer) = data.peer {
             let phoneNumber = formatPhoneNumber(context: context, number: peer.phone ?? "")
             items[.phone]!.append(PeerInfoScreenInfoItem(id: 0, title: presentationData.strings.Settings_CheckPhoneNumberTitle(phoneNumber).string, text: .markdown(presentationData.strings.Settings_CheckPhoneNumberText), linkAction: { link in
                 if case .tap = link {
@@ -198,8 +198,8 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         }
     }
     
-    items[.bahogram]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "Настройки Bahagram", icon: PresentationResourcesSettings.bahogramOutlineIcon("gearshape", color: .white, backgroundColor: presentationData.theme.list.itemAccentColor), action: {
-        interaction.openSettings(.bahogram)
+    items[.donutgram]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "Настройки Donutgram", icon: PresentationResourcesSettings.donutgramOutlineIcon("gearshape", color: .white, backgroundColor: presentationData.theme.list.itemAccentColor), action: {
+        interaction.openSettings(.donutgram)
     }))
 
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 1, text: presentationData.strings.Settings_SavedMessages, icon: PresentationResourcesSettings.savedMessages, action: {
@@ -450,7 +450,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
     }
     
     if case let .user(user) = data.peer {
-        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(BGSimpleSettings.shared.hidePhoneNumber ? "" : (user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? "")), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
+        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(DGSimpleSettings.shared.hidePhoneNumber ? "" : (user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? "")), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
             interaction.openSettings(.phoneNumber)
         }))
     }

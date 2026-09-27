@@ -93,7 +93,7 @@ class ThemeSettingsAppIconItem: ListViewItem, ItemListItem {
     }
 }
 
-public func bahogramAppIconItem(context: AccountContext, sectionId: ItemListSectionId, updated: @escaping () -> Void) -> ListViewItem {
+public func donutgramAppIconItem(context: AccountContext, sectionId: ItemListSectionId, updated: @escaping () -> Void) -> ListViewItem {
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
     let icons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
     let currentName: String?
@@ -419,36 +419,36 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = item.strings.Appearance_AppIconBlack
                                 case "PremiumTurbo":
                                     name = item.strings.Appearance_AppIconTurbo
-                                case "BahoSnout":
+                                case "DgSnout":
                                     name = "Пятачок"
                                     bordered = false
-                                case "BahoSnoutHead":
+                                case "DgSnoutHead":
                                     name = "Пятачок 2"
                                     bordered = false
-                                case "BahoPigPlane":
+                                case "DgPigPlane":
                                     name = "Свинолёт"
-                                case "BahoPigPlaneEars":
+                                case "DgPigPlaneEars":
                                     name = "Свинолёт 2"
-                                case "BahoPilot":
+                                case "DgPilot":
                                     name = "Пилот"
                                     bordered = false
-                                case "BahoPilotLens":
+                                case "DgPilotLens":
                                     name = "Пилот 2"
                                     bordered = false
-                                case "Baho3D":
+                                case "Dg3D":
                                     name = "3D"
                                     bordered = false
-                                case "Baho3DCircle":
+                                case "Dg3DCircle":
                                     name = "3D Круг"
-                                case "BahoGlass":
+                                case "DgGlass":
                                     name = "Стекло"
-                                case "BahoGlassEyes":
+                                case "DgGlassEyes":
                                     name = "Стекло 2"
-                                case "BahoKisser":
+                                case "DgKisser":
                                     name = "Бойкиссер"
-                                case "BahoKisserRed":
+                                case "DgKisserRed":
                                     name = "Бойкиссер 2"
-                                case "BahoCat":
+                                case "DgCat":
                                     name = "Котик"
                                 default:
                                     name = icon.name

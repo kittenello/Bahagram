@@ -5,30 +5,30 @@
         <array><string>BlueIcon</string><string>BlueNotificationIcon</string></array>
         <key>UIPrerenderedIcon</key><true/>
     </dict>
-    <key>BahoSnout</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoSnout</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoSnoutHead</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoSnoutHead</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoPigPlane</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoPigPlane</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoPigPlaneEars</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoPigPlaneEars</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoPilot</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoPilot</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoPilotLens</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoPilotLens</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Baho3D</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Baho3D</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Baho3DCircle</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Baho3DCircle</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoGlass</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoGlass</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoGlassEyes</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoGlassEyes</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoKisser</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoKisser</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoKisserRed</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoKisserRed</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>BahoCat</key>
-    <dict><key>CFBundleIconFiles</key><array><string>BahoCat</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgSnout</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgSnout</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgSnoutHead</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgSnoutHead</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPigPlane</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlane</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPigPlaneEars</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlaneEars</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPilot</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPilot</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPilotLens</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPilotLens</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>Dg3D</key>
+    <dict><key>CFBundleIconFiles</key><array><string>Dg3D</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>Dg3DCircle</key>
+    <dict><key>CFBundleIconFiles</key><array><string>Dg3DCircle</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGlass</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGlass</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGlassEyes</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGlassEyes</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgKisser</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgKisser</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgKisserRed</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgKisserRed</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgCat</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgCat</string></array><key>UIPrerenderedIcon</key><true/></dict>
 </dict>

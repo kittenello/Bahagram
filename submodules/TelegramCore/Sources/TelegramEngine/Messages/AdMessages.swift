@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 import SwiftSignalKit
 import TelegramApi
@@ -478,7 +478,7 @@ private class AdMessagesHistoryContextImpl {
     }
     
     func activate() {
-        if BGSimpleSettings.shared.disableAds {
+        if DGSimpleSettings.shared.disableAds {
             self.stateValue = State(interPostInterval: nil, messages: [])
             return
         }

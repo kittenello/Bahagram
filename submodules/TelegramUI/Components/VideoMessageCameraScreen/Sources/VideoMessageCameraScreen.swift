@@ -28,11 +28,11 @@ import LegacyMediaPickerUI
 import TelegramAudio
 import ChatSendMessageActionUI
 import ChatControllerInteraction
-import BGSimpleSettings
+import DGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
-// Bahogram: upper bound of the round-video zoom when the camera allows more. The camera's own digital limit
+// Donutgram: upper bound of the round-video zoom when the camera allows more. The camera's own digital limit
 // can be far higher, and on a linear slider that would squeeze the useful 1–5× into its first few percent.
 private let maxRoundVideoZoom: CGFloat = 10.0
 
@@ -963,7 +963,7 @@ public class VideoMessageCameraScreen: ViewController {
             self.previewContainerView.addSubview(self.previewContainerContentView)
                         
             let isDualCameraEnabled = Camera.isDualCameraSupported(forRoundVideo: true)
-            let cameraSettings = BGSimpleSettings.shared
+            let cameraSettings = DGSimpleSettings.shared
             let initialCamera = cameraSettings.rememberRoundVideoCamera ? cameraSettings.lastRoundVideoCamera : cameraSettings.roundVideoCamera
             let isFrontPosition = initialCamera != .rear
             
@@ -1140,8 +1140,8 @@ public class VideoMessageCameraScreen: ViewController {
                     return
                 }
                 self.cameraState = self.cameraState.updatedPosition(position).updatedFlashMode(flashMode)
-                if BGSimpleSettings.shared.rememberRoundVideoCamera {
-                    BGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
+                if DGSimpleSettings.shared.rememberRoundVideoCamera {
+                    DGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
                 }
                 if self.zoomPosition != position {
                     self.zoomPosition = position
@@ -1173,7 +1173,7 @@ public class VideoMessageCameraScreen: ViewController {
                 self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
-                if !BGSimpleSettings.shared.staticRoundVideoZoom {
+                if !DGSimpleSettings.shared.staticRoundVideoZoom {
                     self.setDisplayedZoom(1.0, rampRate: 8.0)
                 }
             default:
@@ -1215,7 +1215,7 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         private func updateZoomControls() {
-            let enabled = BGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > 1.0
+            let enabled = DGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > 1.0
             let expanded = self.displayedZoom > 1.05
             self.zoomButtonsView.isHidden = !enabled || expanded
             self.zoomSlider.isHidden = !enabled || !expanded
@@ -1945,14 +1945,14 @@ public class VideoMessageCameraScreen: ViewController {
     private func configureCameraIfReady() {
         guard self.audioSessionReady, !self.didConfigureCamera, self.view.window != nil else { return }
         self.didConfigureCamera = true
-        if BGSimpleSettings.shared.roundVideoCamera == .ask {
+        if DGSimpleSettings.shared.roundVideoCamera == .ask {
             let chooser = UIAlertController(title: "Камера в кружках", message: nil, preferredStyle: .alert)
             for (title, position) in [("Фронтальная", Camera.Position.front), ("Основная", Camera.Position.back)] {
                 chooser.addAction(UIAlertAction(title: title, style: .default, handler: { [weak self] _ in
                     guard let self else { return }
                     self.node.cameraState = self.node.cameraState.updatedPosition(position)
-                    if BGSimpleSettings.shared.rememberRoundVideoCamera {
-                        BGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
+                    if DGSimpleSettings.shared.rememberRoundVideoCamera {
+                        DGSimpleSettings.shared.lastRoundVideoCamera = position == .back ? .rear : .front
                     }
                     self.node.setupCamera()
                 }))

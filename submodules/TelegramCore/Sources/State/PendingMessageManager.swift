@@ -6,11 +6,11 @@ import MtProtoKit
 
 // A deleted reply target only exists in this client's Postbox. Send a real
 // blockquote so the other participant can see the reference as well.
-private func bahogramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
-    guard message.localTags.contains(.bahogramPseudoReply),
+private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
+    guard message.localTags.contains(.donutgramPseudoReply),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
           let source = transaction.getMessage(reply.messageId),
-          source.localTags.contains(.bahogramDeleted) else {
+          source.localTags.contains(.donutgramDeleted) else {
         return nil
     }
 
@@ -1321,7 +1321,7 @@ public final class PendingMessageManager {
                         suggestedPost = attribute.apiSuggestedPost(fixMinTime: Int32(Date().timeIntervalSince1970 + 10))
                     }
                 }
-                let groupPseudoReplyContent = !isForward ? bahogramPseudoReplyContent(transaction: transaction, message: messages[0].0) : nil
+                let groupPseudoReplyContent = !isForward ? donutgramPseudoReplyContent(transaction: transaction, message: messages[0].0) : nil
                 if groupPseudoReplyContent != nil {
                     replyMessageId = nil
                     replyPeerId = nil
@@ -1870,7 +1870,7 @@ public final class PendingMessageManager {
                     }
                 }
 
-                let pseudoReplyContent = bahogramPseudoReplyContent(transaction: transaction, message: message)
+                let pseudoReplyContent = donutgramPseudoReplyContent(transaction: transaction, message: message)
                 if let pseudoReplyContent {
                     // The original reply stays in Postbox for our local reply UI.
                     // Only the visible quote is included in the Telegram request.
@@ -2398,8 +2398,8 @@ public final class PendingMessageManager {
         if message.id.namespace == Namespaces.Message.QuickReplyLocal {
         } else if let apiMessage {
             var isScheduled = false
-            // Bahogram: ghost-mode sends refresh their schedule date.
-            if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
+            // Donutgram: ghost-mode sends refresh their schedule date.
+            if donutgramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
                 isScheduled = true
             }
             if case let .message(messageData) = apiMessage {
@@ -2445,8 +2445,8 @@ public final class PendingMessageManager {
             
             if message.id.namespace == Namespaces.Message.QuickReplyLocal {
                 namespace = Namespaces.Message.QuickReplyCloud
-            } else if let apiMessage = result.messages.first, bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
-                // Bahogram: ghost-mode sends refresh their schedule date.
+            } else if let apiMessage = result.messages.first, donutgramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
+                // Donutgram: ghost-mode sends refresh their schedule date.
                 namespace = Namespaces.Message.ScheduledCloud
             } else if let apiMessage = result.messages.first, case let .message(messageData) = apiMessage, (messageData.flags2 & (1 << 4)) != 0 {
                 namespace = Namespaces.Message.ScheduledCloud

@@ -960,8 +960,8 @@ private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, 
                 
                 for message in storeMessages {
                     if case let .Id(id) = message.id {
-                        // Bahogram: chat top messages may already be stored; keep saved view-once media.
-                        let _ = transaction.addMessages(bahogramPreservingSavedViewOnceMedia(transaction: transaction, messages: [message]), location: topMessageIds.contains(id) ? .UpperHistoryBlock : .Random)
+                        // Donutgram: chat top messages may already be stored; keep saved view-once media.
+                        let _ = transaction.addMessages(donutgramPreservingSavedViewOnceMedia(transaction: transaction, messages: [message]), location: topMessageIds.contains(id) ? .UpperHistoryBlock : .Random)
                     }
                 }
             }

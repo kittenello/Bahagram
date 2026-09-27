@@ -450,7 +450,7 @@ public class ItemListAvatarAndNameInfoItemNode: ListViewItemNode, ItemListItemNo
                     credibilityIconOffset = 2.0
                 } else if peer.isVerified {
                     credibilityIconImage = PresentationResourcesItemList.verifiedPeerIcon(item.presentationData.theme)
-                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && !bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.itemContext.accountPeerId) {
+                } else if peer.isPremium && !premiumConfiguration.isPremiumDisabled && !donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.itemContext.accountPeerId) {
                     credibilityIconImage = PresentationResourcesChatList.premiumIcon(item.presentationData.theme)
                 }
             }

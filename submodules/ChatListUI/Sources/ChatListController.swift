@@ -1,6 +1,6 @@
 import Foundation
-import BGSimpleSettings
-import BGSnowEffect
+import DGSimpleSettings
+import DGSnowEffect
 import UIKit
 import Postbox
 import SwiftSignalKit
@@ -95,21 +95,21 @@ private final class ContextControllerContentSourceImpl: ContextControllerContent
 }
 
 public class ChatListControllerImpl: TelegramBaseController, ChatListController {
-    private var bahogramSnowView: BGSnowView?
+    private var donutgramSnowView: DGSnowView?
     
-    /// Bahogram «Снег» over the whole list, header included. It is installed on the first layout, on top of
-    /// what exists by then; `BGSnowView` itself follows the toggle and stops while the list is off screen.
-    private func updateBahogramSnow(size: CGSize) {
+    /// Donutgram «Снег» over the whole list, header included. It is installed on the first layout, on top of
+    /// what exists by then; `DGSnowView` itself follows the toggle and stops while the list is off screen.
+    private func updateDonutgramSnow(size: CGSize) {
         if self.previewing {
             return
         }
-        let snowView: BGSnowView
-        if let current = self.bahogramSnowView {
+        let snowView: DGSnowView
+        if let current = self.donutgramSnowView {
             snowView = current
         } else {
-            snowView = BGSnowView()
+            snowView = DGSnowView()
             self.view.addSubview(snowView)
-            self.bahogramSnowView = snowView
+            self.donutgramSnowView = snowView
         }
         snowView.frame = CGRect(origin: CGPoint(), size: size)
         snowView.update(isDark: self.presentationData.theme.overallDarkAppearance)
@@ -3172,7 +3172,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.validLayout = layout
         
         self.updateLayout(layout: layout, transition: transition)
-        self.updateBahogramSnow(size: layout.size)
+        self.updateDonutgramSnow(size: layout.size)
         
         if layout.inVoiceOver != wasInVoiceOver {
             self.chatListDisplayNode.scrollToTop()
@@ -5388,7 +5388,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             guard let strongSelf = self else {
                 return
             }
-            BGSimpleSettings.shared.hideArchive = updatedValue
+            DGSimpleSettings.shared.hideArchive = updatedValue
             strongSelf.chatListDisplayNode.mainContainerNode.updateState { state in
                 var state = state
                 if updatedValue {

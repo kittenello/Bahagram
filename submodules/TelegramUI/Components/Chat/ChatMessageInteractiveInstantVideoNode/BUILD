@@ -11,7 +11,7 @@ swift_library(
         #"-Xfrontend", "-debug-time-function-bodies"
     ],
     deps = [
-        "//Bahogram/BGSimpleSettings:BGSimpleSettings",
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/Media/LocalAudioTranscription",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",

@@ -527,7 +527,7 @@ final class ChatReportPeerTitlePanelNode: ChatTitleAccessoryPanelNode {
                 emojiStatus = emojiStatusValue
             }
         }
-        if let peerId = interfaceState.renderedPeer?.peerId, bahogramHidesPremiumStatus(peerId: peerId, accountPeerId: self.context.account.peerId) {
+        if let peerId = interfaceState.renderedPeer?.peerId, donutgramHidesPremiumStatus(peerId: peerId, accountPeerId: self.context.account.peerId) {
             emojiStatus = nil
         }
         

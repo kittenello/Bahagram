@@ -9,7 +9,7 @@ import MultiAnimationRenderer
 import TelegramNotices
 import FlatBuffers
 import FlatSerialization
-import BGSimpleSettings
+import DGSimpleSettings
 
 public extension EmojiPagerContentComponent {    
     private static func hasPremium(context: AccountContext, chatPeerId: EnginePeer.Id?, premiumIfSavedMessages: Bool) -> Signal<Bool, NoError> {
@@ -1769,7 +1769,7 @@ public extension EmojiPagerContentComponent {
             let dismissedTrendingStickerPacksSet = Set(dismissedTrendingStickerPacks ?? [])
             let featuredStickerPacksSet = Set(featuredStickerPacks.map(\.info.id.id))
             
-            if !BGSimpleSettings.shared.onlyAddedStickers && dismissedTrendingStickerPacksSet != featuredStickerPacksSet {
+            if !DGSimpleSettings.shared.onlyAddedStickers && dismissedTrendingStickerPacksSet != featuredStickerPacksSet {
                 let featuredStickersConfiguration = featuredStickersConfiguration?.get(FeaturedStickersConfiguration.self)
                 for featuredStickerPack in featuredStickerPacks {
                     if installedCollectionIds.contains(featuredStickerPack.info.id) {
@@ -1937,7 +1937,7 @@ public extension EmojiPagerContentComponent {
             }
               
             var avatarPeer: EnginePeer?
-            if !BGSimpleSettings.shared.onlyAddedStickers, let peerSpecificPack = peerSpecificPack {
+            if !DGSimpleSettings.shared.onlyAddedStickers, let peerSpecificPack = peerSpecificPack {
                 avatarPeer = peerSpecificPack.peer
                 
                 var processedIds = Set<MediaId>()

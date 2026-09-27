@@ -23,7 +23,7 @@ import UndoUI
 import PremiumUI
 import LottieComponent
 import BundleIconComponent
-import BGSimpleSettings
+import DGSimpleSettings
 
 private protocol ChatEmptyNodeContent {
     func updateLayout(interfaceState: ChatPresentationInterfaceState, subject: ChatEmptyNode.Subject, size: CGSize, leftInset: CGFloat, rightInset: CGFloat, transition: ContainedViewLayoutTransition) -> CGSize
@@ -196,7 +196,7 @@ public final class ChatEmptyNodeGreetingChatContent: ASDisplayNode, ChatEmptyNod
             stickerSize = dimensions.aspectFitted(stickerSize)
         }
         
-        let hideSticker = BGSimpleSettings.shared.hideGreetingSticker
+        let hideSticker = DGSimpleSettings.shared.hideGreetingSticker
         self.stickerNode.isHidden = hideSticker
         if hideSticker {
             self.disposable.set(nil)

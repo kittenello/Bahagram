@@ -318,22 +318,22 @@ filegroup(
 
 alternate_icon_folders = [
     "BlueIcon",
-    # Bahogram pig icons
-    "BahoSnout",
-    "BahoSnoutHead",
-    "BahoPigPlane",
-    "BahoPigPlaneEars",
-    "BahoPilot",
-    "BahoPilotLens",
-    "Baho3D",
-    "Baho3DCircle",
-    "BahoGlass",
-    "BahoGlassEyes",
-    # Bahogram boykisser icons
-    "BahoKisser",
-    "BahoKisserRed",
-    # Bahogram cat icon
-    "BahoCat",
+    # Donutgram pig icons
+    "DgSnout",
+    "DgSnoutHead",
+    "DgPigPlane",
+    "DgPigPlaneEars",
+    "DgPilot",
+    "DgPilotLens",
+    "Dg3D",
+    "Dg3DCircle",
+    "DgGlass",
+    "DgGlassEyes",
+    # Donutgram boykisser icons
+    "DgKisser",
+    "DgKisserRed",
+    # Donutgram cat icon
+    "DgCat",
 ]
 
 composer_icon_folders = ["Telegram"]
@@ -578,7 +578,7 @@ official_background_gpu_fragment = """
 """
 background_gpu_fragment = official_background_gpu_fragment if telegram_bundle_id == "ph.telegra.Telegraph" else ""
 
-# Bahogram is distributed through sideloading. Privileged Telegram entitlements
+# Donutgram is distributed through sideloading. Privileged Telegram entitlements
 # (App Groups, APNs, Siri, iCloud, CarPlay, etc.) are deliberately omitted here;
 # Sideloadly will apply the entitlements available to the user's own signing team.
 plist_fragment(
@@ -624,7 +624,7 @@ plist_fragment(
     template =
     """
     <key>CFBundleDisplayName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     """
 )
 
@@ -957,7 +957,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Share</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1049,7 +1049,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationContent</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1156,7 +1156,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Widget</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1269,7 +1269,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.SiriIntents</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1400,7 +1400,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.BroadcastUpload</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1494,7 +1494,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationService</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1563,11 +1563,11 @@ plist_fragment(
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}</string>
     <key>CFBundleName</key>
-    <string>Bahogram</string>
+    <string>Donutgram</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>

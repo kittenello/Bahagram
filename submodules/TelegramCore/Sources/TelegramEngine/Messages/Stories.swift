@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import SwiftSignalKit
 import Postbox
 import TelegramApi
@@ -2072,7 +2072,7 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 }
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
-    let ghostSettings = BGSimpleSettings.shared
+    let ghostSettings = DGSimpleSettings.shared
     // The suggestion must protect the story before its confirmation dialog is
     // shown; otherwise opening the viewer has already sent the view receipt.
     let suppressServerReceipt = (ghostSettings.ghostModeEnabled && !ghostSettings.ghostReadStories) || (!ghostSettings.ghostModeEnabled && ghostSettings.ghostSuggestForStories)

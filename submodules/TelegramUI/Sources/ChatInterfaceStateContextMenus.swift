@@ -38,7 +38,7 @@ import ChatMessageItemView
 import ChatMessageBubbleItemNode
 import AdsInfoScreen
 import AdsReportScreen
-import BGSimpleSettings
+import DGSimpleSettings
  
 private struct MessageContextMenuData {
     let starStatus: Bool?
@@ -400,7 +400,7 @@ func messageMediaEditingOptions(message: EngineRawMessage) -> MessageMediaEditin
         return []
     }
     for attribute in message.attributes {
-        if attribute is AutoclearTimeoutMessageAttribute && !message.localTags.contains(.bahogramSavedViewOnce) {
+        if attribute is AutoclearTimeoutMessageAttribute && !message.localTags.contains(.donutgramSavedViewOnce) {
             return []
         }
     }
@@ -1924,7 +1924,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
 
         if data.messageActions.options.contains(.forward) {
-            if !isCopyProtected || BGSimpleSettings.shared.bypassForwardRestrictions {
+            if !isCopyProtected || DGSimpleSettings.shared.bypassForwardRestrictions {
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
@@ -2164,7 +2164,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
             return false
         })
-        let hasBahogramEditHistory = message.localTags.contains(.bahogramHasEditHistory)
+        let hasDonutgramEditHistory = message.localTags.contains(.donutgramHasEditHistory)
 
         if canViewAuthor {
             actions.insert(.custom(ChatMessageAuthorContextItem(context: context, message: message, action: { c, f, peer in
@@ -2310,7 +2310,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             actions.insert(.custom(ChatReadReportContextItem(context: context, message: message, hasReadReports: false, isEdit: true, stats: MessageReadStats(reactionCount: 0, peers: [], readTimestamps: [:]), action: nil), false), at: 0)
         }
 
-        if hasBahogramEditHistory {
+        if hasDonutgramEditHistory {
             if !actions.isEmpty {
                 actions.insert(.separator, at: 0)
             }
@@ -2320,11 +2320,11 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor)
                 },
                 action: { c, _ in
-                    let _ = (bahogramMessageRevisions(postbox: context.account.postbox, messageId: message.id)
+                    let _ = (donutgramMessageRevisions(postbox: context.account.postbox, messageId: message.id)
                     |> deliverOnMainQueue).start(next: { revisions in
                         c?.dismiss(completion: {
                             controllerInteraction.navigationController()?.pushViewController(
-                                bahogramEditHistoryController(
+                                donutgramEditHistoryController(
                                     context: context,
                                     revisions: revisions,
                                     currentText: message.text,

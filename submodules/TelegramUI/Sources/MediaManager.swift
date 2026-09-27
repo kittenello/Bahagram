@@ -1,6 +1,6 @@
 import Foundation
 import UIKit
-import BGSimpleSettings
+import DGSimpleSettings
 import SwiftSignalKit
 import AVFoundation
 import MobileCoreServices
@@ -473,7 +473,7 @@ public final class MediaManagerImpl: NSObject, MediaManager {
     }
 
     private func pauseSelectedMediaOnInterruption() {
-        let settings = BGSimpleSettings.shared
+        let settings = DGSimpleSettings.shared
         guard settings.autoPause else { return }
         let selected = settings.autoPauseMedia
         if selected & 5 != 0 {

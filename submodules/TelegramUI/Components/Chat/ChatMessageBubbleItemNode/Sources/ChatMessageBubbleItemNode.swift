@@ -1,5 +1,5 @@
 import Foundation
-import BGSimpleSettings
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -1980,7 +1980,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         if let subject = item.associatedData.subject, case .messageOptions = subject {
             needsShareButton = false
         }
-        if BGSimpleSettings.shared.hideShareButton {
+        if DGSimpleSettings.shared.hideShareButton {
             needsShareButton = false
         }
         
@@ -2477,7 +2477,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 }
                 authorNameColor = color
 
-                let hidesPremiumStatus = bahogramHidesPremiumStatus(peerId: effectiveAuthor.id, accountPeerId: item.context.account.peerId)
+                let hidesPremiumStatus = donutgramHidesPremiumStatus(peerId: effectiveAuthor.id, accountPeerId: item.context.account.peerId)
                 if case let .peer(peerId) = item.chatLocation, let authorPeerId = item.message.author?.id, authorPeerId == peerId {
                     if effectiveAuthor is TelegramChannel, !hidesPremiumStatus, let emojiStatus = effectiveAuthor.emojiStatus {
                         currentCredibilityIcon = (.animation(content: .customEmoji(fileId: emojiStatus.fileId), size: CGSize(width: 20.0, height: 20.0), placeholderColor: incoming ? item.presentationData.theme.theme.chat.message.incoming.mediaPlaceholderColor : item.presentationData.theme.theme.chat.message.outgoing.mediaPlaceholderColor, themeColor: color.withMultipliedAlpha(0.4), loopMode: .count(2)), nil)
@@ -3959,11 +3959,11 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         } else if case .semanticallyMerged = updatedMergedTop {
             forceBackgroundSide = true
         }
-        let mergeType = ChatMessageBackgroundMergeType(top: updatedMergedTop == .fullyMerged, bottom: updatedMergedBottom == .fullyMerged || BGSimpleSettings.shared.removeMessageTails, side: forceBackgroundSide)
+        let mergeType = ChatMessageBackgroundMergeType(top: updatedMergedTop == .fullyMerged, bottom: updatedMergedBottom == .fullyMerged || DGSimpleSettings.shared.removeMessageTails, side: forceBackgroundSide)
         let backgroundType: ChatMessageBackgroundType
         if hideBackground {
             backgroundType = .none
-        } else if BGSimpleSettings.shared.removeMessageTails {
+        } else if DGSimpleSettings.shared.removeMessageTails {
             backgroundType = incoming ? .incoming(.Extracted) : .outgoing(.Extracted)
         } else if !incoming {
             backgroundType = .outgoing(mergeType)
@@ -7049,7 +7049,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     
     @objc private func credibilityButtonPressed() {
         if let item = self.item, let credibilityIconView = self.credibilityIconView, let iconContent = self.credibilityIconContent, let peer = item.message.author {
-            if !bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId), case let .starGift(_, _, _, slug, _, _, _, _, _) = peer.emojiStatus?.content {
+            if !donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: item.context.account.peerId), case let .starGift(_, _, _, slug, _, _, _, _, _) = peer.emojiStatus?.content {
                 item.controllerInteraction.openUniqueGift(slug)
             } else {
                 var emojiFileId: Int64?

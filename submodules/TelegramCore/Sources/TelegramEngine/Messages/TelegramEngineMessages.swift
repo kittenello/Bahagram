@@ -2,7 +2,7 @@ import Foundation
 import SwiftSignalKit
 import Postbox
 import TelegramApi
-import BGSimpleSettings
+import DGSimpleSettings
 
 public enum EngineOutgoingMessageContent {
     case text(String, [MessageTextEntity])
@@ -99,7 +99,7 @@ public extension TelegramEngine {
         }
 
         public func applyMaxReadIndexInteractively(index: MessageIndex) -> Signal<Void, NoError> {
-            if BGSimpleSettings.shared.ghostModeEnabled && !BGSimpleSettings.shared.ghostReadMessages {
+            if DGSimpleSettings.shared.ghostModeEnabled && !DGSimpleSettings.shared.ghostReadMessages {
                 return .single(())
             }
             return _internal_applyMaxReadIndexInteractively(postbox: self.account.postbox, stateManager: self.account.stateManager, index: index)

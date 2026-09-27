@@ -288,7 +288,7 @@ public final class EmojiStatusComponent: Component {
             self.animationLayer?.playOnce()
         }
         
-        /// `.image` content may be an animated UIImage (Bahogram's developer badge): its frames
+        /// `.image` content may be an animated UIImage (Donutgram's developer badge): its frames
         /// loop on the icon layer while the component is visible for animations and emoji may loop
         /// (Power Saving turns that off).
         private func updateIconFrameAnimation() {

@@ -16,14 +16,14 @@ import WebUI
 import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
-import BGSimpleSettings
+import DGSimpleSettings
 import Postbox
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
 
 enum InfoSection: Int, CaseIterable {
-    case bahogram
+    case donutgram
     case unofficial
     case community
     case groupLocation
@@ -158,8 +158,8 @@ func infoItems(
             ))
         }
         
-        let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        let effectivePhone: String? = BGSimpleSettings.shared.hidePhoneNumber ? nil : (isMyProfile && BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : user.phone)
+        let visualPhone = DGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectivePhone: String? = DGSimpleSettings.shared.hidePhoneNumber ? nil : (isMyProfile && DGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : user.phone)
         if let phone = effectivePhone {
             let formattedPhone = formatPhoneNumber(context: context, number: phone)
             let label: String
@@ -176,8 +176,8 @@ func infoItems(
                 interaction.requestLayout(animated)
             }))
         }
-        let visualUsernames: [BGVisualUsername] = isMyProfile && user.id == context.account.peerId ? BGSimpleSettings.shared.visualUsernames(accountId: context.account.peerId.toInt64()).filter { visual in visual.isActive && user.addressName?.caseInsensitiveCompare(visual.name) != .orderedSame && !user.usernames.contains(where: { real in real.username.caseInsensitiveCompare(visual.name) == .orderedSame }) } : []
-        let preferredUsernameOrder = BGSimpleSettings.shared.visualUsernameOrder(accountId: context.account.peerId.toInt64())
+        let visualUsernames: [DGVisualUsername] = isMyProfile && user.id == context.account.peerId ? DGSimpleSettings.shared.visualUsernames(accountId: context.account.peerId.toInt64()).filter { visual in visual.isActive && user.addressName?.caseInsensitiveCompare(visual.name) != .orderedSame && !user.usernames.contains(where: { real in real.username.caseInsensitiveCompare(visual.name) == .orderedSame }) } : []
+        let preferredUsernameOrder = DGSimpleSettings.shared.visualUsernameOrder(accountId: context.account.peerId.toInt64())
         let sortUsernames: ([String]) -> [String] = { names in
             guard !preferredUsernameOrder.isEmpty else { return names }
             return names.enumerated().sorted { lhs, rhs in
@@ -940,13 +940,13 @@ func infoItems(
     
     if let peer = data.peer {
         var itemId = 95000
-        if BGSimpleSettings.shared.showProfileId {
+        if DGSimpleSettings.shared.showProfileId {
             // Bot API form: users as-is, basic groups negated, the channel namespace (channels,
             // supergroups, communities) as -100<id>. Not `toInt64()`: that is Postbox's packed
             // storage key, not the Telegram ID.
             let rawId = peer.id.id._internalGetInt64Value()
             let profileId: String
-            if BGSimpleSettings.shared.dialogIdFormat == .botApi {
+            if DGSimpleSettings.shared.dialogIdFormat == .botApi {
                 switch peer.id.namespace {
                 case Namespaces.Peer.CloudGroup: profileId = "\(-rawId)"
                 case Namespaces.Peer.CloudChannel: profileId = "\(-1_000_000_000_000 - rawId)"
@@ -956,13 +956,13 @@ func infoItems(
                 profileId = "\(rawId)"
             }
             let accountId = context.account.peerId.toInt64()
-            let visualId = peer.id == context.account.peerId ? BGSimpleSettings.shared.visualProfileId(accountId: accountId) : ""
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: visualId.isEmpty ? profileId : visualId, textColor: .accent, action: { _, _ in
+            let visualId = peer.id == context.account.peerId ? DGSimpleSettings.shared.visualProfileId(accountId: accountId) : ""
+            items[.donutgram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "ID профиля", text: visualId.isEmpty ? profileId : visualId, textColor: .accent, action: { _, _ in
                 UIPasteboard.general.string = profileId
             }, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1
         }
-        if BGSimpleSettings.shared.showDc, let image = peer.smallProfileImage, let resource = image.resource as? CloudPeerPhotoSizeMediaResource {
+        if DGSimpleSettings.shared.showDc, let image = peer.smallProfileImage, let resource = image.resource as? CloudPeerPhotoSizeMediaResource {
             let dcFlag: String
             switch resource.datacenterId {
             case 1, 3:
@@ -975,14 +975,14 @@ func infoItems(
                 dcFlag = ""
             }
             let dcText = dcFlag.isEmpty ? "DC \(resource.datacenterId)" : "DC \(resource.datacenterId) \(dcFlag)"
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата-центр (DC)", text: dcText, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+            items[.donutgram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата-центр (DC)", text: dcText, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1
         }
-        if BGSimpleSettings.shared.showRegistrationDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата регистрации", text: registrationDate, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+        if DGSimpleSettings.shared.showRegistrationDate, let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
+            items[.donutgram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата регистрации", text: registrationDate, textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
             itemId += 1
         }
-        if BGSimpleSettings.shared.showChatCreationDate {
+        if DGSimpleSettings.shared.showChatCreationDate {
             var timestamp: Int32?
             switch peer {
             case let .channel(channel): timestamp = channel.creationDate
@@ -990,11 +990,11 @@ func infoItems(
             default: break
             }
             if let timestamp {
-                items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата создания чата", text: stringForDate(timestamp: timestamp, strings: presentationData.strings), textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+                items[.donutgram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Дата создания чата", text: stringForDate(timestamp: timestamp, strings: presentationData.strings), textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
             }
         }
-        if BGSimpleSettings.shared.showMutualContact, case let .user(user) = peer, user.flags.contains(.mutualContact) {
-            items[.bahogram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Взаимный контакт", text: "", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
+        if DGSimpleSettings.shared.showMutualContact, case let .user(user) = peer, user.flags.contains(.mutualContact) {
+            items[.donutgram]!.append(PeerInfoScreenLabeledValueItem(id: itemId, label: "Взаимный контакт", text: "", textColor: .primary, action: nil, requestLayout: { interaction.requestLayout($0) }))
         }
     }
 

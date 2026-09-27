@@ -315,7 +315,7 @@ public final class ChatTitleComponent: Component {
         private var credibilityIcon: ComponentView<Empty>?
         private var verifiedIcon: ComponentView<Empty>?
         private var statusIcon: ComponentView<Empty>?
-        private var bahogramTeamBadge: (badge: BahogramBadge, peerName: String)?
+        private var donutgramTeamBadge: (badge: DonutgramBadge, peerName: String)?
         
         private var presenceManager: PeerPresenceStatusManager?
         
@@ -350,10 +350,10 @@ public final class ChatTitleComponent: Component {
             if let (gesture, location) = recognizer.lastRecognizedGestureAndLocation {
                 switch gesture {
                 case .tap:
-                    if let component = self.component, let bahogramTeamBadge = self.bahogramTeamBadge,
+                    if let component = self.component, let donutgramTeamBadge = self.donutgramTeamBadge,
                        let badgeView = self.verifiedIcon?.view,
                        badgeView.frame.insetBy(dx: -5.0, dy: -5.0).contains(location) {
-                        presentBahogramBadge(bahogramTeamBadge.badge, context: component.context, peerName: bahogramTeamBadge.peerName)
+                        presentDonutgramBadge(donutgramTeamBadge.badge, context: component.context, peerName: donutgramTeamBadge.peerName)
                     } else {
                         self.component?.tapped()
                     }
@@ -380,7 +380,7 @@ public final class ChatTitleComponent: Component {
             var titleCredibilityIcon: ChatTitleCredibilityIcon = .none
             var titleVerifiedIcon: ChatTitleCredibilityIcon = .none
             var titleStatusIcon: ChatTitleCredibilityIcon = .none
-            var bahogramTeamBadge: (badge: BahogramBadge, peerName: String)?
+            var donutgramTeamBadge: (badge: DonutgramBadge, peerName: String)?
             var isEnabled = true
             switch component.content {
             case let .peer(peerView, customTitle, _, _, isScheduledMessages, isMuted, _, hidePeerStatus, isEnabledValue):
@@ -455,7 +455,7 @@ public final class ChatTitleComponent: Component {
                                 titleCredibilityIcon = .fake
                             } else if peer.isScam {
                                 titleCredibilityIcon = .scam
-                            } else if bahogramHidesPremiumStatus(peerId: peer.id, accountPeerId: component.context.account.peerId) {
+                            } else if donutgramHidesPremiumStatus(peerId: peer.id, accountPeerId: component.context.account.peerId) {
                                 titleCredibilityIcon = .none
                             } else if !hidePeerStatus, let emojiStatus = peer.emojiStatus {
                                 titleStatusIcon = .emojiStatus(emojiStatus)
@@ -470,9 +470,9 @@ public final class ChatTitleComponent: Component {
                                 titleVerifiedIcon = .emojiStatus(PeerEmojiStatus(content: .emoji(fileId: verificationIconFileId), expirationDate: nil))
                             }
                         }
-                        if let badge = bahogramBadge(peerId: peer.id) {
+                        if let badge = donutgramBadge(peerId: peer.id) {
                             titleVerifiedIcon = .verified
-                            bahogramTeamBadge = (badge: badge, peerName: EnginePeer(peer).displayTitle(strings: component.strings, displayOrder: component.nameDisplayOrder))
+                            donutgramTeamBadge = (badge: badge, peerName: EnginePeer(peer).displayTitle(strings: component.strings, displayOrder: component.nameDisplayOrder))
                         }
                     }
                     if peerView.peerId.namespace == Namespaces.Peer.SecretChat {
@@ -609,7 +609,7 @@ public final class ChatTitleComponent: Component {
                 }
                 isEnabled = enabled
             }
-            self.bahogramTeamBadge = bahogramTeamBadge
+            self.donutgramTeamBadge = donutgramTeamBadge
             
             var accessibilityText = ""
             for segment in titleSegments {
@@ -994,8 +994,8 @@ public final class ChatTitleComponent: Component {
             }
             
             let verifiedContent: EmojiStatusComponent.Content?
-            if let bahogramTeamBadge {
-                verifiedContent = bahogramBadgeContent(bahogramTeamBadge.badge, sizeType: .large)
+            if let donutgramTeamBadge {
+                verifiedContent = donutgramBadgeContent(donutgramTeamBadge.badge, sizeType: .large)
             } else {
                 verifiedContent = mapTitleIcon(titleVerifiedIcon)
             }

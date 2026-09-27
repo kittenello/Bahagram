@@ -1,7 +1,7 @@
 import Foundation
 import Postbox
 import TelegramApi
-import BGSimpleSettings
+import DGSimpleSettings
 
 
 public func tagsForStoreMessage(incoming: Bool, attributes: [MessageAttribute], media: [Media], textEntities: [MessageTextEntity]?, isPinned: Bool) -> (MessageTags, GlobalMessageTags) {
@@ -1242,8 +1242,8 @@ extension StoreMessage {
                         if let expirationTimer = expirationTimer, expirationTimer > 0 {
                             attributes.append(AutoclearTimeoutMessageAttribute(timeout: expirationTimer, countdownBeginTime: nil))
                             consumableContent = (true, false)
-                            if BGSimpleSettings.shared.saveViewOnceMedia && (expirationTimer <= 60 || expirationTimer == viewOnceTimeout) {
-                                localTags.insert(.bahogramSavedViewOnce)
+                            if DGSimpleSettings.shared.saveViewOnceMedia && (expirationTimer <= 60 || expirationTimer == viewOnceTimeout) {
+                                localTags.insert(.donutgramSavedViewOnce)
                             }
                         }
                         
@@ -1277,8 +1277,8 @@ extension StoreMessage {
                 
                 if let ttlPeriod = ttlPeriod {
                     attributes.append(AutoremoveTimeoutMessageAttribute(timeout: ttlPeriod, countdownBeginTime: date))
-                    if BGSimpleSettings.shared.saveViewOnceMedia && ttlPeriod > 0 && (ttlPeriod <= 60 || ttlPeriod == viewOnceTimeout) {
-                        localTags.insert(.bahogramSavedViewOnce)
+                    if DGSimpleSettings.shared.saveViewOnceMedia && ttlPeriod > 0 && (ttlPeriod <= 60 || ttlPeriod == viewOnceTimeout) {
+                        localTags.insert(.donutgramSavedViewOnce)
                     }
                 }
                 
@@ -1487,7 +1487,7 @@ extension StoreMessage {
                 let isPinned = (flags & (1 << 24)) != 0
                 
                 let tagAttributes: [MessageAttribute]
-                if localTags.contains(.bahogramSavedViewOnce) {
+                if localTags.contains(.donutgramSavedViewOnce) {
                     tagAttributes = attributes.filter { attribute in
                         return !(attribute is AutoclearTimeoutMessageAttribute) && !(attribute is AutoremoveTimeoutMessageAttribute)
                     }
