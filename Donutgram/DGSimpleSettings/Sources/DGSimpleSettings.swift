@@ -86,6 +86,7 @@ public final class DGSimpleSettings {
         static let disableCustomBackgrounds = "donutgram.appearance.disableCustomBackgrounds"
         static let hideStories = "donutgram.appearance.hideStories"
         static let forceSnow = "donutgram.appearance.forceSnow"
+        static let islandStyle = "donutgram.appearance.islandStyle"
         static let localPremiumPeerIds = "donutgram.other.localPremiumPeerIds"
 
         static let onlyAddedStickers = "donutgram.chats.onlyAddedStickers"
@@ -106,6 +107,8 @@ public final class DGSimpleSettings {
         static let roundVideoZoomSlider = "donutgram.chats.roundVideoZoomSlider"
         static let staticRoundVideoZoom = "donutgram.chats.staticRoundVideoZoom"
         static let autoPause = "donutgram.chats.autoPause"
+        static let doubleTapSeekSeconds = "donutgram.chats.doubleTapSeekSeconds"
+        static let showPollResultsBeforeVoting = "donutgram.chats.showPollResultsBeforeVoting"
         static let autoPauseMedia = "donutgram.chats.autoPauseMedia"
         static let editedIcon = "donutgram.chats.editedIcon"
         static let showOnlineIndicator = "donutgram.chats.showOnlineIndicator"
@@ -337,6 +340,8 @@ public final class DGSimpleSettings {
     public var disableCustomBackgrounds: Bool { get { bool(Key.disableCustomBackgrounds) } set { setBool(newValue, Key.disableCustomBackgrounds) } }
     public var hideStories: Bool { get { bool(Key.hideStories) } set { setBool(newValue, Key.hideStories) } }
     public var forceSnow: Bool { get { bool(Key.forceSnow) } set { setBool(newValue, Key.forceSnow) } }
+    /// 0 is the standard island, 1 is a Donutgram badge, and 2 is a compact donut badge.
+    public var islandStyle: Int { get { min(max(integer(Key.islandStyle), 0), 2) } set { setInteger(min(max(newValue, 0), 2), Key.islandStyle) } }
 
     public func localPremium(accountId: Int64) -> Bool {
         return self.defaults.stringArray(forKey: Key.localPremiumPeerIds)?.contains(String(accountId)) ?? false
@@ -379,6 +384,16 @@ public final class DGSimpleSettings {
     public var roundVideoZoomSlider: Bool { get { bool(Key.roundVideoZoomSlider) } set { setBool(newValue, Key.roundVideoZoomSlider) } }
     public var staticRoundVideoZoom: Bool { get { bool(Key.staticRoundVideoZoom) } set { setBool(newValue, Key.staticRoundVideoZoom) } }
     public var autoPause: Bool { get { bool(Key.autoPause) } set { setBool(newValue, Key.autoPause) } }
+    /// Zero disables seeking; an unset value preserves Telegram's 15-second behavior.
+    public var doubleTapSeekSeconds: Int {
+        get {
+            guard self.defaults.object(forKey: Key.doubleTapSeekSeconds) != nil else { return 15 }
+            let value = integer(Key.doubleTapSeekSeconds)
+            return [0, 5, 10, 15, 30].contains(value) ? value : 15
+        }
+        set { setInteger([0, 5, 10, 15, 30].contains(newValue) ? newValue : 15, Key.doubleTapSeekSeconds) }
+    }
+    public var showPollResultsBeforeVoting: Bool { get { bool(Key.showPollResultsBeforeVoting) } set { setBool(newValue, Key.showPollResultsBeforeVoting) } }
     /// Bitmask: video = 1, voice = 2, round video = 4.
     public var autoPauseMedia: Int {
         get { self.defaults.object(forKey: Key.autoPauseMedia) == nil ? 7 : integer(Key.autoPauseMedia) }

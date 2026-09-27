@@ -1192,6 +1192,7 @@ swift_library(
         ":WidgetAssets",
     ],
     deps = [
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/WidgetItems:WidgetItems_iOS14",
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
@@ -1644,6 +1645,8 @@ plist_fragment(
     <string>You can use Siri to send messages.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>We need this to transcribe audio messages on your request.</string>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>NSUserActivityTypes</key>
     <array>
         <string>INSendMessageIntent</string>

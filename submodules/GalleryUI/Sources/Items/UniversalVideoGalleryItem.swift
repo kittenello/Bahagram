@@ -39,6 +39,7 @@ import BundleIconComponent
 import VideoPlaybackControlsComponent
 import PhotoResources
 import GlassBackgroundComponent
+import DGSimpleSettings
 
 public enum UniversalVideoGalleryItemContentInfo {
     case message(Message, GalleryMediaSubject?)
@@ -1224,11 +1225,12 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             return true
         }
         
-        if case let .playback(_, seekable) = self.footerContentNode.content, seekable {
+        let seekSeconds = DGSimpleSettings.shared.doubleTapSeekSeconds
+        if case let .playback(_, seekable) = self.footerContentNode.content, seekable, seekSeconds > 0 {
             if location.x >= self.bounds.width * 0.3 {
-                self.footerContentNode.seekForward?(15.0)
+                self.footerContentNode.seekForward?(Double(seekSeconds))
             } else {
-                self.footerContentNode.seekBackward?(15.0)
+                self.footerContentNode.seekBackward?(Double(seekSeconds))
             }
             return true
         }

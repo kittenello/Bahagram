@@ -940,6 +940,9 @@ struct AllWidgets: WidgetBundle {
    var body: some Widget {
         Static_Widget()
         Static_AvatarsWidget()
+        if #available(iOSApplicationExtension 16.2, iOS 16.2, *) {
+            DGIslandActivityWidget()
+        }
    }
 }
 
