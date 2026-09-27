@@ -4537,6 +4537,11 @@ func replayFinalState(
                     if previousMessage.localTags.contains(.bahogramSavedViewOnce) {
                         updatedLocalTags.insert(.bahogramSavedViewOnce)
                     }
+                    if previousMessage.localTags.contains(.bahogramPseudoReply) {
+                        updatedLocalTags.insert(.bahogramPseudoReply)
+                        updatedAttributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                        updatedAttributes.append(contentsOf: previousMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                    }
 
                     if previousMessage.localTags.contains(.OutgoingLiveLocation) {
                         updatedLocalTags.insert(.OutgoingLiveLocation)
@@ -4581,7 +4586,8 @@ func replayFinalState(
                     
                     // Bahogram: keep the media of a saved view-once message that the server
                     // copy only carries as an "expired" placeholder.
-                    return .update(bahogramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia)))
+                    let updatedText = previousMessage.localTags.contains(.bahogramPseudoReply) ? previousMessage.text : message.text
+                    return .update(bahogramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia).withUpdatedText(updatedText)))
                 })
                 if let generatedEvent = generatedEvent {
                     addedReactionEvents.append(generatedEvent)
