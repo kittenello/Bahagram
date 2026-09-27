@@ -1,4 +1,4 @@
-name: Build Bahogram IPA
+name: Build Donutgram IPA
 
 on:
   workflow_dispatch:
@@ -157,8 +157,8 @@ jobs:
           fi
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.kittenello.bahogram" "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Bahogram" "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleName Bahogram" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Donutgram" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName Donutgram" "$APP_PATH/Info.plist"
 
           # Extensions require App Groups / extra capabilities that free sideload
           # certificates often do not provide. The Bazel build already disables
@@ -167,19 +167,19 @@ jobs:
 
           (
             cd "$PACKAGE_DIR"
-            zip -qry "$GITHUB_WORKSPACE/build-artifacts/Bahogram.ipa" Payload
+            zip -qry "$GITHUB_WORKSPACE/build-artifacts/Donutgram.ipa" Payload
           )
 
           echo "Final IPA identity:"
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_PATH/Info.plist"
-          ls -lh "$GITHUB_WORKSPACE/build-artifacts/Bahogram.ipa"
+          ls -lh "$GITHUB_WORKSPACE/build-artifacts/Donutgram.ipa"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Bahogram-IPA
-          path: build-artifacts/Bahogram.ipa
+          name: Donutgram-IPA
+          path: build-artifacts/Donutgram.ipa
           if-no-files-found: error
           retention-days: 14
 

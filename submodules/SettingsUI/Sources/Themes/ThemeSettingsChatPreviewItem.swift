@@ -136,7 +136,7 @@ public func bahogramMessagePreviewItem(context: AccountContext, sectionId: ItemL
         dateTimeFormat: current.dateTimeFormat,
         nameDisplayOrder: current.nameDisplayOrder,
         messageItems: [
-            ChatPreviewMessageItem(outgoing: false, reply: ("Bahogram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", timestamp: 66000, edited: false, nameColor: .preset(.red), backgroundEmojiId: nil),
+            ChatPreviewMessageItem(outgoing: false, reply: ("Donutgram", "Настройки сообщений"), text: "Так будет выглядеть входящее сообщение", timestamp: 66000, edited: false, nameColor: .preset(.red), backgroundEmojiId: nil),
             ChatPreviewMessageItem(outgoing: true, reply: nil, text: "И исходящее сообщение", timestamp: 66000, edited: true, nameColor: .preset(.blue), backgroundEmojiId: nil)
         ]
     )

@@ -158,7 +158,7 @@ class CallKitProviderDelegate: NSObject, CXProviderDelegate {
     }
     
     private static func providerConfiguration() -> CXProviderConfiguration {
-        let localizedAppName = getAppBundle().localizedInfoDictionary?["CFBundleDisplayName"] as? String ?? "Bahogram"
+        let localizedAppName = getAppBundle().localizedInfoDictionary?["CFBundleDisplayName"] as? String ?? "Donutgram"
         let providerConfiguration = CXProviderConfiguration(localizedName: localizedAppName)
         
         providerConfiguration.supportsVideo = true

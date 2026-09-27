@@ -9,7 +9,7 @@ import TelegramCore
 public func bgSpySettingsController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
-    return bgController(context: context, title: "Bahagram", entries: {
+    return bgController(context: context, title: "Donutgram", entries: {
         var result: [BGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
         result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(25, 3, "УСКОРЕНИЕ ЗАГРУЗКИ"), .speedSlider(26, 3, s.downloadAcceleration), .toggle(27, 3, "accelerateUpload", "Ускорение отправки", s.accelerateUpload, true), .info(28, 3, "Ультра использует больше одновременных соединений. На медленном интернете это может мешать загрузке файлов и просмотру видео."), .header(30, 4, "ДРУГОЕ"), .disclosure(31, 4, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 4, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 4, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 4, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 4, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
@@ -47,7 +47,7 @@ private func bgVisualRatingController(context: AccountContext) -> ViewController
     let settings = BGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
     return bgController(context: context, title: "Визуальный рейтинг", entries: {
-        [.header(0, 0, "УРОВЕНЬ"), .input(1, 0, "level", settings.visualRatingLevel(accountId: accountId).map { String($0) } ?? "", "1–100"), .info(2, 0, "Укажите уровень от 1 до 100. Значок и его узор выбираются тем же компонентом, что и в Telegram. Пустое поле возвращает реальный рейтинг. Изменение видно только в Bahogram на этом устройстве.")]
+        [.header(0, 0, "УРОВЕНЬ"), .input(1, 0, "level", settings.visualRatingLevel(accountId: accountId).map { String($0) } ?? "", "1–100"), .info(2, 0, "Укажите уровень от 1 до 100. Значок и его узор выбираются тем же компонентом, что и в Telegram. Пустое поле возвращает реальный рейтинг. Изменение видно только в Donutgram на этом устройстве.")]
     }, textUpdated: { key, value in
         if key == "level" { settings.setVisualRatingLevel(Int(value), accountId: accountId) }
     })
@@ -281,5 +281,5 @@ private func bgHiddenReactionsController(context: AccountContext) -> ViewControl
 }
 
 func bgSupportController(context: AccountContext) -> ViewController {
-    bgController(context: context, title: "Поддержка", entries: { [.header(0, 0, "ПОДДЕРЖКА"), .info(1, 0, "Раздел подготовлен для ссылок на поддержку и информацию о Bahogram.")] })
+    bgController(context: context, title: "Поддержка", entries: { [.header(0, 0, "ПОДДЕРЖКА"), .info(1, 0, "Раздел подготовлен для ссылок на поддержку и информацию о Donutgram.")] })
 }

@@ -55,9 +55,9 @@ public func presentBahogramBadge(_ badge: BahogramBadge, context: AccountContext
     let type: OverlayStatusControllerType
     switch badge {
     case .developer:
-        type = .shieldSuccess("\(peerName) является членом команды разработчиков Bahogram.", true)
+        type = .shieldSuccess("\(peerName) является членом команды разработчиков Donutgram.", true)
     case .supporter:
-        type = .genericSuccess("\(peerName) поддерживает Bahogram.", true)
+        type = .genericSuccess("\(peerName) поддерживает Donutgram.", true)
     case .baha:
         type = .genericSuccess("\(peerName) — припухлый Баха собственной персоной.", true)
     }
