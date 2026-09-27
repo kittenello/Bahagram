@@ -12,13 +12,15 @@ public func bgSpySettingsController(context: AccountContext) -> ViewController {
     return bgController(context: context, title: "Bahagram", entries: {
         var result: [BGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
-        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(30, 3, "ДРУГОЕ"), .disclosure(31, 3, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 3, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 3, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 3, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 3, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
+        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(25, 3, "УСКОРЕНИЕ ЗАГРУЗКИ"), .speedSlider(26, 3, s.downloadAcceleration), .toggle(27, 3, "accelerateUpload", "Ускорение отправки", s.accelerateUpload, true), .info(28, 3, "Ультра использует больше одновременных соединений. На медленном интернете это может мешать загрузке файлов и просмотру видео."), .header(30, 4, "ДРУГОЕ"), .disclosure(31, 4, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 4, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 4, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 4, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 4, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
         if s.localPremium(accountId: accountId) {
-            result.append(.info(36, 3, "Premium включён локально для этого аккаунта. Сервер Telegram по-прежнему проверяет подписку для платных возможностей."))
+            result.append(.info(36, 4, "Premium включён локально для этого аккаунта. Сервер Telegram по-прежнему проверяет подписку для платных возможностей."))
         }
         return result
     }, restartRequiredKeys: ["localPremium"], toggle: { key, value in
-        switch key { case "saveDeleted": s.saveDeletedMessages = value; case "transparentDeleted": s.semiTransparentDeletedMessages = value; case "saveEdits": s.saveEditHistory = value; case "saveOnce": s.saveViewOnceMedia = value; case "saveBots": s.saveInBotChats = value; case "bypassForward": s.bypassForwardRestrictions = value; case "localPremium": s.setLocalPremium(value, accountId: accountId); default: break }
+        switch key { case "saveDeleted": s.saveDeletedMessages = value; case "transparentDeleted": s.semiTransparentDeletedMessages = value; case "saveEdits": s.saveEditHistory = value; case "saveOnce": s.saveViewOnceMedia = value; case "saveBots": s.saveInBotChats = value; case "bypassForward": s.bypassForwardRestrictions = value; case "accelerateUpload": s.accelerateUpload = value; case "localPremium": s.setLocalPremium(value, accountId: accountId); default: break }
+    }, select: { key in
+        if key.hasPrefix("downloadAcceleration:"), let value = Int(key.split(separator: ":").last ?? "") { s.downloadAcceleration = value }
     }, open: { key in
         switch key {
         case "ghost": return bgGhostSettingsController(context: context)
@@ -100,10 +102,47 @@ private func bgSilentModeController(context: AccountContext) -> ViewController {
 func bgAppearanceSettingsController(context: AccountContext) -> ViewController {
     let s = BGSimpleSettings.shared
     return bgController(context: context, title: "Оформление", entries: {
-        [.header(0, 0, "ОСНОВНОЕ"), .toggle(1, 0, "premiumStatuses", "Скрыть премиум статусы", s.hidePremiumStatuses, true), .toggle(2, 0, "customBackgrounds", "Отключить кастомные фоны", s.disableCustomBackgrounds, true), .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true), .toggle(4, 0, "snow", "Снег", s.forceSnow, true), .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1), .header(20, 2, "ВКЛАДКИ"), .toggle(21, 2, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true), .toggle(22, 2, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar), .toggle(23, 2, "calls", "Вкладка Звонки", s.showCallsTab, !s.hideTabBar), .toggle(24, 2, "wideTabBar", "Широкая Панель", s.wideTabBar, !s.hideTabBar), .header(30, 3, "ПРОФИЛИ"), .toggle(31, 3, "profileId", "ID Профилей", s.showProfileId, true), .toggle(32, 3, "dc", "Показывать дата-центр (DC)", s.showDc, true), .toggle(33, 3, "regDate", "Показывать дату регистрации", s.showRegistrationDate, true), .toggle(34, 3, "chatDate", "Показывать дату создания чата", s.showChatCreationDate, true), .toggle(35, 3, "mutualContact", "Показывать взаимный контакт", s.showMutualContact, true), .toggle(36, 3, "confirmCalls", "Подтверждение вызова", s.confirmCalls, true), .header(40, 4, "ДРУГОЕ"), .toggle(41, 4, "disableAds", "Отключить рекламу", s.disableAds, true)]
+        var entries: [BGListEntry] = [
+            .header(0, 0, "ОСНОВНОЕ"),
+            .toggle(1, 0, "premiumStatuses", "Скрыть премиум статусы", s.hidePremiumStatuses, true),
+            .toggle(2, 0, "customBackgrounds", "Отключить кастомные фоны", s.disableCustomBackgrounds, true),
+            .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
+            .toggle(4, 0, "snow", "Снег", s.forceSnow, true),
+            .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
+            .header(20, 2, "ВКЛАДКИ"),
+            .toggle(21, 2, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
+            .toggle(22, 2, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
+            .toggle(23, 2, "calls", "Вкладка Звонки", s.showCallsTab, !s.hideTabBar),
+            .toggle(24, 2, "wideTabBar", "Широкая Панель", s.wideTabBar, !s.hideTabBar),
+            .header(30, 3, "ПРОФИЛЬ"),
+            .toggle(31, 3, "profileId", "ID Профилей", s.showProfileId, true)
+        ]
+        if s.showProfileId {
+            entries.append(.disclosure(37, 3, "dialogIdFormat", "Показывать ID диалога", s.dialogIdFormat == .botApi ? "Bot API" : "Telegram API"))
+        }
+        entries.append(contentsOf: [
+            .toggle(32, 3, "dc", "Показывать дата-центр (DC)", s.showDc, true),
+            .toggle(33, 3, "regDate", "Показывать дату регистрации", s.showRegistrationDate, true),
+            .toggle(34, 3, "chatDate", "Показывать дату создания чата", s.showChatCreationDate, true),
+            .toggle(35, 3, "mutualContact", "Показывать взаимный контакт", s.showMutualContact, true),
+            .toggle(38, 3, "relativeOnlineTime", "Относительное время онлайна", s.relativeOnlineTime, true),
+            .toggle(39, 3, "hidePhoneNumber", "Скрыть номер телефона", s.hidePhoneNumber, true),
+            .header(40, 4, "ДРУГОЕ"),
+            .toggle(41, 4, "disableAds", "Отключить рекламу", s.disableAds, true),
+            .toggle(42, 4, "confirmCalls", "Подтверждение вызова", s.confirmCalls, true)
+        ])
+        return entries
     }, restartRequiredKeys: ["premiumStatuses", "hideStories", "hideTabBar", "contacts", "calls", "wideTabBar"], toggle: { key, value in
-        switch key { case "premiumStatuses": s.hidePremiumStatuses = value; case "customBackgrounds": s.disableCustomBackgrounds = value; case "hideStories": s.hideStories = value; case "snow": s.forceSnow = value; case "hideTabBar": s.hideTabBar = value; case "contacts": s.showContactsTab = value; case "calls": s.showCallsTab = value; case "wideTabBar": s.wideTabBar = value; case "profileId": s.showProfileId = value; case "dc": s.showDc = value; case "regDate": s.showRegistrationDate = value; case "chatDate": s.showChatCreationDate = value; case "mutualContact": s.showMutualContact = value; case "confirmCalls": s.confirmCalls = value; case "disableAds": s.disableAds = value; default: break }
-    })
+        switch key { case "premiumStatuses": s.hidePremiumStatuses = value; case "customBackgrounds": s.disableCustomBackgrounds = value; case "hideStories": s.hideStories = value; case "snow": s.forceSnow = value; case "hideTabBar": s.hideTabBar = value; case "contacts": s.showContactsTab = value; case "calls": s.showCallsTab = value; case "wideTabBar": s.wideTabBar = value; case "profileId": s.showProfileId = value; case "dc": s.showDc = value; case "regDate": s.showRegistrationDate = value; case "chatDate": s.showChatCreationDate = value; case "mutualContact": s.showMutualContact = value; case "relativeOnlineTime": s.relativeOnlineTime = value; case "hidePhoneNumber": s.hidePhoneNumber = value; case "confirmCalls": s.confirmCalls = value; case "disableAds": s.disableAds = value; default: break }
+    }, open: { key in key == "dialogIdFormat" ? bgDialogIdFormatController(context: context) : nil })
+}
+
+private func bgDialogIdFormatController(context: AccountContext) -> ViewController {
+    let s = BGSimpleSettings.shared
+    return bgController(context: context, title: "ID диалога", entries: {
+        [.checkbox(0, 0, "0", "Telegram API", s.dialogIdFormat == .telegramApi),
+         .checkbox(1, 0, "1", "Bot API", s.dialogIdFormat == .botApi)]
+    }, select: { s.dialogIdFormat = $0 == "1" ? .botApi : .telegramApi })
 }
 
 func bgChatsSettingsController(context: AccountContext) -> ViewController {
@@ -142,7 +181,8 @@ func bgChatsSettingsController(context: AccountContext) -> ViewController {
             .toggle(41, 4, "autoPause", "Авто пауза", s.autoPause, true),
             .disclosure(42, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
             .header(50, 5, "ДРУГОЕ"),
-            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
+            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true),
+            .toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, s.hideArchive)
         ]
     }, toggle: { key, value in
         switch key {
@@ -166,6 +206,7 @@ func bgChatsSettingsController(context: AccountContext) -> ViewController {
                 current.isHiddenByDefault = value
                 return current
             }).startStandalone()
+        case "openArchiveOnPull": s.openArchiveOnPull = value
         default: break
         }
     }, open: { key in

@@ -729,7 +729,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     statusSuggestedWidthAndContinue = statusLayout(ChatMessageDateAndStatusNode.Arguments(
                         context: item.context,
                         presentationData: item.presentationData,
-                        edited: edited && !item.presentationData.isPreview,
+                        edited: edited,
                         impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
                         type: statusType,

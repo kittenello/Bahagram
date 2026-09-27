@@ -159,7 +159,7 @@ func infoItems(
         }
         
         let visualPhone = BGSimpleSettings.shared.visualPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        let effectivePhone: String? = isMyProfile && BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : user.phone
+        let effectivePhone: String? = BGSimpleSettings.shared.hidePhoneNumber ? nil : (isMyProfile && BGSimpleSettings.shared.visualPhoneEnabled && !visualPhone.isEmpty ? visualPhone : user.phone)
         if let phone = effectivePhone {
             let formattedPhone = formatPhoneNumber(context: context, number: phone)
             let label: String
@@ -946,10 +946,14 @@ func infoItems(
             // storage key, not the Telegram ID.
             let rawId = peer.id.id._internalGetInt64Value()
             let profileId: String
-            switch peer.id.namespace {
-            case Namespaces.Peer.CloudGroup: profileId = "\(-rawId)"
-            case Namespaces.Peer.CloudChannel: profileId = "\(-1_000_000_000_000 - rawId)"
-            default: profileId = "\(rawId)"
+            if BGSimpleSettings.shared.dialogIdFormat == .botApi {
+                switch peer.id.namespace {
+                case Namespaces.Peer.CloudGroup: profileId = "\(-rawId)"
+                case Namespaces.Peer.CloudChannel: profileId = "\(-1_000_000_000_000 - rawId)"
+                default: profileId = "\(rawId)"
+                }
+            } else {
+                profileId = "\(rawId)"
             }
             let accountId = context.account.peerId.toInt64()
             let visualId = peer.id == context.account.peerId ? BGSimpleSettings.shared.visualProfileId(accountId: accountId) : ""
