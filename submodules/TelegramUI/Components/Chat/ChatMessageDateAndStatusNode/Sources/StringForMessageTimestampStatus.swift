@@ -171,7 +171,9 @@ public func stringForMessageTimestampStatus(
         } else {
             dayText = strings.Date_ChatDateHeaderYear(monthAtIndex(Int(timeinfo.tm_mon), strings: strings), "\(timeinfo.tm_mday)", "\(1900 + timeinfo.tm_year)").string
         }
-        if isFullEditedDate {
+        if isFullEditedDate && DGSimpleSettings.shared.editedIcon {
+            dateText = strings.Message_FullDateFormat(dayText.isEmpty ? strings.Weekday_Today : dayText, stringForMessageTimestamp(timestamp: timestamp, dateTimeFormat: dateTimeFormat, withSeconds: withSeconds)).string
+        } else if isFullEditedDate {
             if dayText.isEmpty {
                 dateText = strings.Message_EditTodayFullDateFormat(stringForMessageTimestamp(timestamp: timestamp, dateTimeFormat: dateTimeFormat, withSeconds: withSeconds)).string
             } else {
@@ -250,7 +252,7 @@ public func stringForMessageTimestampStatus(
         }
     }
 
-    if message.localTags.contains(.donutgramHasEditHistory) {
+    if message.localTags.contains(.donutgramHasEditHistory) && DGSimpleSettings.shared.editedIcon {
         // Drawn by donutgramDateAttributedString as an outline pencil icon.
         dateText = "\(donutgramEditedMarker)\(dateText)"
     }

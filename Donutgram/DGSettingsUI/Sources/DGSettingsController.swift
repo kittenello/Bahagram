@@ -89,19 +89,19 @@ enum DGListEntry: ItemListNodeEntry {
     case checkbox(Int32, Int32, String, String, Bool)
     case info(Int32, Int32, String)
     case input(Int32, Int32, String, String, String)
-    // The flags (tails, seconds, colored replies) are only a diff key: the bubbles read DGSimpleSettings at layout time.
-    case messagePreview(Int32, Int32, Bool, Bool, Bool)
+    // The flags are diff keys: the bubbles read DGSimpleSettings at layout time.
+    case messagePreview(Int32, Int32, Bool, Bool, Bool, Bool)
     case appIcons(Int32, Int32)
     case speedSlider(Int32, Int32, Int)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _), let .appIcons(_, section), let .speedSlider(_, section, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .appIcons(_, section), let .speedSlider(_, section, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _), let .appIcons(id, _), let .speedSlider(id, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .appIcons(id, _), let .speedSlider(id, _, _): return id
         }
     }
     static func < (lhs: DGListEntry, rhs: DGListEntry) -> Bool { lhs.stableId < rhs.stableId }
@@ -116,15 +116,15 @@ enum DGListEntry: ItemListNodeEntry {
         case let .header(_, _, title):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: title, sectionId: self.section)
         case let .toggle(_, _, key, title, value, enabled):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title, enabled: enabled), title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, maximumNumberOfLines: 0, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) })
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title, enabled: enabled), title: title, value: value, enableInteractiveChanges: enabled, enabled: enabled, maximumNumberOfLines: 0, sectionId: self.section, style: .blocks, updated: { arguments.toggle(key, $0) }, tag: DGSettingItemTag(key: key))
         case let .disclosure(_, _, key, title, label):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title), title: title, label: label, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.open(key) })
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon(key, title), title: title, label: label, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.open(key) }, tag: DGSettingItemTag(key: key))
         case let .checkbox(_, _, key, title, checked):
-            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: title, style: .left, checked: checked, zeroSeparatorInsets: false, sectionId: self.section, action: { arguments.select(key) })
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: title, style: .left, checked: checked, zeroSeparatorInsets: false, sectionId: self.section, action: { arguments.select(key) }, tag: DGSettingItemTag(key: key))
         case let .info(_, _, text):
             return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
         case let .input(_, _, key, value, placeholder):
-            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: key == "level" ? .number : .regular(capitalization: false, autocorrection: false), clearType: .always, tag: nil, sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: key == "level" ? .number : .regular(capitalization: false, autocorrection: false), clearType: .always, tag: DGSettingItemTag(key: key), sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
         case .messagePreview:
             return donutgramMessagePreviewItem(context: arguments.context, sectionId: self.section)
         case .appIcons:
@@ -136,6 +136,8 @@ enum DGListEntry: ItemListNodeEntry {
 }
 
 func dgController(context: AccountContext, title: String, entries: @escaping () -> [DGListEntry], restartRequiredKeys: Set<String> = [], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
+    let page = dgSettingPageId(title: title)
+    let focusTag = dgTakeSettingLinkFocus(page: page)
     let initialState = DGListState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
@@ -163,18 +165,33 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries(), style: .blocks, animateChanges: true)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries(), style: .blocks, ensureVisibleItemTag: focusTag, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
     let controller = ItemListController(context: context, state: signal)
+    let longPressHandler = DGSettingsLongPressHandler(controller: controller, page: page)
     // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
     controller.alwaysSynchronous = true
     // Re-read the entries on return from a sub-page, but not on other re-appearances (tab switches, dismissed modals):
     // that would overwrite a text field the user is still editing with its stored value.
-    controller.didAppear = { firstTime in
+    controller.didAppear = { [weak controller] firstTime in
+        if firstTime {
+            let gesture = UILongPressGestureRecognizer(target: longPressHandler, action: #selector(DGSettingsLongPressHandler.handle(_:)))
+            gesture.cancelsTouchesInView = false
+            controller?.view.addGestureRecognizer(gesture)
+        }
         if !firstTime && needsRefreshOnAppear {
             needsRefreshOnAppear = false
             refresh()
+        }
+    }
+    if let focusTag {
+        var didHighlight = false
+        controller.afterTransactionCompleted = { [weak controller] in
+            guard !didHighlight, let controller, let node = controller.itemNode(forTag: focusTag) else { return }
+            didHighlight = true
+            controller.ensureItemNodeVisible(node)
+            dgHighlightSettingView(node.view)
         }
     }
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
@@ -198,7 +215,7 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
 
 public func dgSettingsController(context: AccountContext) -> ViewController {
     return dgController(context: context, title: "Настройки Donutgram", entries: {
-        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Donutgram is an unofficial client based on Telegram for iOS.")]
+        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", "")]
     }, open: { key in
         switch key {
         case "downloads": return dgDownloadsSettingsController(context: context)

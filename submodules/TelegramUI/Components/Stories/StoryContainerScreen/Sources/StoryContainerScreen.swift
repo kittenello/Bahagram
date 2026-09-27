@@ -2101,7 +2101,6 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
     
     private let context: AccountContext
     private var didAnimateIn: Bool = false
-    private var didSuggestDonutgramGhost: Bool = false
     private var isDismissed: Bool = false
     
     private let focusedItemPromise = Promise<EngineStoryId?>()
@@ -2153,18 +2152,6 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
-        if !self.didSuggestDonutgramGhost && DGSimpleSettings.shared.ghostSuggestForStories && !DGSimpleSettings.shared.ghostModeEnabled {
-            self.didSuggestDonutgramGhost = true
-            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
-            self.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: "Режим призрака"), text: NSAttributedString(string: "Включить режим призрака для просмотра сторис без отправки отметки о просмотре?"), actions: [
-                TextAlertAction(type: .defaultAction, title: "Не сейчас", action: {}),
-                TextAlertAction(type: .genericAction, title: "Включить", action: {
-                    DGSimpleSettings.shared.ghostModeEnabled = true
-                    DGSimpleSettings.shared.ghostReadStories = false
-                })
-            ]), in: .window(.root))
-        }
-        
         self.view.disablesInteractiveModalDismiss = true
         
         if !self.didAnimateIn {

@@ -791,7 +791,8 @@ public class ChatMessageRichDataBubbleContentNode: ChatMessageBubbleContentNode 
                         hasAutoremove: item.message.isSelfExpiring,
                         canViewReactionList: canViewMessageReactionList(message: EngineMessage(item.topMessage)),
                         animationCache: item.controllerInteraction.presentationContext.animationCache,
-                        animationRenderer: item.controllerInteraction.presentationContext.animationRenderer
+                        animationRenderer: item.controllerInteraction.presentationContext.animationRenderer,
+                        hideSentStatus: item.message.id.peerId == item.context.account.peerId
                     ))
                 }
 

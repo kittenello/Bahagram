@@ -2220,9 +2220,10 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                                 
                                 if isPrimary {
                                     if let controller = self.controller, case .chatList(.root) = controller.location,
-                                       DGSimpleSettings.shared.hideArchive && DGSimpleSettings.shared.openArchiveOnPull,
-                                       self.mainContainerNode.currentItemNode.hasItemsToBeRevealed() {
-                                        self.mainContainerNode.groupSelected?(.archive)
+                                       DGSimpleSettings.shared.hideArchive {
+                                        if DGSimpleSettings.shared.openArchiveOnPull {
+                                            self.mainContainerNode.currentItemNode.revealScrollHiddenItem()
+                                        }
                                     } else {
                                         self.mainContainerNode.currentItemNode.revealScrollHiddenItem()
                                     }

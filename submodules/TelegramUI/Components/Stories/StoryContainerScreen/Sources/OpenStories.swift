@@ -1,13 +1,38 @@
 import Foundation
 import UIKit
 import Display
+import UndoUI
 import AccountContext
 import SwiftSignalKit
 import TelegramCore
 import AvatarNode
+import DGSimpleSettings
 
 public extension StoryContainerScreen {
-    static func openArchivedStories(context: AccountContext, parentController: ViewController, avatarNode: AvatarNode, sharedProgressDisposable: MetaDisposable?) {
+    static func confirmDonutgramStoryOpenIfNeeded(context: AccountContext, parentController: ViewController, proceed: @escaping () -> Void) -> Bool {
+        let settings = DGSimpleSettings.shared
+        guard settings.ghostSuggestForStories && !settings.ghostModeEnabled else {
+            return false
+        }
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        parentController.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: "Режим призрака"), text: NSAttributedString(string: "Вы хотите включить Режим призрака перед просмотром истории?"), actions: [
+            TextAlertAction(type: .defaultAction, title: "Нет", action: { proceed() }),
+            TextAlertAction(type: .genericAction, title: "Да", action: {
+                settings.ghostReadStories = false
+                settings.ghostModeEnabled = true
+                proceed()
+            })
+        ]), in: .window(.root))
+        return true
+    }
+
+    static func openArchivedStories(context: AccountContext, parentController: ViewController, avatarNode: AvatarNode, sharedProgressDisposable: MetaDisposable?, skipGhostPrompt: Bool = false) {
+        if !skipGhostPrompt && confirmDonutgramStoryOpenIfNeeded(context: context, parentController: parentController, proceed: { [weak parentController, weak avatarNode] in
+            guard let parentController, let avatarNode else { return }
+            openArchivedStories(context: context, parentController: parentController, avatarNode: avatarNode, sharedProgressDisposable: sharedProgressDisposable, skipGhostPrompt: true)
+        }) {
+            return
+        }
         let storyContent = StoryContentContextImpl(context: context, isHidden: true, focusedPeerId: nil, singlePeer: false)
         let signal = storyContent.state
         |> take(1)
@@ -171,8 +196,15 @@ public extension StoryContainerScreen {
         transitionOut: @escaping (EnginePeer.Id) -> StoryContainerScreen.TransitionOut?,
         setFocusedItem: @escaping (Signal<EngineStoryId?, NoError>) -> Void,
         setProgress: @escaping (Signal<Never, NoError>) -> Void,
-        completion: @escaping (StoryContainerScreen) -> Void = { _ in }
+        completion: @escaping (StoryContainerScreen) -> Void = { _ in },
+        skipGhostPrompt: Bool = false
     ) {
+        if peerId != context.account.peerId && !skipGhostPrompt && confirmDonutgramStoryOpenIfNeeded(context: context, parentController: parentController, proceed: { [weak parentController] in
+            guard let parentController else { return }
+            openPeerStoriesCustom(context: context, peerId: peerId, focusOnId: focusOnId, isHidden: isHidden, initialOrder: initialOrder, singlePeer: singlePeer, parentController: parentController, transitionIn: transitionIn, transitionOut: transitionOut, setFocusedItem: setFocusedItem, setProgress: setProgress, completion: completion, skipGhostPrompt: true)
+        }) {
+            return
+        }
         let storyContent = StoryContentContextImpl(context: context, isHidden: isHidden, focusedPeerId: peerId, focusedStoryId: focusOnId, singlePeer: singlePeer, fixedOrder: initialOrder)
         let signal = storyContent.state
         |> take(1)

@@ -20,6 +20,7 @@ import AvatarNode
 import ComponentFlow
 import EmojiStatusComponent
 import AppBundle
+import DGSimpleSettings
 
 private let timezoneOffset: Int32 = {
     let nowTimestamp = Int32(CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970)
@@ -973,6 +974,10 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
 
     private let containerNode: ContextControllerSourceNode
     public let avatarNode: AvatarNode
+    private let presenceIndicatorNode: ASDisplayNode
+    private let presenceDisposable = MetaDisposable()
+    private var presence: EnginePeer.Presence?
+    private var settingsObserver: NSObjectProtocol?
     private var avatarVideoNode: AvatarVideoNode?
         
     private var cachedDataDisposable = MetaDisposable()
@@ -1009,6 +1014,8 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
 
         self.avatarNode = AvatarNode(font: avatarFont)
         self.avatarNode.contentNode.displaysAsynchronously = !presentationData.isPreview
+        self.presenceIndicatorNode = ASDisplayNode()
+        self.presenceIndicatorNode.isLayerBacked = true
 
         let isRotated = controllerInteraction?.chatIsRotated ?? true
         
@@ -1020,6 +1027,18 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
 
         self.addSubnode(self.containerNode)
         self.containerNode.addSubnode(self.avatarNode)
+        self.containerNode.addSubnode(self.presenceIndicatorNode)
+        self.updatePresenceIndicator()
+        if peerId.namespace == Namespaces.Peer.CloudUser && peerId != context.account.peerId {
+            self.presenceDisposable.set((context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Presence(id: peerId))
+            |> deliverOnMainQueue).startStrict(next: { [weak self] presence in
+                self?.presence = presence
+                self?.updatePresenceIndicator()
+            }))
+        }
+        self.settingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updatePresenceIndicator()
+        }
 
         if let peer = peer {
             self.setPeer(context: context, theme: presentationData.theme.theme, synchronousLoad: synchronousLoad, peer: peer, authorOfMessage: messageReference, emptyColor: .black)
@@ -1045,6 +1064,29 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     
     deinit {
         self.cachedDataDisposable.dispose()
+        self.presenceDisposable.dispose()
+        if let settingsObserver = self.settingsObserver {
+            NotificationCenter.default.removeObserver(settingsObserver)
+        }
+    }
+
+    private func updatePresenceIndicator() {
+        guard DGSimpleSettings.shared.showOnlineIndicator, let presence = self.presence else {
+            self.presenceIndicatorNode.isHidden = true
+            return
+        }
+        let now = Int32(Date().timeIntervalSince1970)
+        let isOnline: Bool
+        if case let .present(until) = presence.status {
+            isOnline = until >= now
+        } else {
+            isOnline = false
+        }
+        self.presenceIndicatorNode.isHidden = self.isAvatarHidden
+        self.presenceIndicatorNode.backgroundColor = isOnline ? .systemGreen : .systemGray
+        self.presenceIndicatorNode.cornerRadius = 6.0
+        self.presenceIndicatorNode.borderWidth = 2.0
+        self.presenceIndicatorNode.borderColor = UIColor.systemBackground.cgColor
     }
 
     public func setCustomLetters(context: AccountContext, theme: PresentationTheme, synchronousLoad: Bool, letters: [String], emptyColor: UIColor) {
@@ -1233,6 +1275,7 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
         self.avatarNode.position = avatarFrame.center
         self.avatarNode.bounds = CGRect(origin: CGPoint(), size: avatarFrame.size)
         self.avatarNode.updateSize(size: avatarFrame.size)
+        self.presenceIndicatorNode.frame = CGRect(x: avatarFrame.maxX - 11.0, y: avatarFrame.maxY - 11.0, width: 12.0, height: 12.0)
     }
 
     override public func animateRemoved(duration: Double) {
@@ -1270,6 +1313,7 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     
     public func updateAvatarIsHidden(isHidden: Bool, transition: ContainedViewLayoutTransition) {
         self.isAvatarHidden = isHidden
+        self.updatePresenceIndicator()
         var avatarTransform: CATransform3D = CATransform3DIdentity
         if isHidden {
             let scale: CGFloat = isHidden ? 0.001 : 1.0

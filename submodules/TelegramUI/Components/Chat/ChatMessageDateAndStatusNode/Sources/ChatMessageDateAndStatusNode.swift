@@ -204,6 +204,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
         var canViewReactionList: Bool
         var animationCache: AnimationCache
         var animationRenderer: MultiAnimationRenderer
+        var hideSentStatus: Bool
         
         public init(
             context: AccountContext,
@@ -229,7 +230,8 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             hasAutoremove: Bool,
             canViewReactionList: Bool,
             animationCache: AnimationCache,
-            animationRenderer: MultiAnimationRenderer
+            animationRenderer: MultiAnimationRenderer,
+            hideSentStatus: Bool = false
         ) {
             self.context = context
             self.presentationData = presentationData
@@ -255,6 +257,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             self.canViewReactionList = canViewReactionList
             self.animationCache = animationCache
             self.animationRenderer = animationRenderer
+            self.hideSentStatus = hideSentStatus
         }
     }
     
@@ -540,7 +543,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             
             var updatedDateText = arguments.dateText
             if arguments.edited {
-                if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp {
+                if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp && !DGSimpleSettings.shared.editedIcon {
                 } else if DGSimpleSettings.shared.editedIcon {
                     // A message with saved edit history already has the pencil; one is enough.
                     if !updatedDateText.contains(donutgramEditedMarker) {
@@ -654,7 +657,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                         hideStatus = arguments.impressionCount != nil
                     }
                     
-                    if hideStatus {
+                    if hideStatus || arguments.hideSentStatus {
                         statusWidth = 0.0
                         
                         checkReadNode = nil
