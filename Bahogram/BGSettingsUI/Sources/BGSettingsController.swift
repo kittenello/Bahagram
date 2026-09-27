@@ -198,7 +198,7 @@ func bgController(context: AccountContext, title: String, entries: @escaping () 
 
 public func bgSettingsController(context: AccountContext) -> ViewController {
     return bgController(context: context, title: "Настройки Bahagram", entries: {
-        [.header(0, 0, "BAHAGRAM"), .disclosure(1, 0, "downloads", "Скачивание", ""), .disclosure(2, 0, "spy", "Bahagram", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Bahagram is an unofficial client based on Telegram for iOS.")]
+        [.header(0, 0, "BAHAGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Bahagram is an unofficial client based on Telegram for iOS.")]
     }, open: { key in
         switch key {
         case "downloads": return bgDownloadsSettingsController(context: context)
