@@ -4514,11 +4514,16 @@ func replayFinalState(
                 var generatedEvent: (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)?
                 let bahogramHasStoredRevision: Bool
                 if let previousMessage = transaction.getMessage(id) {
-                    bahogramHasStoredRevision = bahogramStorePreviousMessageRevision(
-                        transaction: transaction,
-                        previousMessage: previousMessage,
-                        updatedText: message.text
-                    )
+                    if previousMessage.localTags.contains(.bahogramPseudoReply) {
+                        // The server's quote prefix is not a user edit to the local reply.
+                        bahogramHasStoredRevision = false
+                    } else {
+                        bahogramHasStoredRevision = bahogramStorePreviousMessageRevision(
+                            transaction: transaction,
+                            previousMessage: previousMessage,
+                            updatedText: message.text
+                        )
+                    }
                 } else {
                     bahogramHasStoredRevision = false
                 }
