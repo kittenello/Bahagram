@@ -4514,11 +4514,16 @@ func replayFinalState(
                 var generatedEvent: (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)?
                 let donutgramHasStoredRevision: Bool
                 if let previousMessage = transaction.getMessage(id) {
-                    donutgramHasStoredRevision = donutgramStorePreviousMessageRevision(
-                        transaction: transaction,
-                        previousMessage: previousMessage,
-                        updatedText: message.text
-                    )
+                    if previousMessage.localTags.contains(.donutgramPseudoReply) {
+                        // The server's quote prefix is not a user edit to the local reply.
+                        donutgramHasStoredRevision = false
+                    } else {
+                        donutgramHasStoredRevision = donutgramStorePreviousMessageRevision(
+                            transaction: transaction,
+                            previousMessage: previousMessage,
+                            updatedText: message.text
+                        )
+                    }
                 } else {
                     donutgramHasStoredRevision = false
                 }
@@ -4536,6 +4541,11 @@ func replayFinalState(
                     }
                     if previousMessage.localTags.contains(.donutgramSavedViewOnce) {
                         updatedLocalTags.insert(.donutgramSavedViewOnce)
+                    }
+                    if previousMessage.localTags.contains(.donutgramPseudoReply) {
+                        updatedLocalTags.insert(.donutgramPseudoReply)
+                        updatedAttributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                        updatedAttributes.append(contentsOf: previousMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
                     }
 
                     if previousMessage.localTags.contains(.OutgoingLiveLocation) {
@@ -4581,7 +4591,8 @@ func replayFinalState(
                     
                     // Donutgram: keep the media of a saved view-once message that the server
                     // copy only carries as an "expired" placeholder.
-                    return .update(donutgramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia)))
+                    let updatedText = previousMessage.localTags.contains(.donutgramPseudoReply) ? previousMessage.text : message.text
+                    return .update(donutgramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia).withUpdatedText(updatedText)))
                 })
                 if let generatedEvent = generatedEvent {
                     addedReactionEvents.append(generatedEvent)

@@ -210,6 +210,7 @@ public extension LocalMessageTags {
 
     // Local-only Donutgram state. These bits never leave Postbox and survive
     // application restarts together with the stored message.
+    static let donutgramPseudoReply = LocalMessageTags(rawValue: 1 << 27)
     static let donutgramSavedViewOnce = LocalMessageTags(rawValue: 1 << 28)
     static let donutgramDeleted = LocalMessageTags(rawValue: 1 << 29)
     static let donutgramHasEditHistory = LocalMessageTags(rawValue: 1 << 30)

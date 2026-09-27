@@ -198,7 +198,7 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
 
 public func dgSettingsController(context: AccountContext) -> ViewController {
     return dgController(context: context, title: "Настройки Donutgram", entries: {
-        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "downloads", "Скачивание", ""), .disclosure(2, 0, "spy", "Donutgram", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Donutgram is an unofficial client based on Telegram for iOS.")]
+        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", ""), .header(10, 1, "ABOUT"), .info(11, 1, "Donutgram is an unofficial client based on Telegram for iOS.")]
     }, open: { key in
         switch key {
         case "downloads": return dgDownloadsSettingsController(context: context)

@@ -962,7 +962,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon", isDefault: true)
                 ]
                 
-                // Donutgram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Baho*.alticon
+                // Donutgram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Dg*.alticon
                 for name in ["DgSnout", "DgSnoutHead", "DgPigPlane", "DgPigPlaneEars", "DgPilot", "DgPilotLens", "Dg3D", "Dg3DCircle", "DgGlass", "DgGlassEyes", "DgKisser", "DgKisserRed", "DgCat"] {
                     icons.append(PresentationAppIcon(name: name, imageName: name))
                 }

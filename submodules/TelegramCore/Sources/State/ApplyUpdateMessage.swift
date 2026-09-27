@@ -236,7 +236,7 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
         transaction.updateMessage(message.id, update: { currentMessage in
             let media: [Media]
             var attributes: [MessageAttribute]
-            let text: String
+            var text: String
             let forwardInfo: StoreMessageForwardInfo?
             let threadId: Int64?
             
@@ -311,6 +311,14 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
                 text = currentMessage.text
                 forwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
                 threadId = currentMessage.threadId
+            }
+
+            if currentMessage.localTags.contains(.donutgramPseudoReply) {
+                // The server stores the blockquote. Keep the original body and
+                // reply locally, including after the local id becomes a cloud id.
+                text = currentMessage.text
+                attributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                attributes.append(contentsOf: currentMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
             }
             
             let updatedId: MessageId

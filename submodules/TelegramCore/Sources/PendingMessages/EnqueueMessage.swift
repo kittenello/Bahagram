@@ -1062,6 +1062,12 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                     let (tags, globalTags) = tagsForStoreMessage(incoming: false, attributes: attributes, media: mediaList, textEntities: entitiesAttribute?.entities, isPinned: false)
                     
                     var localTags: LocalMessageTags = []
+                    if peerId.namespace != Namespaces.Peer.SecretChat,
+                       let replyToMessageId,
+                       let replyMessage = transaction.getMessage(replyToMessageId.messageId),
+                       replyMessage.localTags.contains(.donutgramDeleted) {
+                        localTags.insert(.donutgramPseudoReply)
+                    }
                     for media in mediaList {
                         if let media = media as? TelegramMediaMap, media.liveBroadcastingTimeout != nil {
                             localTags.insert(.OutgoingLiveLocation)
