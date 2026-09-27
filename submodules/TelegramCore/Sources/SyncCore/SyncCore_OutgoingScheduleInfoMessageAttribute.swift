@@ -34,7 +34,8 @@ public class OutgoingScheduleInfoMessageAttribute: MessageAttribute {
     public func effectiveScheduleTime(currentTime: Double) -> Int32 {
         // Telegram sends dates less than 10 seconds away immediately. Keep a
         // 2-second margin for transit, clock skew and MTProto resends, and refresh
-        // the date after any media upload.
+        // the date after any media upload. The stored date stays as it was, so
+        // bahogramSentMessageIsScheduled can't compare it with the server date.
         return self.isGhostScheduled ? max(self.scheduleTime, Int32(ceil(currentTime + Double(ghostScheduledMessageDelay)))) : self.scheduleTime
     }
     
