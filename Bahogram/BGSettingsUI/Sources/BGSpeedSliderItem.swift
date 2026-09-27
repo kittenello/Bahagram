@@ -49,6 +49,10 @@ final class BGSpeedSliderItemNode: ListViewItemNode {
     private var labels: [UILabel] = []
     private var layoutWidth: CGFloat = 0
 
+    init() {
+        super.init(layerBacked: false)
+    }
+
     override func didLoad() {
         super.didLoad()
         let slider = UISlider()
