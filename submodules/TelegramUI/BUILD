@@ -194,6 +194,7 @@ swift_library(
         "//Bahogram/BGLinkDownloader:BGLinkDownloader",
         "//Bahogram/BGSettingsUI:BGSettingsUI",
         "//Bahogram/BGSimpleSettings:BGSimpleSettings",
+        "//Bahogram/BGSnowEffect:BGSnowEffect",
         "//submodules/UrlHandling:UrlHandling",
         "//submodules/HexColor:HexColor",
         "//submodules/QrCode:QrCode",

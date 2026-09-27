@@ -1,5 +1,6 @@
 import Foundation
 import BGSimpleSettings
+import BGSnowEffect
 import UIKit
 import Postbox
 import SwiftSignalKit
@@ -94,41 +95,26 @@ private final class ContextControllerContentSourceImpl: ContextControllerContent
 }
 
 public class ChatListControllerImpl: TelegramBaseController, ChatListController {
-    private var bahagramSnowLayer: CAEmitterLayer?
-
-    private func updateBahagramSnow() {
-        guard BGSimpleSettings.shared.forceSnow, !self.previewing else {
-            self.bahagramSnowLayer?.removeFromSuperlayer()
-            self.bahagramSnowLayer = nil
+    private var bahogramSnowView: BGSnowView?
+    
+    /// Bahogram «Снег» over the whole list, header included. It is installed on the first layout, on top of
+    /// what exists by then; `BGSnowView` itself follows the toggle and stops while the list is off screen.
+    private func updateBahogramSnow(size: CGSize) {
+        if self.previewing {
             return
         }
-        if self.bahagramSnowLayer == nil {
-            let layer = CAEmitterLayer()
-            layer.emitterShape = .line
-            layer.renderMode = .oldestLast
-            let cell = CAEmitterCell()
-            let image = UIGraphicsImageRenderer(size: CGSize(width: 8.0, height: 8.0)).image { context in
-                UIColor.white.setFill()
-                context.cgContext.fillEllipse(in: CGRect(x: 1.0, y: 1.0, width: 6.0, height: 6.0))
-            }
-            cell.contents = image.cgImage
-            cell.birthRate = 2.0
-            cell.lifetime = 12.0
-            cell.velocity = 45.0
-            cell.velocityRange = 18.0
-            cell.yAcceleration = 10.0
-            cell.emissionRange = .pi / 8.0
-            cell.scale = 0.7
-            cell.scaleRange = 0.35
-            cell.alphaSpeed = -0.07
-            layer.emitterCells = [cell]
-            self.view.layer.addSublayer(layer)
-            self.bahagramSnowLayer = layer
+        let snowView: BGSnowView
+        if let current = self.bahogramSnowView {
+            snowView = current
+        } else {
+            snowView = BGSnowView()
+            self.view.addSubview(snowView)
+            self.bahogramSnowView = snowView
         }
-        self.bahagramSnowLayer?.frame = self.view.bounds
-        self.bahagramSnowLayer?.emitterPosition = CGPoint(x: self.view.bounds.midX, y: -8.0)
-        self.bahagramSnowLayer?.emitterSize = CGSize(width: self.view.bounds.width, height: 1.0)
+        snowView.frame = CGRect(origin: CGPoint(), size: size)
+        snowView.update(isDark: self.presentationData.theme.overallDarkAppearance)
     }
+    
     private var validLayout: ContainerViewLayout?
     
     public let context: AccountContext
@@ -2391,7 +2377,6 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        self.updateBahagramSnow()
                 
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings
@@ -2880,8 +2865,6 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        self.bahagramSnowLayer?.removeFromSuperlayer()
-        self.bahagramSnowLayer = nil
         
         if self.dismissSearchOnDisappear {
             self.dismissSearchOnDisappear = false
@@ -3183,13 +3166,13 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
-        if self.bahagramSnowLayer != nil { self.updateBahagramSnow() }
         
         let wasInVoiceOver = self.validLayout?.inVoiceOver ?? false
         
         self.validLayout = layout
         
         self.updateLayout(layout: layout, transition: transition)
+        self.updateBahogramSnow(size: layout.size)
         
         if layout.inVoiceOver != wasInVoiceOver {
             self.chatListDisplayNode.scrollToTop()
