@@ -4,6 +4,57 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
+// A deleted reply target only exists in this client's Postbox. Send a real
+// blockquote so the other participant can see the reference as well.
+private func bahogramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
+    guard message.localTags.contains(.bahogramPseudoReply),
+          let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
+          let source = transaction.getMessage(reply.messageId),
+          source.localTags.contains(.bahogramDeleted) else {
+        return nil
+    }
+
+    let author = source.author ?? transaction.getPeer(source.id.peerId)
+    let name = author?.debugDisplayTitle ?? ""
+    var excerpt = reply.quote?.text ?? source.text
+    if excerpt.isEmpty {
+        if source.media.contains(where: { $0 is TelegramMediaImage }) {
+            excerpt = "Photo"
+        } else if let file = source.media.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile {
+            excerpt = file.isVoice ? "Voice message" : file.isInstantVideo ? "Video message" : file.isVideo ? "Video" : file.isSticker ? "Sticker" : "File"
+        } else {
+            excerpt = "Message"
+        }
+    }
+    if excerpt.count > 100 {
+        excerpt = String(excerpt.prefix(99)) + "…"
+    }
+
+    let prefix = name.isEmpty ? excerpt : name + "\n" + excerpt
+    let text = prefix + (message.text.isEmpty ? "" : "\n" + message.text)
+    let prefixLength = (prefix as NSString).length
+    let bodyOffset = prefixLength + (message.text.isEmpty ? 0 : 1)
+    var entities = [MessageTextEntity(range: 0 ..< prefixLength, type: .BlockQuote(isCollapsed: false))]
+    if !name.isEmpty {
+        let nameLength = (name as NSString).length
+        entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .Bold))
+        if let author {
+            entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .TextMention(peerId: author.id)))
+        }
+    }
+    if let originalEntities = message.textEntitiesAttribute?.entities, !message.text.isEmpty {
+        entities.append(contentsOf: originalEntities.map { entity in
+            MessageTextEntity(range: (entity.range.lowerBound + bodyOffset) ..< (entity.range.upperBound + bodyOffset), type: entity.type)
+        })
+    }
+
+    var peers = message.peers
+    if let author {
+        peers[author.id] = author
+    }
+    return (text, apiEntitiesFromMessageTextEntities(entities, associatedPeers: peers))
+}
+
 public struct PendingMessageStatus: Equatable {
     public struct Progress: Equatable {
         public let progress: Float
@@ -1270,7 +1321,13 @@ public final class PendingMessageManager {
                         suggestedPost = attribute.apiSuggestedPost(fixMinTime: Int32(Date().timeIntervalSince1970 + 10))
                     }
                 }
-                                
+                let groupPseudoReplyContent = !isForward ? bahogramPseudoReplyContent(transaction: transaction, message: messages[0].0) : nil
+                if groupPseudoReplyContent != nil {
+                    replyMessageId = nil
+                    replyPeerId = nil
+                    replyQuote = nil
+                }
+
                 let sendMessageRequest: Signal<Api.Updates, MTRpcError>
                 if isForward {
                     if messages.contains(where: { $0.0.groupingKey != nil }) {
@@ -1396,13 +1453,17 @@ public final class PendingMessageManager {
                                             messageEntities = apiTextAttributeEntities(attribute, associatedPeers: message.peers)
                                         }
                                     }
+                                    let pseudoContent = message.id == messages[0].0.id ? groupPseudoReplyContent : nil
+                                    if let pseudoContent {
+                                        messageEntities = pseudoContent.1
+                                    }
                                     
                                     var singleFlags: Int32 = 0
                                     if let _ = messageEntities {
                                         singleFlags |= 1 << 0
                                     }
                                     
-                                    singleMedias.append(.inputSingleMedia(.init(flags: singleFlags, media: inputMedia, randomId: uniqueId, message: text, entities: messageEntities)))
+                                    singleMedias.append(.inputSingleMedia(.init(flags: singleFlags, media: inputMedia, randomId: uniqueId, message: pseudoContent?.0 ?? text, entities: messageEntities)))
                                 default:
                                     return failMessages(postbox: postbox, ids: group.map { $0.0 })
                             }
@@ -1808,6 +1869,16 @@ public final class PendingMessageManager {
                         flags |= Int32(1 << 23)
                     }
                 }
+
+                let pseudoReplyContent = bahogramPseudoReplyContent(transaction: transaction, message: message)
+                if let pseudoReplyContent {
+                    // The original reply stays in Postbox for our local reply UI.
+                    // Only the visible quote is included in the Telegram request.
+                    replyMessageId = nil
+                    replyPeerId = nil
+                    replyQuote = nil
+                    messageEntities = pseudoReplyContent.1
+                }
                 
                 if case .forward = content.content {
                 } else {
@@ -1935,7 +2006,7 @@ public final class PendingMessageManager {
                             flags |= 1 << 22
                         }
                     
-                        sendMessageRequest = network.requestWithAdditionalInfo(Api.functions.messages.sendMessage(flags: flags, peer: inputPeer, replyTo: replyTo, message: message.text, randomId: uniqueId, replyMarkup: nil, entities: messageEntities, scheduleDate: scheduleTime, scheduleRepeatPeriod: scheduleRepeatPeriod, sendAs: sendAsInputPeer, quickReplyShortcut: quickReplyShortcut, effect: messageEffectId, allowPaidStars: allowPaidStars, suggestedPost: suggestedPost, richMessage: apiRichMessage), info: .acknowledgement, tag: dependencyTag)
+                        sendMessageRequest = network.requestWithAdditionalInfo(Api.functions.messages.sendMessage(flags: flags, peer: inputPeer, replyTo: replyTo, message: pseudoReplyContent?.0 ?? message.text, randomId: uniqueId, replyMarkup: nil, entities: messageEntities, scheduleDate: scheduleTime, scheduleRepeatPeriod: scheduleRepeatPeriod, sendAs: sendAsInputPeer, quickReplyShortcut: quickReplyShortcut, effect: messageEffectId, allowPaidStars: allowPaidStars, suggestedPost: suggestedPost, richMessage: apiRichMessage), info: .acknowledgement, tag: dependencyTag)
                     case let .media(inputMedia, text):
                         if bubbleUpEmojiOrStickersets {
                             flags |= Int32(1 << 15)
@@ -2037,7 +2108,7 @@ public final class PendingMessageManager {
                             flags |= 1 << 22
                         }
                     
-                        sendMessageRequest = network.request(Api.functions.messages.sendMedia(flags: flags, peer: inputPeer, replyTo: replyTo, media: inputMedia, message: text, randomId: uniqueId, replyMarkup: nil, entities: messageEntities, scheduleDate: scheduleTime, scheduleRepeatPeriod: scheduleRepeatPeriod, sendAs: sendAsInputPeer, quickReplyShortcut: quickReplyShortcut, effect: messageEffectId, allowPaidStars: allowPaidStars, suggestedPost: suggestedPost), tag: dependencyTag)
+                        sendMessageRequest = network.request(Api.functions.messages.sendMedia(flags: flags, peer: inputPeer, replyTo: replyTo, media: inputMedia, message: pseudoReplyContent?.0 ?? text, randomId: uniqueId, replyMarkup: nil, entities: messageEntities, scheduleDate: scheduleTime, scheduleRepeatPeriod: scheduleRepeatPeriod, sendAs: sendAsInputPeer, quickReplyShortcut: quickReplyShortcut, effect: messageEffectId, allowPaidStars: allowPaidStars, suggestedPost: suggestedPost), tag: dependencyTag)
                         |> map(NetworkRequestResult.result)
                     case let .forward(sourceInfo):
                         var topMsgId: Int32?
