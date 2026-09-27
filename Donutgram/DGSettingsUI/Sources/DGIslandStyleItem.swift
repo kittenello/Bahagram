@@ -47,7 +47,7 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
     private var buttons: [UIButton] = []
     private var captions: [UILabel] = []
 
-    override init() {
+    init() {
         super.init(layerBacked: false)
     }
 
