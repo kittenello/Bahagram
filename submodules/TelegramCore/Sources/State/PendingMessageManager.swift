@@ -2327,7 +2327,8 @@ public final class PendingMessageManager {
         if message.id.namespace == Namespaces.Message.QuickReplyLocal {
         } else if let apiMessage {
             var isScheduled = false
-            if message.scheduleTime != nil && message.scheduleTime == apiMessage.timestamp {
+            // Bahogram: ghost-mode sends refresh their schedule date.
+            if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
                 isScheduled = true
             }
             if case let .message(messageData) = apiMessage {
@@ -2373,7 +2374,8 @@ public final class PendingMessageManager {
             
             if message.id.namespace == Namespaces.Message.QuickReplyLocal {
                 namespace = Namespaces.Message.QuickReplyCloud
-            } else if let apiMessage = result.messages.first, message.scheduleTime != nil && message.scheduleTime == apiMessage.timestamp {
+            } else if let apiMessage = result.messages.first, bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
+                // Bahogram: ghost-mode sends refresh their schedule date.
                 namespace = Namespaces.Message.ScheduledCloud
             } else if let apiMessage = result.messages.first, case let .message(messageData) = apiMessage, (messageData.flags2 & (1 << 4)) != 0 {
                 namespace = Namespaces.Message.ScheduledCloud

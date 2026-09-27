@@ -325,7 +325,8 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
                     if attributes.contains(where: { $0 is PendingProcessingMessageAttribute }) {
                         namespace = Namespaces.Message.ScheduledCloud
                     } else {
-                        if message.scheduleTime != nil && message.scheduleTime == updatedTimestamp {
+                        // Bahogram: ghost-mode sends refresh their schedule date.
+                        if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: updatedTimestamp, result: result) {
                             namespace = Namespaces.Message.ScheduledCloud
                         }
                     }
@@ -502,7 +503,8 @@ func applyUpdateGroupMessages(postbox: Postbox, stateManager: AccountStateManage
         if Namespaces.Message.allQuickReply.contains(messages[0].id.namespace) {
             namespace = Namespaces.Message.QuickReplyCloud
         } else if let message = messages.first, let apiMessage = result.messages.first {
-            if message.scheduleTime != nil && message.scheduleTime == apiMessage.timestamp {
+            // Bahogram: ghost-mode sends refresh their schedule date.
+            if bahogramSentMessageIsScheduled(message, serverMessage: apiMessage, serverTimestamp: apiMessage.timestamp, result: result) {
                 namespace = Namespaces.Message.ScheduledCloud
             } else if let apiMessage = result.messages.first, case let .message(messageData) = apiMessage, (messageData.flags2 & (1 << 4)) != 0 {
                 namespace = Namespaces.Message.ScheduledCloud
