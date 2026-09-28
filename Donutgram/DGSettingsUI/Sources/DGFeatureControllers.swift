@@ -12,7 +12,7 @@ public func dgSpySettingsController(context: AccountContext) -> ViewController {
     return dgController(context: context, title: "Основные", entries: {
         var result: [DGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
-        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .info(22, 2, "Скачивает защищённый текст и медиа, затем отправляет их как новое сообщение без подписи «Переслано»."), .header(25, 3, "УСКОРЕНИЕ ЗАГРУЗКИ"), .speedSlider(26, 3, s.downloadAcceleration), .toggle(27, 3, "accelerateUpload", "Ускорение отправки", s.accelerateUpload, true), .info(28, 3, "Ультра использует больше одновременных соединений. На медленном интернете это может мешать загрузке файлов и просмотру видео."), .header(30, 4, "ДРУГОЕ"), .disclosure(31, 4, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 4, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 4, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 4, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 4, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
+        result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .header(25, 3, "УСКОРЕНИЕ ЗАГРУЗКИ"), .speedSlider(26, 3, s.downloadAcceleration), .toggle(27, 3, "accelerateUpload", "Ускорение отправки", s.accelerateUpload, true), .info(28, 3, "Ультра использует больше одновременных соединений. На медленном интернете это может мешать загрузке файлов и просмотру видео."), .header(30, 4, "ДРУГОЕ"), .disclosure(31, 4, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 4, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 4, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 4, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 4, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
         if s.localPremium(accountId: accountId) {
             result.append(.info(36, 4, "Premium включён локально для этого аккаунта. Сервер Telegram по-прежнему проверяет подписку для платных возможностей."))
         }
@@ -79,7 +79,7 @@ private func dgGhostSettingsController(context: AccountContext) -> ViewControlle
     return dgController(context: context, title: "Режим призрака", entries: {
         let count = [s.ghostReadMessages, s.ghostReadStories, s.ghostSendOnline, s.ghostSendTyping, !s.ghostAutomaticOffline].filter { !$0 }.count
         let silent = ["Никогда", "В режиме призрака", "Всегда"][min(max(s.ghostSendWithoutSound, 0), 2)]
-        return [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .toggle(1, 0, "enabled", "Режим призрака", s.ghostModeEnabled, true), .disclosure(2, 0, "options", "Параметры режима призрака", "\(count)/5"), .toggle(3, 0, "readOnAction", "Читать при действиях", s.ghostReadOnAction, s.ghostModeEnabled), .toggle(4, 0, "scheduled", "Использовать отложку", s.ghostUseScheduledMessages, s.ghostModeEnabled), .disclosure(5, 0, "silent", "Отправлять без звука", silent), .toggle(6, 0, "stories", "Предлагать призрака для сторис", s.ghostSuggestForStories, true), .info(7, 0, "Управляет отметками о прочтении, просмотре сторис, статусом онлайн и набором текста.")]
+        return [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .toggle(1, 0, "enabled", "Режим призрака", s.ghostModeEnabled, true), .disclosure(2, 0, "options", "Параметры режима призрака", "\(count)/5"), .toggle(3, 0, "readOnAction", "Читать при действиях", s.ghostReadOnAction, s.ghostModeEnabled), .toggle(4, 0, "scheduled", "Использовать отложку", s.ghostUseScheduledMessages, s.ghostModeEnabled), .disclosure(5, 0, "silent", "Отправлять без звука", silent), .toggle(6, 0, "stories", "Предлагать призрака для сторис", s.ghostSuggestForStories, true)]
     }, toggle: { key, value in
         switch key { case "enabled": s.ghostModeEnabled = value; case "readOnAction": s.ghostReadOnAction = value; case "scheduled": s.ghostUseScheduledMessages = value; case "stories": s.ghostSuggestForStories = value; default: break }
     }, open: { key in key == "options" ? dgGhostOptionsController(context: context) : (key == "silent" ? dgSilentModeController(context: context) : nil) })
@@ -159,13 +159,13 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
         case .rear: cameraTitle = "Основная"
         case .ask: cameraTitle = "Спрашивать"
         }
-        return [
+        var result: [DGListEntry] = [
             .header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"),
             .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
             .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true),
             .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"),
             .header(10, 1, "СООБЩЕНИЯ"),
-            .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies),
+            .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies, s.editedIcon),
             .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true),
             .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true),
             .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true),
@@ -186,9 +186,12 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
             .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),
             .disclosure(43, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
             .header(50, 5, "ДРУГОЕ"),
-            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true),
-            .toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, s.hideArchive)
+            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
         ]
+        if s.hideArchive {
+            result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
+        }
+        return result
     }, toggle: { key, value in
         switch key {
         case "onlyAdded": s.onlyAddedStickers = value
@@ -261,7 +264,7 @@ private func dgAutoPauseMediaController(context: AccountContext) -> ViewControll
 func dgDownloadsSettingsController(context: AccountContext) -> ViewController {
     let settings = DGSimpleSettings.shared
     return dgController(context: context, title: "Скачивание", entries: {
-        [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true), .info(4, 0, "Видео и фото скачиваются напрямую с TikTok и YouTube, без сторонних серверов. В секретных чатах и чатах с платными сообщениями ссылка отправляется как есть.")]
+        [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true)]
     }, toggle: { key, value in
         switch key { case "downloadTikTok": settings.downloadTikTok = value; case "downloadShorts": settings.downloadYouTubeShorts = value; case "signDownloads": settings.signDownloadedMedia = value; default: break }
     })
@@ -299,4 +302,40 @@ private func dgHiddenReactionsController(context: AccountContext) -> ViewControl
 
 func dgSupportController(context: AccountContext) -> ViewController {
     dgController(context: context, title: "Поддержка", entries: { [.header(0, 0, "ПОДДЕРЖКА"), .info(1, 0, "Раздел подготовлен для ссылок на поддержку и информацию о Donutgram.")] })
+}
+
+public func dgSettingsControllerForLink(context: AccountContext, page: String, key: String) -> ViewController? {
+    let makeController: (() -> ViewController)?
+    switch page {
+    case "root": makeController = { dgSettingsController(context: context) }
+    case "general": makeController = { dgSpySettingsController(context: context) }
+    case "ghost": makeController = { dgGhostSettingsController(context: context) }
+    case "ghost-options": makeController = { dgGhostOptionsController(context: context) }
+    case "silent": makeController = { dgSilentModeController(context: context) }
+    case "appearance": makeController = { dgAppearanceSettingsController(context: context) }
+    case "dialog-id": makeController = { dgDialogIdFormatController(context: context) }
+    case "chats": makeController = { dgChatsSettingsController(context: context) }
+    case "camera": makeController = { dgRoundVideoCameraController(context: context) }
+    case "auto-pause": makeController = { dgAutoPauseMediaController(context: context) }
+    case "downloads": makeController = { dgDownloadsSettingsController(context: context) }
+    case "transcription": makeController = { dgTranscriptionController(context: context) }
+    case "reactions": makeController = { dgHiddenReactionsController(context: context) }
+    case "visual-id": makeController = { dgVisualIdController(context: context) }
+    case "visual-rating": makeController = { dgVisualRatingController(context: context) }
+    case "visual-usernames": makeController = { dgVisualUsernamesController(context: context) }
+    case "visual-phone": makeController = { dgVisualPhoneController(context: context) }
+    case "support": makeController = { dgSupportController(context: context) }
+    default: makeController = nil
+    }
+    guard let makeController else { return nil }
+    let focusKey: String
+    if page == "chats" && key == "openArchiveOnPull" && !DGSimpleSettings.shared.hideArchive {
+        focusKey = "hideArchive"
+    } else if page == "appearance" && key == "dialogIdFormat" && !DGSimpleSettings.shared.showProfileId {
+        focusKey = "profileId"
+    } else {
+        focusKey = key
+    }
+    dgPrepareSettingLinkFocus(page: page, key: focusKey)
+    return makeController()
 }

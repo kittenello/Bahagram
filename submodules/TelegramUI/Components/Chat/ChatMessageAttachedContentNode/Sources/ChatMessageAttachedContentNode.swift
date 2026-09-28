@@ -769,7 +769,8 @@ public final class ChatMessageAttachedContentNode: ASDisplayNode {
                                 hasAutoremove: message.isSelfExpiring,
                                 canViewReactionList: canViewMessageReactionList(message: EngineMessage(message)),
                                 animationCache: controllerInteraction.presentationContext.animationCache,
-                                animationRenderer: controllerInteraction.presentationContext.animationRenderer
+                                animationRenderer: controllerInteraction.presentationContext.animationRenderer,
+                                hideSentStatus: message.id.peerId == context.account.peerId
                             ))
                             statusLayoutAndContinue = statusLayoutAndContinueValue
                             actualWidth = max(actualWidth, statusLayoutAndContinueValue.0)

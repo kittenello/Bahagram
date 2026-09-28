@@ -971,6 +971,12 @@ func openResolvedUrlImpl(
             switch section {
             case let .path(path):
                 if let navigationController {
+                    let settingPath = path.split(separator: "/").map(String.init)
+                    if settingPath.count == 3, settingPath[0] == "donutgram",
+                       let controller = dgSettingsControllerForLink(context: context, page: settingPath[1], key: settingPath[2]) {
+                        navigationController.pushViewController(controller)
+                        return
+                    }
                     if path == "donutgram/spy" {
                         navigationController.pushViewController(dgSpySettingsController(context: context))
                         return

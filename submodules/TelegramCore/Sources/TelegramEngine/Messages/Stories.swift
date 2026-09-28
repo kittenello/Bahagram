@@ -2075,7 +2075,7 @@ func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPi
     let ghostSettings = DGSimpleSettings.shared
     // The suggestion must protect the story before its confirmation dialog is
     // shown; otherwise opening the viewer has already sent the view receipt.
-    let suppressServerReceipt = (ghostSettings.ghostModeEnabled && !ghostSettings.ghostReadStories) || (!ghostSettings.ghostModeEnabled && ghostSettings.ghostSuggestForStories)
+    let suppressServerReceipt = ghostSettings.ghostModeEnabled && !ghostSettings.ghostReadStories
     if asPinned {
         if suppressServerReceipt {
             return .complete()

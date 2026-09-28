@@ -69,8 +69,9 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     let dateTimeFormat: PresentationDateTimeFormat
     let nameDisplayOrder: PresentationPersonNameOrder
     let messageItems: [ChatPreviewMessageItem]
+    let fillsAvailableHeight: Bool
     
-    init(context: AccountContext, systemStyle: ItemListSystemStyle = .legacy, theme: PresentationTheme, componentTheme: PresentationTheme, strings: PresentationStrings, sectionId: ItemListSectionId, fontSize: PresentationFontSize, chatBubbleCorners: PresentationChatBubbleCorners, wallpaper: TelegramWallpaper, dateTimeFormat: PresentationDateTimeFormat, nameDisplayOrder: PresentationPersonNameOrder, messageItems: [ChatPreviewMessageItem]) {
+    init(context: AccountContext, systemStyle: ItemListSystemStyle = .legacy, theme: PresentationTheme, componentTheme: PresentationTheme, strings: PresentationStrings, sectionId: ItemListSectionId, fontSize: PresentationFontSize, chatBubbleCorners: PresentationChatBubbleCorners, wallpaper: TelegramWallpaper, dateTimeFormat: PresentationDateTimeFormat, nameDisplayOrder: PresentationPersonNameOrder, messageItems: [ChatPreviewMessageItem], fillsAvailableHeight: Bool = false) {
         self.context = context
         self.systemStyle = systemStyle
         self.theme = theme
@@ -83,6 +84,7 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
         self.dateTimeFormat = dateTimeFormat
         self.nameDisplayOrder = nameDisplayOrder
         self.messageItems = messageItems
+        self.fillsAvailableHeight = fillsAvailableHeight
     }
     
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
@@ -254,7 +256,13 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
             for node in nodes {
                 contentSize.height += node.frame.size.height
             }
-            insets = itemListNeighborsGroupedInsets(neighbors, params)
+            let messagesHeight = contentSize.height
+            if item.fillsAvailableHeight {
+                contentSize.height = max(contentSize.height, params.availableHeight)
+                insets = .zero
+            } else {
+                insets = itemListNeighborsGroupedInsets(neighbors, params)
+            }
             
             let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
             let layoutSize = layout.size
@@ -263,7 +271,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                 if let strongSelf = self {
                     strongSelf.item = item
                     
-                    strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: contentSize)
+                    strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: CGSize(width: contentSize.width, height: messagesHeight))
                     
                     strongSelf.messageNodes = nodes
                     var topOffset: CGFloat = 4.0
@@ -293,7 +301,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                         strongSelf.insertSubnode(strongSelf.maskNode, at: 3)
                     }
                     
-                    let hasCorners = itemListHasRoundedBlockLayout(params)
+                    let hasCorners = !item.fillsAvailableHeight && itemListHasRoundedBlockLayout(params)
                     var hasTopCorners = false
                     var hasBottomCorners = false
                     switch neighbors.top {
@@ -315,6 +323,11 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                             bottomStripeOffset = 0.0
                             hasBottomCorners = true
                             strongSelf.bottomStripeNode.isHidden = hasCorners
+                    }
+
+                    if item.fillsAvailableHeight {
+                        strongSelf.topStripeNode.isHidden = true
+                        strongSelf.bottomStripeNode.isHidden = true
                     }
                     
                     strongSelf.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.componentTheme, top: hasTopCorners, bottom: hasBottomCorners, glass: item.systemStyle == .glass) : nil

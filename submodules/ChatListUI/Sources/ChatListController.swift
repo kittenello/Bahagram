@@ -4357,7 +4357,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.openStories(peerId: peerId, completion: { _ in })
     }
     
-    public func openStories(peerId: EnginePeer.Id, completion: @escaping (StoryContainerScreen) -> Void = { _ in }) {
+    public func openStories(peerId: EnginePeer.Id, completion: @escaping (StoryContainerScreen) -> Void = { _ in }, skipGhostPrompt: Bool = false) {
+        if peerId != self.context.account.peerId && !skipGhostPrompt && StoryContainerScreen.confirmDonutgramStoryOpenIfNeeded(context: self.context, parentController: self, proceed: { [weak self] in
+            self?.openStories(peerId: peerId, completion: completion, skipGhostPrompt: true)
+        }) {
+            return
+        }
         if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
             if navigationBarView.storiesUnlocked {
                 self.shouldFixStorySubscriptionOrder = true
@@ -4461,7 +4466,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                                     componentView.storyPeerListView()?.setLoadingItem(peerId: peerId, signal: signal)
                                 }
                             },
-                            completion: completion
+                            completion: completion,
+                            skipGhostPrompt: true
                         )
                         
                         return

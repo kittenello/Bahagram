@@ -33,6 +33,7 @@ import PhoneNumberFormat
 import AttachmentUI
 import MinimizedContainer
 import BrowserUI
+import DGSettingsUI
 
 final class UnauthorizedApplicationContext {
     let sharedContext: SharedAccountContextImpl
@@ -945,6 +946,24 @@ final class AuthorizedApplicationContext {
     }
     
     func openUrl(_ url: URL, external: Bool = false) {
+        if url.scheme == "tg", url.host == "settings" {
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if parts.count == 3, parts[0] == "donutgram",
+               let controller = dgSettingsControllerForLink(context: self.context, page: parts[1], key: parts[2]) {
+                if self.rootController.rootTabController != nil {
+                    self.rootController.popToRoot(animated: false)
+                    self.rootController.pushViewController(controller)
+                } else {
+                    let _ = (self.rootController.ready.get()
+                    |> filter { $0 }
+                    |> take(1)
+                    |> deliverOnMainQueue).startStandalone(next: { [weak self] _ in
+                        self?.openUrl(url, external: external)
+                    })
+                }
+                return
+            }
+        }
         if self.rootController.rootTabController != nil {
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             self.context.sharedContext.openExternalUrl(context: self.context, urlContext: external ? .external : .generic, url: url.absoluteString, forceExternal: false, presentationData: presentationData, navigationController: self.rootController, dismissInput: { [weak self] in
