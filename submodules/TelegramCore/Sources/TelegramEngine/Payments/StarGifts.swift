@@ -2196,7 +2196,8 @@ private final class ProfileGiftsContextImpl {
         }
         self.giftHistory = Array(known.values).sorted(by: { lhs, rhs in
             if lhs.position != rhs.position { return lhs.position < rhs.position }
-            return (lhs.gift.reference?.stringValue ?? "") < (rhs.gift.reference?.stringValue ?? "")
+            if lhs.lastSeen != rhs.lastSeen { return lhs.lastSeen < rhs.lastSeen }
+            return lhs.gift.date < rhs.gift.date
         })
         let entries = self.giftHistory
         let peerId = self.peerId
