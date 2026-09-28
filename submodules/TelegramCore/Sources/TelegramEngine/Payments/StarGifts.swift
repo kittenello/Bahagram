@@ -2162,39 +2162,60 @@ private final class ProfileGiftsContextImpl {
         }))
     }
 
-    private func updateGiftHistory() {
-        let observedAt = Int32(Date().timeIntervalSince1970)
-        var known: [StarGiftReference: ProfileGiftsContext.State.DisappearedGift] = [:]
-        for entry in self.giftHistory {
-            if let reference = entry.gift.reference {
-                known[reference] = entry
-            }
+    private func giftsMatchForHistory(_ lhs: ProfileGiftsContext.State.StarGift, _ rhs: ProfileGiftsContext.State.StarGift) -> Bool {
+        if let lhsReference = lhs.reference, let rhsReference = rhs.reference {
+            return lhsReference == rhsReference
         }
 
-        var visibleReferences = Set<StarGiftReference>()
+        guard lhs.date == rhs.date,
+              lhs._fromPeerId == rhs._fromPeerId,
+              lhs.text == rhs.text,
+              lhs.number == rhs.number else {
+            return false
+        }
+
+        switch (lhs.gift, rhs.gift) {
+        case let (.generic(lhsGift), .generic(rhsGift)):
+            return lhsGift.id == rhsGift.id
+        case let (.unique(lhsGift), .unique(rhsGift)):
+            return lhsGift.id == rhsGift.id || lhsGift.slug == rhsGift.slug
+        default:
+            return false
+        }
+    }
+
+    private func updateGiftHistory() {
+        let observedAt = Int32(Date().timeIntervalSince1970)
+        let previousHistory = self.giftHistory
+        var matchedHistoryIndices = Set<Int>()
+        var updatedHistory: [ProfileGiftsContext.State.DisappearedGift] = []
+
         for (index, gift) in self.gifts.enumerated() {
-            guard case .generic = gift.gift, let reference = gift.reference else {
-                continue
+            if let previousIndex = previousHistory.indices.first(where: { historyIndex in
+                !matchedHistoryIndices.contains(historyIndex) && self.giftsMatchForHistory(previousHistory[historyIndex].gift, gift)
+            }) {
+                matchedHistoryIndices.insert(previousIndex)
             }
-            visibleReferences.insert(reference)
+
             let previousReference = index > 0 ? self.gifts[index - 1].reference : nil
             let nextReference = index + 1 < self.gifts.count ? self.gifts[index + 1].reference : nil
-            known[reference] = ProfileGiftsContext.State.DisappearedGift(
+            updatedHistory.append(ProfileGiftsContext.State.DisappearedGift(
                 gift: gift,
                 position: Int32(index),
                 previousReference: previousReference,
                 nextReference: nextReference,
                 lastSeen: observedAt,
                 isMissing: false
-            )
+            ))
         }
-        for reference in Array(known.keys) where !visibleReferences.contains(reference) {
-            if var entry = known[reference] {
-                entry.isMissing = true
-                known[reference] = entry
-            }
+
+        for historyIndex in previousHistory.indices where !matchedHistoryIndices.contains(historyIndex) {
+            var entry = previousHistory[historyIndex]
+            entry.isMissing = true
+            updatedHistory.append(entry)
         }
-        self.giftHistory = Array(known.values).sorted(by: { lhs, rhs in
+
+        self.giftHistory = updatedHistory.sorted(by: { lhs, rhs in
             if lhs.position != rhs.position { return lhs.position < rhs.position }
             if lhs.lastSeen != rhs.lastSeen { return lhs.lastSeen < rhs.lastSeen }
             return lhs.gift.date < rhs.gift.date
