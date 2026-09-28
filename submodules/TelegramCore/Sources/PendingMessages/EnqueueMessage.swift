@@ -1151,7 +1151,12 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                     }
                     
                     var threadId: Int64? = threadId
-                    if threadId == nil {
+                    // Donutgram: a pseudo-reply goes out without its reply to the
+                    // deleted message, so it only stays in that message's thread in a
+                    // forum or channel direct messages of the same chat. Elsewhere it
+                    // lands in the main chat and must not inherit the reply thread.
+                    let donutgramInheritsReplyThread = !localTags.contains(.donutgramPseudoReply) || (peer.isForumOrMonoForum && replyToMessageId?.messageId.peerId == peerId)
+                    if threadId == nil && donutgramInheritsReplyThread {
                         if let replyToMessageId = replyToMessageId {
                             if let message = transaction.getMessage(replyToMessageId.messageId) {
                                 if let threadIdValue = message.threadId {
