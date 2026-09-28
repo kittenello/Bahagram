@@ -9,20 +9,32 @@ import AvatarNode
 import DGSimpleSettings
 
 public extension StoryContainerScreen {
+    // The `ghostSuggestForStories` question. The openers below ask it before
+    // opening; the viewer asks it itself for every other way in (see
+    // `donutgramMarkAsSeen`). «Да» turns ghost mode on with story receipts
+    // hidden before `answered` runs. The standard controller closes itself when
+    // a button is tapped.
+    internal static func makeDonutgramStoryGhostAlert(context: AccountContext, dismissOnOutsideTap: Bool = true, answered: @escaping () -> Void) -> AlertController {
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        return standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: "Режим призрака", text: "Вы хотите включить Режим призрака перед просмотром истории?", actions: [
+            TextAlertAction(type: .defaultAction, title: "Нет", action: {
+                answered()
+            }),
+            TextAlertAction(type: .genericAction, title: "Да", action: {
+                let settings = DGSimpleSettings.shared
+                settings.ghostReadStories = false
+                settings.ghostModeEnabled = true
+                answered()
+            })
+        ], dismissOnOutsideTap: dismissOnOutsideTap)
+    }
+
     static func confirmDonutgramStoryOpenIfNeeded(context: AccountContext, parentController: ViewController, proceed: @escaping () -> Void) -> Bool {
         let settings = DGSimpleSettings.shared
         guard settings.ghostSuggestForStories && !settings.ghostModeEnabled else {
             return false
         }
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        parentController.present(textAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: NSAttributedString(string: "Режим призрака"), text: NSAttributedString(string: "Вы хотите включить Режим призрака перед просмотром истории?"), actions: [
-            TextAlertAction(type: .defaultAction, title: "Нет", action: { proceed() }),
-            TextAlertAction(type: .genericAction, title: "Да", action: {
-                settings.ghostReadStories = false
-                settings.ghostModeEnabled = true
-                proceed()
-            })
-        ]), in: .window(.root))
+        parentController.present(makeDonutgramStoryGhostAlert(context: context, answered: proceed), in: .window(.root))
         return true
     }
 
@@ -102,6 +114,8 @@ public extension StoryContainerScreen {
                     }
                 }
             )
+            // `skipGhostPrompt` is only set once the question above was answered.
+            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
             parentController?.push(storyContainerScreen)
         }
         |> ignoreValues
@@ -242,6 +256,9 @@ public extension StoryContainerScreen {
                     return transitionOut(peerId)
                 }
             )
+            // `skipGhostPrompt` is only set once the question was answered, here
+            // or by the caller (ChatListController.openStories).
+            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
             setFocusedItem(storyContainerScreen.focusedItem)
             parentController?.push(storyContainerScreen)
             completion(storyContainerScreen)

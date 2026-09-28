@@ -1138,7 +1138,7 @@ public final class StoryContentContextImpl: StoryContentContext {
 
 public final class SingleStoryContentContextImpl: StoryContentContext {
     private let context: AccountContext
-    private let readGlobally: Bool
+    let readGlobally: Bool
     
     public private(set) var stateValue: StoryContentContextState?
     public var state: Signal<StoryContentContextState, NoError> {
