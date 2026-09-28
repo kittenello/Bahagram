@@ -2146,7 +2146,7 @@ private final class ProfileGiftsContextImpl {
                 
                 let updatedCount = max(Int32(self.gifts.count), count)
                 self.count = updatedCount
-                self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil, nextOffset: nextOffset)
+                self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil && nextOffset != initialNextOffset, nextOffset: nextOffset)
                 if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, Int32(self.gifts.count) >= count {
                     self.updateGiftHistory()
                 }
@@ -2154,6 +2154,11 @@ private final class ProfileGiftsContextImpl {
             
             self.notificationsEnabled = notificationsEnabled
             self.pushState()
+            if peerId != accountPeerId && collectionId == nil && !isFiltered, case .ready(true, _) = self.dataState {
+                self.queue.after(0.15) { [weak self] in
+                    self?.loadMore()
+                }
+            }
         }))
     }
 
