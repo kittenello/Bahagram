@@ -74,9 +74,6 @@ private final class GiftViewSheetContent: CombinedComponent {
         if lhs.subject != rhs.subject {
             return false
         }
-        if lhs.headerText != rhs.headerText {
-            return false
-        }
         return true
     }
     
@@ -5421,6 +5418,9 @@ final class GiftViewSheetComponent: CombinedComponent {
             return false
         }
         if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.headerText != rhs.headerText {
             return false
         }
         return true
