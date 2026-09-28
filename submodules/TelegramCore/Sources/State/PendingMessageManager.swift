@@ -127,6 +127,21 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     return (text, apiEntitiesFromMessageTextEntities(entities, associatedPeers: peers))
 }
 
+// The server files a message into a forum topic or comment thread only by its
+// reply: top_msg_id travels inside inputReplyToMessage. A plain send there
+// replies to the thread root, so a pseudo-reply does the same. Thread 1 (a
+// forum's General, a group's main chat) takes messages without a reply, and
+// channel direct messages are routed by their monoforum peer instead.
+private func donutgramPseudoReplyThreadRootId(peer: Peer, threadId: Int64?) -> Int32? {
+    guard let threadId, !peer.isMonoForum else {
+        return nil
+    }
+    if peer is TelegramChannel {
+        return threadId == 1 ? nil : Int32(clamping: threadId)
+    }
+    return peer.isForum ? Int32(clamping: threadId) : nil
+}
+
 public struct PendingMessageStatus: Equatable {
     public struct Progress: Equatable {
         public let progress: Float
@@ -1395,9 +1410,11 @@ public final class PendingMessageManager {
                 }
                 let groupPseudoReplyContent = !isForward ? donutgramPseudoReplyContent(transaction: transaction, message: messages[0].0, accountPeerId: accountPeerId, isCaption: true) : nil
                 if groupPseudoReplyContent != nil {
-                    replyMessageId = nil
+                    replyMessageId = donutgramPseudoReplyThreadRootId(peer: peer, threadId: messages[0].0.threadId)
                     replyPeerId = nil
                     replyQuote = nil
+                    replyTodoItemId = nil
+                    replyPollOption = nil
                 }
 
                 let sendMessageRequest: Signal<Api.Updates, MTRpcError>
@@ -1950,9 +1967,11 @@ public final class PendingMessageManager {
                 if let pseudoReplyContent {
                     // The original reply stays in Postbox for our local reply UI.
                     // Only the visible quote is included in the Telegram request.
-                    replyMessageId = nil
+                    replyMessageId = donutgramPseudoReplyThreadRootId(peer: peer, threadId: message.threadId)
                     replyPeerId = nil
                     replyQuote = nil
+                    replyTodoItemId = nil
+                    replyPollOption = nil
                     messageEntities = pseudoReplyContent.1
                 }
                 
