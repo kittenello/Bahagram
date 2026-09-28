@@ -31,6 +31,7 @@ import PlainButtonComponent
 import LottieComponent
 import UndoUI
 import TelegramStringFormatting
+import DGSimpleSettings
 
 private final class ChatMessagePollOptionRadioNodeParameters: NSObject {
     let timestamp: Double
@@ -2968,7 +2969,7 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                             }
                         }
                         totalVoterCount = totalVoters
-                        if didVote || isClosed || isPreviewingResults || isRestricted {
+                        if didVote || isClosed || isPreviewingResults || isRestricted || (DGSimpleSettings.shared.showPollResultsBeforeVoting && !poll.hideResultsUntilClose) {
                             for i in 0 ..< poll.options.count {
                                 inner: for optionVoters in voters {
                                     if optionVoters.opaqueIdentifier == poll.options[i].opaqueIdentifier {

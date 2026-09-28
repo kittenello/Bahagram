@@ -1170,8 +1170,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.wrappingNode.update(size: layout.size, cornerRadius: layout.deviceMetrics.screenCornerRadius, transition: .immediate)
     }
     
-    /// Donutgram «Снег» above the messages but below the header and the input panel, so it never covers the
-    /// text being typed. Regular chats only: no previews, overlays or embedded chats.
+    /// Draw snow over the wallpaper, behind messages and their transitions.
     private func updateDonutgramSnow(size: CGSize) {
         guard case .standard(.default) = self.chatPresentationInterfaceState.mode else {
             return
@@ -1181,8 +1180,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             snowView = current
         } else {
             snowView = DGSnowView()
-            // A replacement message transition node is inserted right above the old one, so this stays above both.
-            self.contentContainerNode.contentNode.view.insertSubview(snowView, aboveSubview: self.messageTransitionNode.view)
+            self.contentContainerNode.contentNode.view.insertSubview(snowView, aboveSubview: self.backgroundNode.view)
             self.donutgramSnowView = snowView
         }
         snowView.frame = CGRect(origin: CGPoint(), size: size)

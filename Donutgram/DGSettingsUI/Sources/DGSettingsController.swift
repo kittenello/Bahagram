@@ -64,6 +64,8 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "greetingSticker": return "hand.wave"
     case "mentionComma": return "at"
     case "snow": return "snowflake"
+    case "pollResultsBeforeVoting": return "chart.bar"
+    case "doubleTapSeek": return "goforward.15"
     case "hideArchive", "openArchiveOnPull": return "archivebox"
     case "downloadAcceleration": return "arrow.down.circle"
     case "accelerateUpload": return "arrow.up.circle"
@@ -92,16 +94,17 @@ enum DGListEntry: ItemListNodeEntry {
     // The flags are diff keys: the bubbles read DGSimpleSettings at layout time.
     case messagePreview(Int32, Int32, Bool, Bool, Bool, Bool)
     case appIcons(Int32, Int32)
+    case islandStyles(Int32, Int32, Int)
     case speedSlider(Int32, Int32, Int)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .appIcons(_, section), let .speedSlider(_, section, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .appIcons(_, section), let .islandStyles(_, section, _), let .speedSlider(_, section, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .appIcons(id, _), let .speedSlider(id, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .appIcons(id, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _): return id
         }
     }
     static func < (lhs: DGListEntry, rhs: DGListEntry) -> Bool { lhs.stableId < rhs.stableId }
@@ -129,6 +132,8 @@ enum DGListEntry: ItemListNodeEntry {
             return donutgramMessagePreviewItem(context: arguments.context, sectionId: self.section)
         case .appIcons:
             return donutgramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
+        case let .islandStyles(_, _, value):
+            return DGIslandStyleItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("islandStyle:\($0)") })
         case let .speedSlider(_, _, value):
             return DGSpeedSliderItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("downloadAcceleration:\($0)") })
         }

@@ -109,31 +109,34 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
             .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
             .toggle(4, 0, "snow", "Снег", s.forceSnow, true),
             .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
-            .header(20, 2, "ВКЛАДКИ"),
-            .toggle(21, 2, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
-            .toggle(22, 2, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
-            .toggle(23, 2, "calls", "Вкладка Звонки", s.showCallsTab, !s.hideTabBar),
-            .toggle(24, 2, "wideTabBar", "Широкая Панель", s.wideTabBar, !s.hideTabBar),
-            .header(30, 3, "ПРОФИЛЬ"),
-            .toggle(31, 3, "profileId", "ID Профилей", s.showProfileId, true)
+            .header(12, 2, "ОСТРОВ"), .islandStyles(13, 2, s.islandStyle),
+            .header(20, 3, "ВКЛАДКИ"),
+            .toggle(21, 3, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
+            .toggle(22, 3, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
+            .toggle(23, 3, "calls", "Вкладка Звонки", s.showCallsTab, !s.hideTabBar),
+            .toggle(24, 3, "wideTabBar", "Широкая Панель", s.wideTabBar, !s.hideTabBar),
+            .header(30, 4, "ПРОФИЛЬ"),
+            .toggle(31, 4, "profileId", "ID Профилей", s.showProfileId, true)
         ]
         if s.showProfileId {
-            entries.append(.disclosure(37, 3, "dialogIdFormat", "Показывать ID диалога", s.dialogIdFormat == .botApi ? "Bot API" : "Telegram API"))
+            entries.append(.disclosure(37, 4, "dialogIdFormat", "Показывать ID диалога", s.dialogIdFormat == .botApi ? "Bot API" : "Telegram API"))
         }
         entries.append(contentsOf: [
-            .toggle(32, 3, "dc", "Показывать дата-центр (DC)", s.showDc, true),
-            .toggle(33, 3, "regDate", "Показывать дату регистрации", s.showRegistrationDate, true),
-            .toggle(34, 3, "chatDate", "Показывать дату создания чата", s.showChatCreationDate, true),
-            .toggle(35, 3, "mutualContact", "Показывать взаимный контакт", s.showMutualContact, true),
-            .toggle(38, 3, "relativeOnlineTime", "Относительное время онлайна", s.relativeOnlineTime, true),
-            .toggle(39, 3, "hidePhoneNumber", "Скрыть номер телефона", s.hidePhoneNumber, true),
-            .header(40, 4, "ДРУГОЕ"),
-            .toggle(41, 4, "disableAds", "Отключить рекламу", s.disableAds, true),
-            .toggle(42, 4, "confirmCalls", "Подтверждение вызова", s.confirmCalls, true)
+            .toggle(32, 4, "dc", "Показывать дата-центр (DC)", s.showDc, true),
+            .toggle(33, 4, "regDate", "Показывать дату регистрации", s.showRegistrationDate, true),
+            .toggle(34, 4, "chatDate", "Показывать дату создания чата", s.showChatCreationDate, true),
+            .toggle(35, 4, "mutualContact", "Показывать взаимный контакт", s.showMutualContact, true),
+            .toggle(38, 4, "relativeOnlineTime", "Относительное время онлайна", s.relativeOnlineTime, true),
+            .toggle(39, 4, "hidePhoneNumber", "Скрыть номер телефона", s.hidePhoneNumber, true),
+            .header(40, 5, "ДРУГОЕ"),
+            .toggle(41, 5, "disableAds", "Отключить рекламу", s.disableAds, true),
+            .toggle(42, 5, "confirmCalls", "Подтверждение вызова", s.confirmCalls, true)
         ])
         return entries
     }, restartRequiredKeys: ["premiumStatuses", "hideStories", "hideTabBar", "contacts", "calls", "wideTabBar"], toggle: { key, value in
         switch key { case "premiumStatuses": s.hidePremiumStatuses = value; case "customBackgrounds": s.disableCustomBackgrounds = value; case "hideStories": s.hideStories = value; case "snow": s.forceSnow = value; case "hideTabBar": s.hideTabBar = value; case "contacts": s.showContactsTab = value; case "calls": s.showCallsTab = value; case "wideTabBar": s.wideTabBar = value; case "profileId": s.showProfileId = value; case "dc": s.showDc = value; case "regDate": s.showRegistrationDate = value; case "chatDate": s.showChatCreationDate = value; case "mutualContact": s.showMutualContact = value; case "relativeOnlineTime": s.relativeOnlineTime = value; case "hidePhoneNumber": s.hidePhoneNumber = value; case "confirmCalls": s.confirmCalls = value; case "disableAds": s.disableAds = value; default: break }
+    }, select: { key in
+        if key.hasPrefix("islandStyle:"), let value = Int(key.split(separator: ":").last ?? "") { s.islandStyle = value }
     }, open: { key in key == "dialogIdFormat" ? dgDialogIdFormatController(context: context) : nil })
 }
 
@@ -170,6 +173,7 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
             .toggle(16, 1, "onlineIndicator", "Показывать индикатор онлайна", s.showOnlineIndicator, true),
             .toggle(17, 1, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
             .toggle(18, 1, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
+            .toggle(19, 1, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
             .header(20, 2, "ГОЛОС В ТЕКСТ"),
             .disclosure(21, 2, "transcription", "Сервис", transcription),
             .header(30, 3, "КАМЕРА"),
@@ -178,8 +182,9 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
             .toggle(33, 3, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
             .toggle(34, 3, "staticZoom", "Статичный зум", s.staticRoundVideoZoom, true),
             .header(40, 4, "ВИДЕО"),
-            .toggle(41, 4, "autoPause", "Авто пауза", s.autoPause, true),
-            .disclosure(42, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
+            .disclosure(41, 4, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
+            .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),
+            .disclosure(43, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
             .header(50, 5, "ДРУГОЕ"),
             .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
         ]
@@ -198,6 +203,7 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
         case "onlineIndicator": s.showOnlineIndicator = value
         case "greetingSticker": s.hideGreetingSticker = value
         case "mentionComma": s.commaAfterMention = value
+        case "pollResultsBeforeVoting": s.showPollResultsBeforeVoting = value
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value
         case "staticZoom": s.staticRoundVideoZoom = value
@@ -218,9 +224,20 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
         case "transcription": return dgTranscriptionController(context: context)
         case "camera": return dgRoundVideoCameraController(context: context)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
+        case "doubleTapSeek": return dgDoubleTapSeekController(context: context)
         default: return nil
         }
     })
+}
+
+private func dgDoubleTapSeekController(context: AccountContext) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    let values = [0, 5, 10, 15, 30]
+    return dgController(context: context, title: "Перемотка двойным нажатием", entries: {
+        values.enumerated().map { index, value in
+            .checkbox(Int32(index), 0, String(value), value == 0 ? "Отключено" : "\(value) секунд", settings.doubleTapSeekSeconds == value)
+        }
+    }, select: { settings.doubleTapSeekSeconds = Int($0) ?? 15 })
 }
 
 private func dgRoundVideoCameraController(context: AccountContext) -> ViewController {
