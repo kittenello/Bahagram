@@ -2073,8 +2073,9 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
     let ghostSettings = DGSimpleSettings.shared
-    // The suggestion must protect the story before its confirmation dialog is
-    // shown; otherwise opening the viewer has already sent the view receipt.
+    // Only ghost mode keeps the receipt local here. While the
+    // `ghostSuggestForStories` question is unanswered, the story viewer holds
+    // the receipt back itself and doesn't call this yet.
     let suppressServerReceipt = ghostSettings.ghostModeEnabled && !ghostSettings.ghostReadStories
     if asPinned {
         if suppressServerReceipt {

@@ -430,6 +430,10 @@ private final class StoryContainerScreenComponent: Component {
         private var isDisplayingInteractionGuide: Bool = false
         private var displayInteractionGuideDisposable: Disposable?
         
+        private var donutgramHeldSeenIds: [EngineStoryId] = []
+        private var didPresentDonutgramGhostPrompt: Bool = false
+        private var isDisplayingDonutgramGhostPrompt: Bool = false
+        
         private var previousSeekTime: Double?
         private var initialSeekTimestamp: Double?
         
@@ -1141,6 +1145,79 @@ private final class StoryContainerScreenComponent: Component {
             }
         }
         
+        // Every viewer sends its view receipts through here, however it was
+        // opened, so this is the one place `ghostSuggestForStories` can hold
+        // them back until the ghost question is answered. TelegramCore only
+        // suppresses receipts while ghost mode itself is on.
+        private func donutgramMarkAsSeen(id: EngineStoryId) {
+            guard let component = self.component else {
+                return
+            }
+            let settings = DGSimpleSettings.shared
+            let isAnswered = (self.environment?.controller() as? StoryContainerScreen)?.donutgramGhostPromptAnswered ?? false
+            // Statistics open stories with `readGlobally: false`, which never
+            // sends a receipt, so there is nothing to ask about.
+            let sendsReceipt = (component.content as? SingleStoryContentContextImpl)?.readGlobally ?? true
+            if !sendsReceipt || !settings.ghostSuggestForStories || settings.ghostModeEnabled || isAnswered || id.peerId == component.context.account.peerId {
+                component.content.markAsSeen(id: id)
+                return
+            }
+            
+            if !self.donutgramHeldSeenIds.contains(id) {
+                self.donutgramHeldSeenIds.append(id)
+            }
+            if !self.didPresentDonutgramGhostPrompt {
+                self.didPresentDonutgramGhostPrompt = true
+                // Items can report themselves seen from inside an update pass.
+                Queue.mainQueue().justDispatch { [weak self] in
+                    self?.presentDonutgramGhostPrompt()
+                }
+            }
+        }
+        
+        private func presentDonutgramGhostPrompt() {
+            // A viewer that is already closing drops its held receipts unasked.
+            if self.isAnimatingOut || self.didAnimateOut {
+                return
+            }
+            // Without a window `present` does nothing and the pause would stick.
+            guard let component = self.component, let controller = self.environment?.controller() as? StoryContainerScreen, controller.window != nil else {
+                self.didPresentDonutgramGhostPrompt = false
+                return
+            }
+            // The story is already open, so the question can't be skipped by a
+            // tap outside. «Да» has turned ghost mode on by the time `answered`
+            // runs, so the held receipts stay local; «Нет» sends them.
+            let alertController = StoryContainerScreen.makeDonutgramStoryGhostAlert(context: component.context, dismissOnOutsideTap: false, answered: { [weak self, weak controller] in
+                controller?.donutgramGhostPromptAnswered = true
+                guard let self, let component = self.component else {
+                    return
+                }
+                let heldIds = self.donutgramHeldSeenIds
+                self.donutgramHeldSeenIds.removeAll()
+                for heldId in heldIds {
+                    component.content.markAsSeen(id: heldId)
+                }
+            })
+            // Runs on every close. Closed without an answer (Escape), the
+            // receipts stay held for the rest of this viewer.
+            alertController.dismissed = { [weak self] _ in
+                guard let self else {
+                    return
+                }
+                self.isDisplayingDonutgramGhostPrompt = false
+                if !self.isUpdating {
+                    self.state?.updated(transition: .immediate)
+                }
+            }
+            
+            self.isDisplayingDonutgramGhostPrompt = true
+            controller.present(alertController, in: .window(.root))
+            if !self.isUpdating {
+                self.state?.updated(transition: .immediate)
+            }
+        }
+        
         private func updateVolumeButtonMonitoring() {
             guard self.volumeButtonsListener == nil, let component = self.component else {
                 return
@@ -1515,6 +1592,9 @@ private final class StoryContainerScreenComponent: Component {
             if self.isDisplayingInteractionGuide {
                 isProgressPaused = true
             }
+            if self.isDisplayingDonutgramGhostPrompt {
+                isProgressPaused = true
+            }
             
             var contentDerivedBottomInset: CGFloat = environment.safeInsets.bottom
             
@@ -1699,10 +1779,10 @@ private final class StoryContainerScreenComponent: Component {
                                     }
                                 },
                                 markAsSeen: { [weak self] id in
-                                    guard let self, let component = self.component else {
+                                    guard let self else {
                                         return
                                     }
-                                    component.content.markAsSeen(id: id)
+                                    self.donutgramMarkAsSeen(id: id)
                                 },
                                 reorder: { [weak self] in
                                     guard let self, let environment = self.environment else {
@@ -2110,6 +2190,10 @@ public class StoryContainerScreen: ViewControllerComponentContainer, KeyShortcut
     
     public var customBackAction: (() -> Void)?
     public var performReorderAction: (() -> Void)?
+    
+    // Set by the openers that ask the ghost question before opening, so the
+    // viewer doesn't ask it a second time.
+    public var donutgramGhostPromptAnswered: Bool = false
     
     public init(
         context: AccountContext,

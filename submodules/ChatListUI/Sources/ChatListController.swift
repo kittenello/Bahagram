@@ -4467,7 +4467,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                                 }
                             },
                             completion: completion,
-                            skipGhostPrompt: true
+                            skipGhostPrompt: skipGhostPrompt
                         )
                         
                         return
@@ -4534,6 +4534,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     return nil
                 }
             )
+            // `skipGhostPrompt` is only set once the question above was
+            // answered. Own stories skip the question; the viewer asks it
+            // itself once it moves on to someone else's.
+            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
             if let componentView = self.chatListHeaderView() {
                 componentView.storyPeerListView()?.setPreviewedItem(signal: storyContainerScreen.focusedItem)
             }
