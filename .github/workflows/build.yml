@@ -76,10 +76,8 @@ jobs:
         with:
           path: ~/telegram-bazel-cache
           key: donutgram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-${{ github.sha }}
-          # The second prefix is the pre-rename cache, kept until master saves one under the new key.
           restore-keys: |
             donutgram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-
-            bahogram-bazel-${{ runner.os }}-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock') }}-
 
       - name: Prepare canonical source path
         shell: bash
