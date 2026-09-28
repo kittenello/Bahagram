@@ -1410,6 +1410,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     private var communityAvatarBadgeBackgroundView: GlassBackgroundView?
     private var communityAvatarBadgeIconView: GlassBackgroundView.ContentImageView?
     public let avatarNode: AvatarNode
+    private var miniSenderAvatarNode: AvatarNode?
     var avatarIconView: ComponentHostView<Empty>?
     var avatarIconComponent: EmojiStatusComponent?
     var avatarVideoNode: AvatarVideoNode?
@@ -1848,6 +1849,34 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
 
     deinit {
         self.cachedDataDisposable.dispose()
+    }
+
+    func updateMiniSenderAvatar() {
+        var sender: EnginePeer?
+        if let item = self.item, DGSimpleSettings.shared.chatListSenderAvatars, case let .peer(peerData) = item.content, let message = peerData.messages.last, case let .user(author) = message.author, let chatPeer = peerData.peer.chatMainPeer {
+            switch chatPeer {
+            case .channel, .legacyGroup:
+                sender = .user(author)
+            default:
+                break
+            }
+        }
+        if let sender, let item = self.item {
+            let senderNode: AvatarNode
+            if let current = self.miniSenderAvatarNode {
+                senderNode = current
+            } else {
+                senderNode = AvatarNode(font: avatarPlaceholderFont(size: 8.0))
+                self.miniSenderAvatarNode = senderNode
+                self.avatarContainerNode.addSubnode(senderNode)
+            }
+            let size = CGSize(width: 18.0, height: 18.0)
+            senderNode.setPeer(context: item.context, theme: item.presentationData.theme, peer: sender, overrideImage: nil, emptyColor: item.presentationData.theme.list.mediaPlaceholderColor, clipStyle: .round, synchronousLoad: false, displayDimensions: size)
+            senderNode.frame = CGRect(x: -2.0, y: self.avatarContainerNode.bounds.height - 16.0, width: size.width, height: size.height)
+        } else if let senderNode = self.miniSenderAvatarNode {
+            self.miniSenderAvatarNode = nil
+            senderNode.removeFromSupernode()
+        }
     }
     
     override public func secondaryAction(at point: CGPoint) {
@@ -4254,6 +4283,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     }
                     
                     transition.updateFrame(node: strongSelf.avatarContainerNode, frame: avatarFrame)
+
+                    strongSelf.updateMiniSenderAvatar()
 
                     if useChatListLayout && isCommunity && avatarContentImageSpec == nil, let shadowImage = UIImage(bundleImageName: "Components/CommunityShadow") {
                         strongSelf.communityAvatarShadowNode.isHidden = false

@@ -14,6 +14,7 @@ import ActionPanelComponent
 import ChatFolderLinkPreviewScreen
 import EdgeEffect
 import ComponentDisplayAdapters
+import DGSimpleSettings
 
 final class ChatListContainerItemNode: ASDisplayNode {
     private final class TopPanelItem {
@@ -74,7 +75,7 @@ final class ChatListContainerItemNode: ASDisplayNode {
         self.listNode = ChatListNode(context: context, location: location, chatListFilter: filter, previewing: previewing, fillPreloadItems: controlsHistoryPreload, mode: chatListMode, theme: presentationData.theme, fontSize: presentationData.listsFontSize, strings: presentationData.strings, dateTimeFormat: presentationData.dateTimeFormat, nameSortOrder: presentationData.nameSortOrder, nameDisplayOrder: presentationData.nameDisplayOrder, animationCache: animationCache, animationRenderer: animationRenderer, disableAnimations: true, isInlineMode: isInlineMode, autoSetReady: autoSetReady, isMainTab: isMainTab)
         
         if let controller, case .chatList(groupId: .root) = controller.location {
-            self.listNode.scrollHeightTopInset = ChatListNavigationBar.searchScrollHeight + ChatListNavigationBar.storiesScrollHeight
+            self.listNode.scrollHeightTopInset = (DGSimpleSettings.shared.chatListHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight) + ChatListNavigationBar.storiesScrollHeight
         }
         
         self.edgeEffectView = EdgeEffectView()

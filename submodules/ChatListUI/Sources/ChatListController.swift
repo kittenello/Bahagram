@@ -6868,9 +6868,12 @@ private final class ChatListLocationContext {
         }
         
         let peerStatus: Signal<NetworkStatusTitle.Status?, NoError>
+        let accountPeer: Signal<EnginePeer?, NoError>
         switch self.location {
         case .chatList(.root):
-            peerStatus = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
+            let accountPeerValue = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
+            accountPeer = accountPeerValue
+            peerStatus = accountPeerValue
             |> map { peer -> NetworkStatusTitle.Status? in
                 guard case let .user(user) = peer else {
                     return nil
@@ -6886,7 +6889,19 @@ private final class ChatListLocationContext {
             |> distinctUntilChanged
         default:
             peerStatus = .single(nil)
+            accountPeer = .single(nil)
         }
+
+        let appearanceChanges = Signal<Int, NoError> { subscriber in
+            subscriber.putNext(0)
+            let observer = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { _ in
+                subscriber.putNext(0)
+            }
+            return ActionDisposable {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+        let appearanceState = combineLatest(peerStatus, accountPeer, appearanceChanges)
         
         let networkState: Signal<AccountNetworkState, NoError>
         #if DEBUG && false
@@ -6934,10 +6949,10 @@ private final class ChatListLocationContext {
                     passcode,
                     containerNode.currentItemState,
                     isReorderingTabs,
-                    peerStatus,
+                    appearanceState,
                     parentController.updatedPresentationData.1,
                     storyPostingAvailable
-                ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, peerStatus, presentationData, storyPostingAvailable in
+                ).startStrict(next: { [weak self] networkState, proxy, passcode, stateAndFilterId, isReorderingTabs, appearanceState, presentationData, storyPostingAvailable in
                     guard let self else {
                         return
                     }
@@ -6948,7 +6963,8 @@ private final class ChatListLocationContext {
                         passcode: passcode,
                         stateAndFilterId: stateAndFilterId,
                         isReorderingTabs: isReorderingTabs,
-                        peerStatus: peerStatus,
+                        peerStatus: appearanceState.0,
+                        accountPeer: appearanceState.1,
                         presentationData: presentationData,
                         storyPostingAvailable: storyPostingAvailable
                     )
@@ -7176,6 +7192,7 @@ private final class ChatListLocationContext {
         stateAndFilterId: (state: ChatListNodeState, filterId: Int32?),
         isReorderingTabs: Bool,
         peerStatus: NetworkStatusTitle.Status?,
+        accountPeer: EnginePeer?,
         presentationData: PresentationData,
         storyPostingAvailable: Bool
     ) {
@@ -7183,7 +7200,20 @@ private final class ChatListLocationContext {
         switch location {
         case let .chatList(groupId):
             if groupId == .root {
-                defaultTitle = presentationData.strings.DialogList_Title
+                switch DGSimpleSettings.shared.chatListTitleMode {
+                case .donutgram:
+                    defaultTitle = "Donutgram"
+                case .username:
+                    if let addressName = accountPeer?.addressName, !addressName.isEmpty {
+                        defaultTitle = "@\(addressName)"
+                    } else {
+                        defaultTitle = presentationData.strings.DialogList_Title
+                    }
+                case .nickname:
+                    defaultTitle = accountPeer?.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder) ?? presentationData.strings.DialogList_Title
+                case .chats:
+                    defaultTitle = presentationData.strings.DialogList_Title
+                }
             } else {
                 defaultTitle = presentationData.strings.ChatList_ArchivedChatsTitle
             }
@@ -7366,6 +7396,10 @@ private final class ChatListLocationContext {
                 self.proxyButton = nil
             }
             
+            if isRoot && DGSimpleSettings.shared.chatListHideStatus {
+                titleContent.text = defaultTitle
+                titleContent.activity = false
+            }
             self.chatListTitle = titleContent
             
             if case .chatList(.root) = self.location, checkProxy {

@@ -695,7 +695,7 @@ public final class ChatListHeaderComponent: Component {
                 }
                 
                 let chatListTitleOffset: CGFloat
-                if chatListTitle.activity {
+                if DGSimpleSettings.shared.chatListCenteredTitle || chatListTitle.activity {
                     chatListTitleOffset = 0.0
                 } else {
                     chatListTitleOffset = (centerOffset + centerContentOffsetX) * sideContentFraction

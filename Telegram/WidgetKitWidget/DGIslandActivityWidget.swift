@@ -55,7 +55,7 @@ struct DGIslandActivityWidget: Widget {
             } compactLeading: {
                 DGDonutMark(style: context.state.style)
             } compactTrailing: {
-                Text(context.state.style == 2 ? "DG" : "DONUTGRAM")
+                Text(context.state.style == 2 ? "DG" : (context.state.style == 1 ? "DONUT" : "DONUTGRAM"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(context.state.style == 1 ? .pink : .white)
             } minimal: {
