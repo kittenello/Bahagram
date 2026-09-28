@@ -1326,8 +1326,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             guard let self else { return }
             if self.location == .chatList(groupId: .root), self.lastHideSearch != DGSimpleSettings.shared.chatListHideSearch {
                 self.lastHideSearch = DGSimpleSettings.shared.chatListHideSearch
-                self.mainContainerNode.currentItemNode.listNode.scrollHeightTopInset = (self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight) + ChatListNavigationBar.storiesScrollHeight
-                let _ = self.mainContainerNode.currentItemNode.listNode.scrollToOffsetFromTop(self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight, animated: false)
+                self.mainContainerNode.currentItemNode.scrollHeightTopInset = (self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight) + ChatListNavigationBar.storiesScrollHeight
+                let _ = self.mainContainerNode.currentItemNode.scrollToOffsetFromTop(self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight, animated: false)
             }
             self.mainContainerNode.currentItemNode.forEachItemNode { node in
                 (node as? ChatListItemNode)?.updateMiniSenderAvatar()
