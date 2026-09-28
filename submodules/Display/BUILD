@@ -12,6 +12,7 @@ swift_library(
     deps = [
     	"//submodules/ObjCRuntimeUtils:ObjCRuntimeUtils",
     	"//submodules/UIKitRuntimeUtils:UIKitRuntimeUtils",
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/AppBundle:AppBundle",
     	"//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Markdown:Markdown",
