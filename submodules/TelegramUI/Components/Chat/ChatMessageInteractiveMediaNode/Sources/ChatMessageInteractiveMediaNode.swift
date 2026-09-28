@@ -1113,7 +1113,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                 let statusSuggestedWidthAndContinue = statusLayout(ChatMessageDateAndStatusNode.Arguments(
                     context: context,
                     presentationData: presentationData,
-                    edited: dateAndStatus.edited && !presentationData.isPreview,
+                    edited: dateAndStatus.edited,
                     impressionCount: !presentationData.isPreview ? dateAndStatus.viewCount : nil,
                     dateText: dateAndStatus.dateText,
                     type: dateAndStatus.type,
@@ -1133,7 +1133,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                     hasAutoremove: message.isSelfExpiring,
                     canViewReactionList: canViewMessageReactionList(message: EngineMessage(message)),
                     animationCache: presentationContext.animationCache,
-                    animationRenderer: presentationContext.animationRenderer
+                    animationRenderer: presentationContext.animationRenderer,
+                    hideSentStatus: message.id.peerId == context.account.peerId
                 ))
                 
                 let (size, apply) = statusSuggestedWidthAndContinue.1(statusSuggestedWidthAndContinue.0)

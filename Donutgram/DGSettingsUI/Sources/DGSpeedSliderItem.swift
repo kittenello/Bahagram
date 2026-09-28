@@ -43,7 +43,8 @@ final class DGSpeedSliderItem: ListViewItem, ItemListItem {
     }
 }
 
-final class DGSpeedSliderItemNode: ListViewItemNode {
+final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
+    var tag: ItemListItemTag? { DGSettingItemTag(key: "downloadAcceleration") }
     private var item: DGSpeedSliderItem?
     private var slider: UISlider?
     private var labels: [UILabel] = []
@@ -59,6 +60,7 @@ final class DGSpeedSliderItemNode: ListViewItemNode {
         slider.minimumValue = 0
         slider.maximumValue = 2
         slider.isContinuous = false
+        slider.disablesInteractiveTransitionGestureRecognizer = true
         slider.addTarget(self, action: #selector(valueChanged), for: .valueChanged)
         self.view.addSubview(slider)
         self.slider = slider

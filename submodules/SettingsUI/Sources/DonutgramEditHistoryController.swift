@@ -28,7 +28,8 @@ private enum DonutgramEditHistoryEntry: ItemListNodeEntry {
             wallpaper: current.chatWallpaper,
             dateTimeFormat: current.dateTimeFormat,
             nameDisplayOrder: current.nameDisplayOrder,
-            messageItems: data.messages
+            messageItems: data.messages,
+            fillsAvailableHeight: true
         )
     }
 }
