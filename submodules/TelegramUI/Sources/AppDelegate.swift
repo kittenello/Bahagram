@@ -1898,9 +1898,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
-        if #available(iOS 16.2, *) {
-            Task { @MainActor in DGIslandActivityManager.shared.setForeground(false) }
-        }
         self.isActiveValue = false
         self.isActivePromise.set(false)
         self.clearNotificationsManager?.commitNow()
@@ -2007,9 +2004,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        if #available(iOS 16.2, *) {
-            Task { @MainActor in DGIslandActivityManager.shared.setForeground(true) }
-        }
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
         self.isActiveValue = true
