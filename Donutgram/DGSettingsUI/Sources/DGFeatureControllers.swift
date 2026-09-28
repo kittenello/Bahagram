@@ -109,8 +109,8 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
             .toggle(2, 0, "customBackgrounds", "Отключить кастомные фоны", s.disableCustomBackgrounds, true),
             .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
             .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
-            .disclosure(12, 1, "islandStyle", "Бэйдж приложения", ["Основной", "Пончик", "Мини"][s.islandStyle]),
-            .info(13, 1, "Настройка Бэйджа приложения на скриншотах"),
+            .disclosure(12, 1, "islandStyle", "Остров", ["Основной", "Пончик", "Мини"][s.islandStyle]),
+            .info(13, 1, "Настройка острова на скриншотах"),
             .header(20, 2, "ВКЛАДКИ"),
             .toggle(21, 2, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
             .toggle(22, 2, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
@@ -138,24 +138,24 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
         switch key { case "premiumStatuses": s.hidePremiumStatuses = value; case "customBackgrounds": s.disableCustomBackgrounds = value; case "hideStories": s.hideStories = value; case "snow": s.forceSnow = value; case "hideTabBar": s.hideTabBar = value; case "contacts": s.showContactsTab = value; case "calls": s.showCallsTab = value; case "wideTabBar": s.wideTabBar = value; case "profileId": s.showProfileId = value; case "dc": s.showDc = value; case "regDate": s.showRegistrationDate = value; case "chatDate": s.showChatCreationDate = value; case "mutualContact": s.showMutualContact = value; case "relativeOnlineTime": s.relativeOnlineTime = value; case "hidePhoneNumber": s.hidePhoneNumber = value; case "confirmCalls": s.confirmCalls = value; case "disableAds": s.disableAds = value; default: break }
     }, open: { key in
         switch key {
-        case "islandStyle": return dgIslandBadgeController(context: context)
+        case "islandStyle": return dgIslandStyleController(context: context)
         case "dialogIdFormat": return dgDialogIdFormatController(context: context)
         default: return nil
         }
     })
 }
 
-private func dgIslandBadgeController(context: AccountContext) -> ViewController {
+private func dgIslandStyleController(context: AccountContext) -> ViewController {
     let settings = DGSimpleSettings.shared
-    return dgController(context: context, title: "Бэйдж приложения", entries: {
+    return dgController(context: context, title: "Остров", entries: {
         [
             .islandStyles(0, 0, settings.islandStyle),
-            .info(1, 0, "Настройка Бэйджа приложения на скриншотах")
+            .info(1, 0, "Настройка острова на скриншотах")
         ]
     }, select: { key in
         guard key.hasPrefix("islandStyle:"), let value = Int(key.split(separator: ":").last ?? "") else { return }
         settings.islandStyle = value
-        context.sharedContext.mainWindow?.badgeView.image = UIImage(bundleImageName: settings.islandBadgeAssetName) ?? UIImage(bundleImageName: "Components/AppBadge")
+        context.sharedContext.mainWindow?.badgeView.image = UIImage(bundleImageName: settings.islandAssetName) ?? UIImage(bundleImageName: "Components/AppBadge")
     })
 }
 
