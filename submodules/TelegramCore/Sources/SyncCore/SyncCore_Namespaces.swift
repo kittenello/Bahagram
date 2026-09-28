@@ -215,6 +215,8 @@ public extension LocalMessageTags {
     static let donutgramSavedViewOnce = LocalMessageTags(rawValue: 1 << 28)
     static let donutgramDeleted = LocalMessageTags(rawValue: 1 << 29)
     static let donutgramHasEditHistory = LocalMessageTags(rawValue: 1 << 30)
+    // A later part of a split pseudo-reply; it goes out without the quote.
+    static let donutgramPseudoReplyContinuation = LocalMessageTags(rawValue: 1 << 26)
 }
 
 public extension PendingMessageActionType {
