@@ -49,6 +49,7 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
     private var layoutWidth: CGFloat = 0.0
     private var leftInset: CGFloat = 0.0
     private var rightInset: CGFloat = 0.0
+    private let roundedBackgroundView = UIView()
     private var buttons: [UIButton] = []
     private var captions: [UILabel] = []
 
@@ -59,10 +60,19 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
     override func didLoad() {
         super.didLoad()
 
+        self.backgroundColor = .clear
+        self.roundedBackgroundView.isUserInteractionEnabled = false
+        self.roundedBackgroundView.layer.cornerRadius = 28.0
+        if #available(iOS 13.0, *) {
+            self.roundedBackgroundView.layer.cornerCurve = .continuous
+        }
+        self.roundedBackgroundView.clipsToBounds = true
+        self.view.addSubview(self.roundedBackgroundView)
+
         for index in 0 ..< Self.titles.count {
             let button = UIButton(type: .custom)
             button.tag = index
-            button.layer.cornerRadius = 22.0
+            button.layer.cornerRadius = 26.0
             if #available(iOS 13.0, *) {
                 button.layer.cornerCurve = .continuous
             }
@@ -101,9 +111,15 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
     private func updateControls() {
         guard let item else { return }
 
-        self.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+        self.backgroundColor = .clear
 
-        let horizontalPadding: CGFloat = 16.0
+        let outerInset: CGFloat = 12.0
+        let backgroundX = self.leftInset + outerInset
+        let backgroundWidth = max(0.0, self.layoutWidth - self.leftInset - self.rightInset - outerInset * 2.0)
+        self.roundedBackgroundView.frame = CGRect(x: backgroundX, y: 4.0, width: backgroundWidth, height: 200.0)
+        self.roundedBackgroundView.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+
+        let horizontalPadding: CGFloat = 28.0
         let spacing: CGFloat = 12.0
         let availableWidth = max(0.0, self.layoutWidth - self.leftInset - self.rightInset - horizontalPadding * 2.0)
         let cardWidth = max(90.0, floor((availableWidth - spacing) / 2.0))
