@@ -38,8 +38,13 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     if !name.isEmpty {
         let nameLength = (name as NSString).length
         entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .Bold))
-        if let author {
-            entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .TextMention(peerId: author.id)))
+        // A mention needs the author's personal access hash: a "min" user (seen
+        // only in a large group) has one valid just for loading the avatar, and
+        // the server may reject the whole message over it. A reply into another
+        // chat gets no link: a real one names the author there by a forward
+        // header, which can hide their account.
+        if let user = author as? TelegramUser, case .personal = user.accessHash, source.id.peerId == message.id.peerId {
+            entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .TextMention(peerId: user.id)))
         }
     }
     if let originalEntities = message.textEntitiesAttribute?.entities, !message.text.isEmpty {
