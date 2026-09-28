@@ -74,6 +74,9 @@ private final class GiftViewSheetContent: CombinedComponent {
         if lhs.subject != rhs.subject {
             return false
         }
+        if lhs.headerText != rhs.headerText {
+            return false
+        }
         return true
     }
     
@@ -5401,13 +5404,16 @@ final class GiftViewSheetComponent: CombinedComponent {
     
     let context: AccountContext
     let subject: GiftViewScreen.Subject
+    let headerText: String?
     
     init(
         context: AccountContext,
-        subject: GiftViewScreen.Subject
+        subject: GiftViewScreen.Subject,
+        headerText: String? = nil
     ) {
         self.context = context
         self.subject = subject
+        self.headerText = headerText
     }
     
     static func ==(lhs: GiftViewSheetComponent, rhs: GiftViewSheetComponent) -> Bool {
@@ -5431,7 +5437,17 @@ final class GiftViewSheetComponent: CombinedComponent {
             let controller = environment.controller
             
             var headerContent: AnyComponent<Empty>?
-            if let arguments = context.component.subject.arguments, case .unique = arguments.gift, let fromPeerId = arguments.fromPeerId, var fromPeerName = arguments.fromPeerName, arguments.fromPeerId != context.component.context.account.peerId && !(arguments.fromPeerId?.isTelegramNotifications ?? false) {
+            if let headerText = context.component.headerText {
+                headerContent = AnyComponent(
+                    HeaderContentComponent(
+                        attributedText: NSAttributedString(
+                            string: headerText,
+                            font: Font.semibold(13.0),
+                            textColor: .white
+                        )
+                    )
+                )
+            } else if let arguments = context.component.subject.arguments, case .unique = arguments.gift, let fromPeerId = arguments.fromPeerId, var fromPeerName = arguments.fromPeerName, arguments.fromPeerId != context.component.context.account.peerId && !(arguments.fromPeerId?.isTelegramNotifications ?? false) {
                 var showSenderInfo = false
                 if arguments.incoming {
                     showSenderInfo = true
@@ -5759,6 +5775,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
         allSubjects: [GiftViewScreen.Subject]? = nil,
         index: Int? = nil,
         forceDark: Bool = false,
+        headerText: String? = nil,
         profileGiftsContext: ProfileGiftsContext? = nil,
         updateSavedToProfile: ((StarGiftReference, Bool) -> Void)? = nil,
         convertToStars: ((StarGiftReference) -> Void)? = nil,
@@ -5815,6 +5832,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
                 items: items,
                 index: index ?? 0,
                 itemSpacing: 10.0,
+                headerText: headerText,
                 updated: { _, _ in
                     dismissTooltipsImpl?()
                 }
