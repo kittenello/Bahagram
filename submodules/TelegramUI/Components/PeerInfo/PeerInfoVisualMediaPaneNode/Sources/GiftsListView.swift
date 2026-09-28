@@ -71,7 +71,6 @@ final class GiftsListView: UIView {
     private var starsProducts: [ProfileGiftsContext.State.StarGift]?
     private var starsItems: [AnyHashable: (StarGiftReference?, ComponentView<Empty>)] = [:]
     private var disappearedDates: [StarGiftReference: Int32] = [:]
-    private var disappearedBadges: [AnyHashable: UILabel] = [:]
     private var settingsObserver: NSObjectProtocol?
     private var showingDisappearedGifts = DGSimpleSettings.shared.showDisappearedGifts
 
@@ -301,27 +300,16 @@ final class GiftsListView: UIView {
         return result
     }
 
-    private func disappearedDateText(_ timestamp: Int32) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamp)))
+    private func openDisappearedGift(_ gift: ProfileGiftsContext.State.StarGift) {
+        let controller = GiftViewScreen(
+            context: self.context,
+            subject: .profileGift(self.peerId, gift),
+            headerText: "Подарок был скрыт или был продан."
+        )
+        self.parentController?.push(controller)
     }
 
-    private func showDisappearedGiftInfo(_ gift: ProfileGiftsContext.State.StarGift, lastSeen: Int32, presentationData: PresentationData) {
-        var details = ["Последний раз видели: \(self.disappearedDateText(lastSeen))"]
-        if let sender = gift.fromPeer {
-            details.append("Отправитель: \(sender.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder))")
-        }
-        if let text = gift.text, !text.isEmpty {
-            details.append("Комментарий: \(text)")
-        }
-        details.append("Причина исчезновения неизвестна.")
-        let alert = UIAlertController(title: "Подарок пропал", message: details.joined(separator: "\n"), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        self.parentController?.view.window?.rootViewController?.present(alert, animated: true)
-    }
-        
+
     func item(at point: CGPoint) -> (AnyHashable, ComponentView<Empty>)? {
         for (id, visibleItem) in self.starsItems {
             if let view = visibleItem.1.view, view.frame.contains(point), let reference = visibleItem.0, self.isCollection || self.pinnedReferences.contains(reference) {
@@ -496,8 +484,7 @@ final class GiftsListView: UIView {
         }
         
         let optionSpacing: CGFloat = 10.0
-        let verticalSpacing: CGFloat = self.disappearedDates.isEmpty ? optionSpacing : 30.0
-        let badgeTopPadding: CGFloat = self.disappearedDates.isEmpty ? 0.0 : 27.0
+        let verticalSpacing: CGFloat = optionSpacing
         let itemsSideInset = params.sideInset + 16.0
         
         let defaultItemsInRow: Int
@@ -517,7 +504,7 @@ final class GiftsListView: UIView {
         let starsOptionSize = CGSize(width: optionWidth, height: defaultOptionWidth)
                     
         var validIds: [AnyHashable] = []
-        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset + badgeTopPadding), size: starsOptionSize)
+        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset), size: starsOptionSize)
         
         var index: Int32 = 0
         for product in starsProducts {
@@ -627,8 +614,8 @@ final class GiftsListView: UIView {
                                 guard let self, !isAdded, let presentationData = self.currentParams?.presentationData else {
                                     return
                                 }
-                                if let disappearedDate {
-                                    self.showDisappearedGiftInfo(product, lastSeen: disappearedDate, presentationData: presentationData)
+                                if disappearedDate != nil {
+                                    self.openDisappearedGift(product)
                                     return
                                 }
                                 if self.canSelect {
@@ -802,29 +789,6 @@ final class GiftsListView: UIView {
                         itemView.layer.allowsGroupOpacity = true
                     }
 
-                    if let disappearedDate {
-                        let badge: UILabel
-                        if let current = self.disappearedBadges[itemId] {
-                            badge = current
-                        } else {
-                            badge = UILabel()
-                            badge.isUserInteractionEnabled = false
-                            badge.numberOfLines = 2
-                            badge.textAlignment = .center
-                            badge.font = .systemFont(ofSize: 10.0, weight: .semibold)
-                            badge.textColor = .white
-                            badge.backgroundColor = UIColor(white: 0.18, alpha: 0.94)
-                            badge.layer.cornerRadius = 11.0
-                            badge.clipsToBounds = true
-                            self.disappearedBadges[itemId] = badge
-                            self.addSubview(badge)
-                        }
-                        badge.text = "Подарок пропал\n\(self.disappearedDateText(disappearedDate))"
-                        itemTransition.setFrame(view: badge, frame: CGRect(x: itemFrame.minX + 4.0, y: itemFrame.minY - 26.0, width: itemFrame.width - 8.0, height: 24.0))
-                        self.bringSubviewToFront(badge)
-                    } else if let badge = self.disappearedBadges.removeValue(forKey: itemId) {
-                        badge.removeFromSuperview()
-                    }
                     
                     if self.isReordering && (product.pinnedToTop || self.isCollection) {
                         if itemView.layer.animation(forKey: "shaking_position") == nil {
@@ -864,10 +828,9 @@ final class GiftsListView: UIView {
         }
         for id in removeIds {
             self.starsItems.removeValue(forKey: id)
-            self.disappearedBadges.removeValue(forKey: id)?.removeFromSuperview()
         }
         
-        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + verticalSpacing) - verticalSpacing + topInset + badgeTopPadding + 16.0
+        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + verticalSpacing) - verticalSpacing + topInset + 16.0
         
         let size = params.size
         let sideInset = params.sideInset
