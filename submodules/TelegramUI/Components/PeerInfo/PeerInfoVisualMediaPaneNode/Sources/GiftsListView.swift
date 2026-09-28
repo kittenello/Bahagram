@@ -206,7 +206,7 @@ final class GiftsListView: UIView {
             
             self.resultsAreEmpty = state.filter == .All && (self.starsProducts?.isEmpty ?? true) && state.dataState != .loading
             self.filteredResultsAreEmpty = state.filter != .All && state.filteredGifts.isEmpty
-            if !self.canSelect && self.profileGifts.collectionId == nil && self.peerId != self.context.account.peerId && state.filter == .All && state.sorting == .date {
+            if !self.canSelect && self.profileGifts.collectionId == nil && state.filter == .All && state.sorting == .date {
                 if case .ready(true, _) = state.dataState {
                     Queue.mainQueue().justDispatch { [weak self] in
                         self?.profileGifts.loadMore()
