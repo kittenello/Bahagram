@@ -110,7 +110,6 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
             .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
             .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
             .disclosure(12, 1, "islandStyle", "Остров", ["Основной", "Пончик", "Мини"][s.islandStyle]),
-            .info(13, 1, "Настройка острова на скриншотах"),
             .header(20, 2, "ВКЛАДКИ"),
             .toggle(21, 2, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
             .toggle(22, 2, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
@@ -149,8 +148,7 @@ private func dgIslandStyleController(context: AccountContext) -> ViewController 
     let settings = DGSimpleSettings.shared
     return dgController(context: context, title: "Остров", entries: {
         [
-            .islandStyles(0, 0, settings.islandStyle),
-            .info(1, 0, "Настройка острова на скриншотах")
+            .islandStyles(0, 0, settings.islandStyle)
         ]
     }, select: { key in
         guard key.hasPrefix("islandStyle:"), let value = Int(key.split(separator: ":").last ?? "") else { return }
