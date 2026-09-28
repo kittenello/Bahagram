@@ -42,45 +42,54 @@ final class DGIslandStyleItem: ListViewItem, ItemListItem {
 }
 
 private final class DGIslandStyleItemNode: ListViewItemNode {
+    private static let titles = ["Основной", "Пончик", "Мини"]
+    private static let assets = ["Components/AppBadge", "Components/DonutIsland", "Components/MiniDonutIsland"]
+
     private var item: DGIslandStyleItem?
-    private var layoutWidth: CGFloat = 0
+    private var layoutWidth: CGFloat = 0.0
+    private var leftInset: CGFloat = 0.0
+    private var rightInset: CGFloat = 0.0
     private var buttons: [UIButton] = []
     private var captions: [UILabel] = []
 
-    init() {
+    override init() {
         super.init(layerBacked: false)
     }
 
     override func didLoad() {
         super.didLoad()
-        for index in 0 ..< 3 {
+
+        for index in 0 ..< Self.titles.count {
             let button = UIButton(type: .custom)
             button.tag = index
-            button.layer.cornerRadius = 18
-            button.layer.borderWidth = 2
-            button.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
-            button.titleLabel?.adjustsFontSizeToFitWidth = true
-            button.titleLabel?.minimumScaleFactor = 0.65
+            button.layer.cornerRadius = 14.0
+            button.layer.borderWidth = 2.0
+            button.clipsToBounds = true
+            button.imageView?.contentMode = .scaleAspectFit
+            button.setImage(UIImage(bundleImageName: Self.assets[index]), for: .normal)
             button.addTarget(self, action: #selector(selected(_:)), for: .touchUpInside)
             self.view.addSubview(button)
             self.buttons.append(button)
 
             let caption = UILabel()
-            caption.font = .systemFont(ofSize: 12)
+            caption.font = .systemFont(ofSize: 13.0)
             caption.textAlignment = .center
-            caption.text = ["Основной", "Пончик", "Мини"][index]
+            caption.text = Self.titles[index]
             self.view.addSubview(caption)
             self.captions.append(caption)
         }
+
         self.updateControls()
     }
 
     func asyncLayout() -> (_ item: DGIslandStyleItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
-            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 116), insets: itemListNeighborsGroupedInsets(neighbors, params))
+            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 208.0), insets: itemListNeighborsGroupedInsets(neighbors, params))
             return (layout, { [weak self] in
                 self?.item = item
                 self?.layoutWidth = params.width
+                self?.leftInset = params.leftInset
+                self?.rightInset = params.rightInset
                 self?.updateControls()
             })
         }
@@ -88,21 +97,33 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
 
     private func updateControls() {
         guard let item else { return }
+
         self.backgroundColor = item.theme.list.itemBlocksBackgroundColor
-        let spacing: CGFloat = 9
-        let cardWidth = max(65, (self.layoutWidth - 32 - spacing * 2) / 3)
+
+        let horizontalPadding: CGFloat = 16.0
+        let spacing: CGFloat = 12.0
+        let availableWidth = max(0.0, self.layoutWidth - self.leftInset - self.rightInset - horizontalPadding * 2.0)
+        let cardWidth = max(90.0, floor((availableWidth - spacing) / 2.0))
+        let rowHeight: CGFloat = 94.0
+
         for index in 0 ..< self.buttons.count {
+            let row = index / 2
+            let column = index % 2
+            let x = self.leftInset + horizontalPadding + CGFloat(column) * (cardWidth + spacing)
+            let y = 12.0 + CGFloat(row) * rowHeight
+            let selected = index == item.value
+
             let button = self.buttons[index]
-            let x = 16 + CGFloat(index) * (cardWidth + spacing)
-            button.frame = CGRect(x: x, y: 13, width: cardWidth, height: 69)
-            button.setTitle(["◉ DONUTGRAM", "🍩 DONUT", "🍩"][index], for: .normal)
-            button.backgroundColor = index == 1 ? UIColor(red: 0.32, green: 0.12, blue: 0.24, alpha: 1) : .black
-            button.setTitleColor(index == 1 ? UIColor(red: 1, green: 0.77, blue: 0.85, alpha: 1) : .white, for: .normal)
-            button.layer.borderColor = (index == item.value ? item.theme.list.itemAccentColor : UIColor.clear).cgColor
-            button.accessibilityLabel = self.captions[index].text
-            button.accessibilityTraits = index == item.value ? [.button, .selected] : [.button]
-            self.captions[index].frame = CGRect(x: x, y: 85, width: cardWidth, height: 20)
-            self.captions[index].textColor = index == item.value ? item.theme.list.itemAccentColor : item.theme.list.itemSecondaryTextColor
+            button.frame = CGRect(x: x, y: y, width: cardWidth, height: 64.0)
+            button.imageEdgeInsets = UIEdgeInsets(top: 17.0, left: 12.0, bottom: 17.0, right: 12.0)
+            button.backgroundColor = item.theme.list.itemSecondaryTextColor.withAlphaComponent(0.07)
+            button.layer.borderColor = (selected ? item.theme.list.itemAccentColor : item.theme.list.itemSecondaryTextColor.withAlphaComponent(0.14)).cgColor
+            button.accessibilityLabel = Self.titles[index]
+            button.accessibilityTraits = selected ? [.button, .selected] : [.button]
+
+            let caption = self.captions[index]
+            caption.frame = CGRect(x: x, y: y + 68.0, width: cardWidth, height: 20.0)
+            caption.textColor = selected ? item.theme.list.itemAccentColor : item.theme.list.itemSecondaryTextColor
         }
     }
 

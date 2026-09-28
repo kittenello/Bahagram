@@ -33,6 +33,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "spy", "ghost", "options", "offline": return "eye.slash"
     case "chats", "messages", "tails", "replies": return "bubble.left.and.bubble.right"
     case "appearance", "customBackgrounds": return "paintbrush"
+    case "islandStyle": return "capsule"
     case "support": return "questionmark.circle"
     case "saveDeleted", "transparentDeleted": return "tray.full"
     case "saveEdits": return "pencil"

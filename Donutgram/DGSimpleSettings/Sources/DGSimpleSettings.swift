@@ -366,8 +366,19 @@ public final class DGSimpleSettings {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
     }
-    /// 0 is the standard island, 1 is a Donutgram badge, and 2 is a compact donut badge.
+    /// 0 is the default island style, 1 is the Donut island, and 2 is the compact Donut island.
     public var islandStyle: Int { get { min(max(integer(Key.islandStyle), 0), 2) } set { setInteger(min(max(newValue, 0), 2), Key.islandStyle) } }
+
+    public var islandAssetName: String {
+        switch self.islandStyle {
+        case 1:
+            return "Components/DonutIsland"
+        case 2:
+            return "Components/MiniDonutIsland"
+        default:
+            return "Components/AppBadge"
+        }
+    }
 
     public func localPremium(accountId: Int64) -> Bool {
         return self.defaults.stringArray(forKey: Key.localPremiumPeerIds)?.contains(String(accountId)) ?? false

@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import AsyncDisplayKit
 import SwiftSignalKit
+import DGSimpleSettings
 
 private struct WindowLayout: Equatable {
     let size: CGSize
@@ -348,7 +349,7 @@ public class Window1 {
     public init(hostView: WindowHostView, statusBarHost: StatusBarHost?) {
         self.hostView = hostView
         self.badgeView = UIImageView()
-        self.badgeView.image = UIImage(bundleImageName: "Components/AppBadge")
+        self.badgeView.image = UIImage(bundleImageName: DGSimpleSettings.shared.islandAssetName) ?? UIImage(bundleImageName: "Components/AppBadge")
         self.badgeView.isHidden = true
         
         self.systemUserInterfaceStyle = hostView.systemUserInterfaceStyle
