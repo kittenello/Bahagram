@@ -1067,7 +1067,8 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                     if peerId.namespace != Namespaces.Peer.SecretChat,
                        let replyToMessageId,
                        let replyMessage = transaction.getMessage(replyToMessageId.messageId),
-                       replyMessage.localTags.contains(.donutgramDeleted) {
+                       replyMessage.localTags.contains(.donutgramDeleted),
+                       donutgramCanSendAsPseudoReply(attributes: attributes, media: mediaList) {
                         localTags.insert(.donutgramPseudoReply)
                         // A long text comes here as several parts replying to the
                         // same message; only the first part carries the quote.
