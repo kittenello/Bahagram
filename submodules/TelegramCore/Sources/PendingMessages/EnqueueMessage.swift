@@ -879,6 +879,8 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
         var localGroupingKeyBySourceKey: [Int64: Int64] = [:]
         
         var globallyUniqueIds: [Int64] = []
+        // Donutgram: deleted reply targets already quoted by an earlier message here.
+        var donutgramQuotedReplyIds = Set<MessageId>()
         for (transformedMedia, message) in updatedMessages {
             if case let .message(_, requestedAttributes, _, _, _, replyToMessageId, _, _, _, _) = message {
                 if requestedAttributes.contains(where: { $0 is EphemeralOutgoingMessageAttribute }) {
@@ -1067,6 +1069,11 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
                        let replyMessage = transaction.getMessage(replyToMessageId.messageId),
                        replyMessage.localTags.contains(.donutgramDeleted) {
                         localTags.insert(.donutgramPseudoReply)
+                        // A long text comes here as several parts replying to the
+                        // same message; only the first part carries the quote.
+                        if !donutgramQuotedReplyIds.insert(replyMessage.id).inserted {
+                            localTags.insert(.donutgramPseudoReplyContinuation)
+                        }
                     }
                     for media in mediaList {
                         if let media = media as? TelegramMediaMap, media.liveBroadcastingTimeout != nil {

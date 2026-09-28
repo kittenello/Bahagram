@@ -36,7 +36,7 @@ private func donutgramPseudoReplyAuthor(transaction: Transaction, source: Messag
 
 // A deleted reply target only exists in this client's Postbox. Send a real
 // blockquote so the other participant can see the reference as well.
-private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
+private func donutgramPseudoReplyContent(transaction: Transaction, message: Message, accountPeerId: PeerId, isCaption: Bool) -> (String, [Api.MessageEntity])? {
     guard message.localTags.contains(.donutgramPseudoReply),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
           let source = transaction.getMessage(reply.messageId),
@@ -57,10 +57,43 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
             excerpt = "Message"
         }
     }
-    if excerpt.count > 100 {
-        excerpt = String(excerpt.prefix(99))
-        excerptEntities = messageTextEntitiesInRange(entities: excerptEntities, range: NSRange(location: 0, length: (excerpt as NSString).length), onlyQuoteable: true)
-        excerpt += "…"
+    // The composer checked only the body against the length limit, so the quote
+    // gets what is left of it, in UTF-16 units. A long text goes out as several
+    // parts, and only the first one carries the quote.
+    var excerptLimit = 0
+    if !message.localTags.contains(.donutgramPseudoReplyContinuation) {
+        if isCaption {
+            let isPremium = (transaction.getPeer(accountPeerId) as? TelegramUser)?.isPremium ?? false
+            excerptLimit = Int(UserLimitsConfiguration(appConfiguration: currentAppConfiguration(transaction: transaction), isPremium: isPremium).maxCaptionLength)
+        } else {
+            // breakChatInputText splits a long text at this length.
+            excerptLimit = 4096
+        }
+        // Each "+ 1" is a line break: after the name and before the body.
+        if !name.isEmpty {
+            excerptLimit -= (name as NSString).length + 1
+        }
+        if !message.text.isEmpty {
+            excerptLimit -= (message.text as NSString).length + 1
+        }
+    }
+    if excerpt.count > 100 || (excerpt as NSString).length > excerptLimit {
+        // Cut between Characters so an emoji is never split.
+        var kept = ""
+        var keptLength = 1 // the "…"
+        for character in excerpt.prefix(99) {
+            keptLength += character.utf16.count
+            if keptLength > excerptLimit {
+                break
+            }
+            kept.append(character)
+        }
+        excerptEntities = messageTextEntitiesInRange(entities: excerptEntities, range: NSRange(location: 0, length: (kept as NSString).length), onlyQuoteable: true)
+        excerpt = kept.isEmpty ? "" : kept + "…"
+    }
+    if excerpt.isEmpty {
+        // No room for the quote: the body goes alone, still without the reply.
+        return (message.text, apiEntitiesFromMessageTextEntities(message.textEntitiesAttribute?.entities ?? [], associatedPeers: message.peers))
     }
 
     let prefix = name.isEmpty ? excerpt : name + "\n" + excerpt
@@ -1363,7 +1396,7 @@ public final class PendingMessageManager {
                         suggestedPost = attribute.apiSuggestedPost(fixMinTime: Int32(Date().timeIntervalSince1970 + 10))
                     }
                 }
-                let groupPseudoReplyContent = !isForward ? donutgramPseudoReplyContent(transaction: transaction, message: messages[0].0) : nil
+                let groupPseudoReplyContent = !isForward ? donutgramPseudoReplyContent(transaction: transaction, message: messages[0].0, accountPeerId: accountPeerId, isCaption: true) : nil
                 if groupPseudoReplyContent != nil {
                     replyMessageId = nil
                     replyPeerId = nil
@@ -1912,7 +1945,11 @@ public final class PendingMessageManager {
                     }
                 }
 
-                let pseudoReplyContent = donutgramPseudoReplyContent(transaction: transaction, message: message)
+                var isCaption = false
+                if case .media = content.content {
+                    isCaption = true
+                }
+                let pseudoReplyContent = donutgramPseudoReplyContent(transaction: transaction, message: message, accountPeerId: accountPeerId, isCaption: isCaption)
                 if let pseudoReplyContent {
                     // The original reply stays in Postbox for our local reply UI.
                     // Only the visible quote is included in the Telegram request.
