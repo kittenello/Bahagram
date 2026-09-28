@@ -18,6 +18,22 @@ private func donutgramPseudoReplyAuthorName(transaction: Transaction, author: Pe
     return [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
 }
 
+// Sign the quote the way the reply header does (ChatMessageReplyInfoNode): a
+// forward belongs to its original author, not to whoever forwarded it. A forward
+// from a hidden account carries only the author's name, so that name goes out
+// without a mention.
+private func donutgramPseudoReplyAuthor(transaction: Transaction, source: Message) -> (peer: Peer?, name: String) {
+    if let forwardInfo = source.forwardInfo {
+        if let author = forwardInfo.author {
+            return (author, donutgramPseudoReplyAuthorName(transaction: transaction, author: author))
+        } else if let authorSignature = forwardInfo.authorSignature {
+            return (nil, authorSignature)
+        }
+    }
+    let author = source.effectiveAuthor ?? transaction.getPeer(source.id.peerId)
+    return (author, donutgramPseudoReplyAuthorName(transaction: transaction, author: author))
+}
+
 // A deleted reply target only exists in this client's Postbox. Send a real
 // blockquote so the other participant can see the reference as well.
 private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
@@ -28,8 +44,7 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
         return nil
     }
 
-    let author = source.author ?? transaction.getPeer(source.id.peerId)
-    let name = donutgramPseudoReplyAuthorName(transaction: transaction, author: author)
+    let (author, name) = donutgramPseudoReplyAuthor(transaction: transaction, source: source)
     var excerpt = reply.quote?.text ?? source.text
     if excerpt.isEmpty {
         if source.media.contains(where: { $0 is TelegramMediaImage }) {
