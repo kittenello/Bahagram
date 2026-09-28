@@ -38,6 +38,8 @@ private func donutgramPseudoReplyAuthor(transaction: Transaction, source: Messag
 // blockquote so the other participant can see the reference as well.
 private func donutgramPseudoReplyContent(transaction: Transaction, message: Message, accountPeerId: PeerId, isCaption: Bool) -> (String, [Api.MessageEntity])? {
     guard message.localTags.contains(.donutgramPseudoReply),
+          // Also covers messages that were tagged before the content check existed.
+          donutgramCanSendAsPseudoReply(attributes: message.attributes, media: message.media),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
           let source = transaction.getMessage(reply.messageId),
           source.localTags.contains(.donutgramDeleted) else {
