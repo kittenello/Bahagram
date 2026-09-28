@@ -496,6 +496,8 @@ final class GiftsListView: UIView {
         }
         
         let optionSpacing: CGFloat = 10.0
+        let verticalSpacing: CGFloat = self.disappearedDates.isEmpty ? optionSpacing : 30.0
+        let badgeTopPadding: CGFloat = self.disappearedDates.isEmpty ? 0.0 : 27.0
         let itemsSideInset = params.sideInset + 16.0
         
         let defaultItemsInRow: Int
@@ -515,7 +517,7 @@ final class GiftsListView: UIView {
         let starsOptionSize = CGSize(width: optionWidth, height: defaultOptionWidth)
                     
         var validIds: [AnyHashable] = []
-        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset), size: starsOptionSize)
+        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset + badgeTopPadding), size: starsOptionSize)
         
         var index: Int32 = 0
         for product in starsProducts {
@@ -818,7 +820,7 @@ final class GiftsListView: UIView {
                             self.addSubview(badge)
                         }
                         badge.text = "Подарок пропал\n\(self.disappearedDateText(disappearedDate))"
-                        itemTransition.setFrame(view: badge, frame: CGRect(x: itemFrame.minX + 4.0, y: itemFrame.minY + 3.0, width: itemFrame.width - 8.0, height: 32.0))
+                        itemTransition.setFrame(view: badge, frame: CGRect(x: itemFrame.minX + 4.0, y: itemFrame.minY - 26.0, width: itemFrame.width - 8.0, height: 24.0))
                         self.bringSubviewToFront(badge)
                     } else if let badge = self.disappearedBadges.removeValue(forKey: itemId) {
                         badge.removeFromSuperview()
@@ -839,7 +841,7 @@ final class GiftsListView: UIView {
             itemFrame.origin.x += itemFrame.width + optionSpacing
             if itemFrame.maxX > params.size.width {
                 itemFrame.origin.x = itemsSideInset
-                itemFrame.origin.y += starsOptionSize.height + optionSpacing
+                itemFrame.origin.y += starsOptionSize.height + verticalSpacing
             }
             index += 1
         }
@@ -865,7 +867,7 @@ final class GiftsListView: UIView {
             self.disappearedBadges.removeValue(forKey: id)?.removeFromSuperview()
         }
         
-        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + optionSpacing) - optionSpacing + topInset + 16.0
+        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + verticalSpacing) - verticalSpacing + topInset + badgeTopPadding + 16.0
         
         let size = params.size
         let sideInset = params.sideInset
