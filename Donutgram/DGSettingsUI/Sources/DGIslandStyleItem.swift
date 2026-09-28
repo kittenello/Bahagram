@@ -43,7 +43,7 @@ final class DGIslandStyleItem: ListViewItem, ItemListItem {
 
 private final class DGIslandStyleItemNode: ListViewItemNode {
     private static let titles = ["Основной", "Пончик", "Мини"]
-    private static let assets = ["Components/AppBadge", "Components/DonutAppBadge", "Components/MiniDonutAppBadge"]
+    private static let assets = ["Components/AppBadge", "Components/DonutIsland", "Components/MiniDonutIsland"]
 
     private var item: DGIslandStyleItem?
     private var layoutWidth: CGFloat = 0.0
