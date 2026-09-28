@@ -3013,10 +3013,10 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                         if let count = optionVoterCount[i] {
                             if maxOptionVoterCount != 0 && totalVoterCount != 0 {
                                 optionResult = ChatMessagePollOptionResult(normalized: CGFloat(count) / CGFloat(maxOptionVoterCount), percent: optionVoterCounts[i], count: count, recentVoterPeerIds: recentVoterPeerIds)
-                            } else if isClosed || isRestricted {
+                            } else if isClosed || isRestricted || allowsVotingWithResults {
                                 optionResult = ChatMessagePollOptionResult(normalized: 0, percent: 0, count: 0, recentVoterPeerIds: recentVoterPeerIds)
                             }
-                        } else if isClosed || isRestricted {
+                        } else if isClosed || isRestricted || allowsVotingWithResults {
                             optionResult = ChatMessagePollOptionResult(normalized: 0, percent: 0, count: 0, recentVoterPeerIds: recentVoterPeerIds)
                         }
                         
