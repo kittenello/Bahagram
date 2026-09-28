@@ -2194,10 +2194,10 @@ private final class ProfileGiftsContextImpl {
                 known[reference] = entry
             }
         }
-        self.giftHistory = known.values.sorted { lhs, rhs in
+        self.giftHistory = Array(known.values).sorted(by: { lhs, rhs in
             if lhs.position != rhs.position { return lhs.position < rhs.position }
             return (lhs.gift.reference?.stringValue ?? "") < (rhs.gift.reference?.stringValue ?? "")
-        }
+        })
         let entries = self.giftHistory
         let peerId = self.peerId
         self.giftHistorySaveDisposable.set(self.account.postbox.transaction { transaction in
