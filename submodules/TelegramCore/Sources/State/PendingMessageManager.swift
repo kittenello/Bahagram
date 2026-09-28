@@ -4,6 +4,20 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
+// The quote's author name goes out as message text, so it must be a name the
+// author set themselves. For a contact, firstName/lastName hold the name this
+// account saved for them (the server never sends us theirs), so contacts get no
+// name; nameOrPhone is avoided because it falls back to the phone number.
+private func donutgramPseudoReplyAuthorName(transaction: Transaction, author: Peer?) -> String {
+    guard let user = author as? TelegramUser else {
+        return author?.debugDisplayTitle ?? ""
+    }
+    if transaction.isPeerContact(peerId: user.id) {
+        return ""
+    }
+    return [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+}
+
 // A deleted reply target only exists in this client's Postbox. Send a real
 // blockquote so the other participant can see the reference as well.
 private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
@@ -15,7 +29,7 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     }
 
     let author = source.author ?? transaction.getPeer(source.id.peerId)
-    let name = author?.debugDisplayTitle ?? ""
+    let name = donutgramPseudoReplyAuthorName(transaction: transaction, author: author)
     var excerpt = reply.quote?.text ?? source.text
     if excerpt.isEmpty {
         if source.media.contains(where: { $0 is TelegramMediaImage }) {
