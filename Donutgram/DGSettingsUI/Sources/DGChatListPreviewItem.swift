@@ -70,7 +70,7 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
     private let rowMessage = UILabel()
     private let snowLabel = UILabel()
 
-    override init() {
+    init() {
         super.init(layerBacked: false)
     }
 
