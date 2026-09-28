@@ -2147,7 +2147,7 @@ private final class ProfileGiftsContextImpl {
                 let updatedCount = max(Int32(self.gifts.count), count)
                 self.count = updatedCount
                 self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil && nextOffset != initialNextOffset, nextOffset: nextOffset)
-                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState {
+                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, Int32(self.gifts.count) >= count {
                     self.updateGiftHistory()
                 }
             }
@@ -2173,7 +2173,7 @@ private final class ProfileGiftsContextImpl {
 
         var visibleReferences = Set<StarGiftReference>()
         for (index, gift) in self.gifts.enumerated() {
-            guard let reference = gift.reference else {
+            guard case .generic = gift.gift, let reference = gift.reference else {
                 continue
             }
             visibleReferences.insert(reference)
