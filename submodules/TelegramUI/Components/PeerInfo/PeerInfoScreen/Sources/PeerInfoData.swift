@@ -1561,7 +1561,7 @@ func peerInfoScreenData(
                     }
                     
                     if availablePanes != nil, profileGiftsContext != nil, let cachedData = peerView.cachedData as? CachedUserData, peerView.peerId != context.account.peerId {
-                        if let starGiftsCount = cachedData.starGiftsCount, starGiftsCount > 0 {
+                        if (cachedData.starGiftsCount ?? 0) > 0 || (DGSimpleSettings.shared.showDisappearedGifts && !(profileGiftsContext?.currentState?.disappearedGifts.isEmpty ?? true)) {
                             availablePanes?.insert(.gifts, at: hasStories ? 1 : 0)
                         }
                     }

@@ -1852,6 +1852,29 @@ final class CachedProfileGifts: Codable {
     }
 }
 
+private final class DonutgramGiftHistory: Codable {
+    var entries: [ProfileGiftsContext.State.DisappearedGift]
+
+    init(entries: [ProfileGiftsContext.State.DisappearedGift]) {
+        self.entries = entries
+    }
+
+    func render(transaction: Transaction) {
+        for index in self.entries.indices {
+            let gift = self.entries[index].gift
+            if gift.fromPeer == nil, let fromPeerId = gift._fromPeerId, let peer = transaction.getPeer(fromPeerId) {
+                self.entries[index].gift = gift.withFromPeer(EnginePeer(peer))
+            }
+        }
+    }
+}
+
+private func donutgramGiftHistoryEntryId(peerId: EnginePeer.Id) -> ItemCacheEntryId {
+    let key = ValueBoxKey(length: 8)
+    key.setInt64(0, value: peerId.toInt64())
+    return ItemCacheEntryId(collectionId: Namespaces.CachedItemCollection.donutgramDisappearedGifts, key: key)
+}
+
 func giftsEntryId(peerId: EnginePeer.Id, collectionId: Int32?) -> ItemCacheEntryId {
     let cacheKey: ValueBoxKey
     if let collectionId {
@@ -1874,6 +1897,8 @@ private final class ProfileGiftsContextImpl {
     private let disposable = MetaDisposable()
     private let cacheDisposable = MetaDisposable()
     private let actionDisposable = MetaDisposable()
+    private let giftHistoryDisposable = MetaDisposable()
+    private let giftHistorySaveDisposable = MetaDisposable()
     
     private var sorting: ProfileGiftsContext.Sorting
     private var filter: ProfileGiftsContext.Filters
@@ -1888,6 +1913,7 @@ private final class ProfileGiftsContextImpl {
     private var filteredDataState: ProfileGiftsContext.State.DataState = .ready(canLoadMore: true, nextOffset: nil)
     
     private var notificationsEnabled: Bool?
+    private var giftHistory: [ProfileGiftsContext.State.DisappearedGift] = []
     
     var _state: ProfileGiftsContext.State?
     private let stateValue = Promise<ProfileGiftsContext.State>()
@@ -1912,17 +1938,30 @@ private final class ProfileGiftsContextImpl {
         self.filter = filter
         self.limit = limit
         
-        self.loadMore()
+        if peerId != account.peerId && collectionId == nil {
+            self.giftHistoryDisposable.set((account.postbox.transaction { transaction -> DonutgramGiftHistory? in
+                let history = transaction.retrieveItemCacheEntry(id: donutgramGiftHistoryEntryId(peerId: peerId))?.get(DonutgramGiftHistory.self)
+                history?.render(transaction: transaction)
+                return history
+            } |> deliverOn(queue)).start(next: { [weak self] history in
+                guard let self else { return }
+                self.giftHistory = history?.entries ?? []
+                self.loadMore()
+            }))
+        } else {
+            self.loadMore()
+        }
     }
     
     deinit {
         self.disposable.dispose()
         self.cacheDisposable.dispose()
         self.actionDisposable.dispose()
+        self.giftHistoryDisposable.dispose()
+        self.giftHistorySaveDisposable.dispose()
     }
     
     func reload() {
-        self.gifts = []
         self.dataState = .ready(canLoadMore: true, nextOffset: nil)
         self.loadMore(reload: true)
     }
@@ -2001,12 +2040,12 @@ private final class ProfileGiftsContextImpl {
             self.pushState()
         }
         
-        let signal: Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?), NoError> = self.account.postbox.transaction { transaction -> Api.InputPeer? in
+        let signal: Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?, Bool), NoError> = self.account.postbox.transaction { transaction -> Api.InputPeer? in
             return transaction.getPeer(peerId).flatMap(apiInputPeer)
         }
-        |> mapToSignal { inputPeer -> Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?), NoError> in
+        |> mapToSignal { inputPeer -> Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?, Bool), NoError> in
             guard let inputPeer else {
-                return .single(([], 0, nil, nil))
+                return .single(([], 0, nil, nil, false))
             }
             var flags: Int32 = 0
             if let _ = collectionId {
@@ -2042,11 +2081,11 @@ private final class ProfileGiftsContextImpl {
             |> `catch` { _ -> Signal<Api.payments.SavedStarGifts?, NoError> in
                 return .single(nil)
             }
-            |> mapToSignal { result -> Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?), NoError> in
+            |> mapToSignal { result -> Signal<([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?, Bool), NoError> in
                 guard let result else {
-                    return .single(([], 0, nil, nil))
+                    return .single(([], 0, nil, nil, false))
                 }
-                return postbox.transaction { transaction -> ([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?) in
+                return postbox.transaction { transaction -> ([ProfileGiftsContext.State.StarGift], Int32, String?, Bool?, Bool) in
                     switch result {
                     case let .savedStarGifts(savedStarGiftsData):
                         let (_, count, apiNotificationsEnabled, apiGifts, nextOffset, chats, users) = (savedStarGiftsData.flags, savedStarGiftsData.count, savedStarGiftsData.chatNotificationsEnabled, savedStarGiftsData.gifts, savedStarGiftsData.nextOffset, savedStarGiftsData.chats, savedStarGiftsData.users)
@@ -2063,15 +2102,24 @@ private final class ProfileGiftsContextImpl {
                         }
                         
                         let gifts = apiGifts.compactMap { ProfileGiftsContext.State.StarGift(apiSavedStarGift: $0, peerId: peerId, transaction: transaction) }
-                        return (gifts, count, nextOffset, notificationsEnabled)
+                        return (gifts, count, nextOffset, notificationsEnabled, true)
                     }
                 }
             }
         }
         
         self.disposable.set((signal
-        |> deliverOn(self.queue)).start(next: { [weak self] (gifts, count, nextOffset, notificationsEnabled) in
+        |> deliverOn(self.queue)).start(next: { [weak self] (gifts, count, nextOffset, notificationsEnabled, succeeded) in
             guard let self else {
+                return
+            }
+            guard succeeded else {
+                if isFiltered {
+                    self.filteredDataState = .ready(canLoadMore: false, nextOffset: initialNextOffset)
+                } else {
+                    self.dataState = .ready(canLoadMore: false, nextOffset: initialNextOffset)
+                }
+                self.pushState()
                 return
             }
             if isFiltered {
@@ -2099,11 +2147,59 @@ private final class ProfileGiftsContextImpl {
                 let updatedCount = max(Int32(self.gifts.count), count)
                 self.count = updatedCount
                 self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil, nextOffset: nextOffset)
+                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, Int32(self.gifts.count) >= count {
+                    self.updateGiftHistory()
+                }
             }
             
             self.notificationsEnabled = notificationsEnabled
             self.pushState()
         }))
+    }
+
+    private func updateGiftHistory() {
+        let observedAt = Int32(Date().timeIntervalSince1970)
+        var known: [StarGiftReference: ProfileGiftsContext.State.DisappearedGift] = [:]
+        for entry in self.giftHistory {
+            if let reference = entry.gift.reference {
+                known[reference] = entry
+            }
+        }
+
+        var visibleReferences = Set<StarGiftReference>()
+        for (index, gift) in self.gifts.enumerated() {
+            guard case .generic = gift.gift, let reference = gift.reference else {
+                continue
+            }
+            visibleReferences.insert(reference)
+            let previousReference = index > 0 ? self.gifts[index - 1].reference : nil
+            let nextReference = index + 1 < self.gifts.count ? self.gifts[index + 1].reference : nil
+            known[reference] = ProfileGiftsContext.State.DisappearedGift(
+                gift: gift,
+                position: Int32(index),
+                previousReference: previousReference,
+                nextReference: nextReference,
+                lastSeen: observedAt,
+                isMissing: false
+            )
+        }
+        for reference in Array(known.keys) where !visibleReferences.contains(reference) {
+            if var entry = known[reference] {
+                entry.isMissing = true
+                known[reference] = entry
+            }
+        }
+        self.giftHistory = known.values.sorted { lhs, rhs in
+            if lhs.position != rhs.position { return lhs.position < rhs.position }
+            return (lhs.gift.reference?.stringValue ?? "") < (rhs.gift.reference?.stringValue ?? "")
+        }
+        let entries = self.giftHistory
+        let peerId = self.peerId
+        self.giftHistorySaveDisposable.set(self.account.postbox.transaction { transaction in
+            if let cached = CodableEntry(DonutgramGiftHistory(entries: entries)) {
+                transaction.putItemCacheEntry(id: donutgramGiftHistoryEntryId(peerId: peerId), entry: cached)
+            }
+        }.start())
     }
     
     func updateStarGiftAddedToProfile(reference: StarGiftReference, added: Bool) {
@@ -2645,6 +2741,7 @@ private final class ProfileGiftsContextImpl {
             sorting: self.sorting,
             gifts: self.gifts,
             filteredGifts: effectiveGifts,
+            disappearedGifts: self.giftHistory.filter { $0.isMissing },
             count: effectiveCount,
             dataState: effectiveDataState,
             notificationsEnabled: self.notificationsEnabled
@@ -2994,6 +3091,24 @@ public final class ProfileGiftsContext {
             }
         }
         
+        public struct DisappearedGift: Equatable, Codable {
+            public var gift: StarGift
+            public var position: Int32
+            public var previousReference: StarGiftReference?
+            public var nextReference: StarGiftReference?
+            public var lastSeen: Int32
+            public var isMissing: Bool
+
+            public init(gift: StarGift, position: Int32, previousReference: StarGiftReference?, nextReference: StarGiftReference?, lastSeen: Int32, isMissing: Bool) {
+                self.gift = gift
+                self.position = position
+                self.previousReference = previousReference
+                self.nextReference = nextReference
+                self.lastSeen = lastSeen
+                self.isMissing = isMissing
+            }
+        }
+
         public enum DataState: Equatable {
             case loading
             case ready(canLoadMore: Bool, nextOffset: String?)
@@ -3003,6 +3118,7 @@ public final class ProfileGiftsContext {
         public var sorting: Sorting
         public var gifts: [ProfileGiftsContext.State.StarGift]
         public var filteredGifts: [ProfileGiftsContext.State.StarGift]
+        public var disappearedGifts: [DisappearedGift]
         public var count: Int32?
         public var dataState: ProfileGiftsContext.State.DataState
         public var notificationsEnabled: Bool?

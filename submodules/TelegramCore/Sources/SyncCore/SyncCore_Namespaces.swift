@@ -161,6 +161,7 @@ public struct Namespaces {
         // Telegram's upstream collection ids so normal upstream additions do
         // not collide with the edit-history cache.
         public static let donutgramEditHistory: Int8 = 120
+        public static let donutgramDisappearedGifts: Int8 = 121
     }
     
     public struct UnorderedItemList {

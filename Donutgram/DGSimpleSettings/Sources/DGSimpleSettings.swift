@@ -53,6 +53,7 @@ public final class DGSimpleSettings {
         static let saveEditHistory = "donutgram.spy.saveEditHistory"
         static let saveViewOnceMedia = "donutgram.spy.saveViewOnceMedia"
         static let saveInBotChats = "donutgram.spy.saveInBotChats"
+        static let showDisappearedGifts = "donutgram.spy.showDisappearedGifts"
 
         static let ghostModeEnabled = "donutgram.ghost.enabled"
         static let ghostReadMessages = "donutgram.ghost.readMessages"
@@ -189,6 +190,11 @@ public final class DGSimpleSettings {
         set {
             self.defaults.set(newValue, forKey: Key.saveInBotChats)
         }
+    }
+
+    public var showDisappearedGifts: Bool {
+        get { bool(Key.showDisappearedGifts) }
+        set { setBool(newValue, Key.showDisappearedGifts) }
     }
 
     private func bool(_ key: String) -> Bool { self.defaults.bool(forKey: key) }
@@ -393,6 +399,7 @@ public final class DGSimpleSettings {
         }
         set { setInteger([0, 5, 10, 15, 30].contains(newValue) ? newValue : 15, Key.doubleTapSeekSeconds) }
     }
+
     public var showPollResultsBeforeVoting: Bool { get { bool(Key.showPollResultsBeforeVoting) } set { setBool(newValue, Key.showPollResultsBeforeVoting) } }
     /// Bitmask: video = 1, voice = 2, round video = 4.
     public var autoPauseMedia: Int {

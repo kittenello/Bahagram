@@ -16,6 +16,7 @@ swift_library(
         "//submodules/Postbox",
         "//submodules/TelegramPresentationData",
         "//submodules/AccountContext",
+        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/ContextUI",
         "//submodules/PhotoResources",
         "//submodules/RadialStatusNode",
