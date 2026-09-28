@@ -2147,7 +2147,7 @@ private final class ProfileGiftsContextImpl {
                 let updatedCount = max(Int32(self.gifts.count), count)
                 self.count = updatedCount
                 self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil && nextOffset != initialNextOffset, nextOffset: nextOffset)
-                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, Int32(self.gifts.count) >= count {
+                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState {
                     self.updateGiftHistory()
                 }
             }
