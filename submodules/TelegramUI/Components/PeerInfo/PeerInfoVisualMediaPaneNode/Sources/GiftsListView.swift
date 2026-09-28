@@ -589,9 +589,6 @@ final class GiftsListView: UIView {
                 if isAdded {
                     itemAlpha = 0.3
                 }
-                if disappearedDate != nil {
-                    itemAlpha = 0.42
-                }
                 
                 let _ = visibleItem.update(
                     transition: itemTransition,
