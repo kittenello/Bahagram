@@ -17,6 +17,8 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     let author = source.author ?? transaction.getPeer(source.id.peerId)
     let name = author?.debugDisplayTitle ?? ""
     var excerpt = reply.quote?.text ?? source.text
+    // Keep the formatting a regular quote keeps: a plain copy would reveal spoilers.
+    var excerptEntities = messageTextEntitiesInRange(entities: reply.quote?.entities ?? source.textEntitiesAttribute?.entities ?? [], range: NSRange(location: 0, length: (excerpt as NSString).length), onlyQuoteable: true)
     if excerpt.isEmpty {
         if source.media.contains(where: { $0 is TelegramMediaImage }) {
             excerpt = "Photo"
@@ -27,7 +29,9 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
         }
     }
     if excerpt.count > 100 {
-        excerpt = String(excerpt.prefix(99)) + "…"
+        excerpt = String(excerpt.prefix(99))
+        excerptEntities = messageTextEntitiesInRange(entities: excerptEntities, range: NSRange(location: 0, length: (excerpt as NSString).length), onlyQuoteable: true)
+        excerpt += "…"
     }
 
     let prefix = name.isEmpty ? excerpt : name + "\n" + excerpt
@@ -42,6 +46,10 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
             entities.append(MessageTextEntity(range: 0 ..< nameLength, type: .TextMention(peerId: author.id)))
         }
     }
+    let excerptOffset = name.isEmpty ? 0 : (name as NSString).length + 1
+    entities.append(contentsOf: excerptEntities.map { entity in
+        MessageTextEntity(range: (entity.range.lowerBound + excerptOffset) ..< (entity.range.upperBound + excerptOffset), type: entity.type)
+    })
     if let originalEntities = message.textEntitiesAttribute?.entities, !message.text.isEmpty {
         entities.append(contentsOf: originalEntities.map { entity in
             MessageTextEntity(range: (entity.range.lowerBound + bodyOffset) ..< (entity.range.upperBound + bodyOffset), type: entity.type)
