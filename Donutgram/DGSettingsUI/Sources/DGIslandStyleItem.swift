@@ -62,7 +62,10 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
         for index in 0 ..< Self.titles.count {
             let button = UIButton(type: .custom)
             button.tag = index
-            button.layer.cornerRadius = 14.0
+            button.layer.cornerRadius = 22.0
+            if #available(iOS 13.0, *) {
+                button.layer.cornerCurve = .continuous
+            }
             button.layer.borderWidth = 2.0
             button.clipsToBounds = true
             button.imageView?.contentMode = .scaleAspectFit
