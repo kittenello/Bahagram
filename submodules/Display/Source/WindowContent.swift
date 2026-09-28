@@ -349,7 +349,7 @@ public class Window1 {
     public init(hostView: WindowHostView, statusBarHost: StatusBarHost?) {
         self.hostView = hostView
         self.badgeView = UIImageView()
-        self.badgeView.image = UIImage(bundleImageName: DGSimpleSettings.shared.islandBadgeAssetName) ?? UIImage(bundleImageName: "Components/AppBadge")
+        self.badgeView.image = UIImage(bundleImageName: DGSimpleSettings.shared.islandAssetName) ?? UIImage(bundleImageName: "Components/AppBadge")
         self.badgeView.isHidden = true
         
         self.systemUserInterfaceStyle = hostView.systemUserInterfaceStyle
