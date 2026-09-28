@@ -2173,7 +2173,7 @@ private final class ProfileGiftsContextImpl {
 
         var visibleReferences = Set<StarGiftReference>()
         for (index, gift) in self.gifts.enumerated() {
-            guard case .generic = gift.gift, let reference = gift.reference else {
+            guard let reference = gift.reference else {
                 continue
             }
             visibleReferences.insert(reference)
