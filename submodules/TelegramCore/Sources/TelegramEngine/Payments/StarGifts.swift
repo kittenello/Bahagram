@@ -1875,6 +1875,31 @@ private func donutgramGiftHistoryEntryId(peerId: EnginePeer.Id) -> ItemCacheEntr
     return ItemCacheEntryId(collectionId: Namespaces.CachedItemCollection.donutgramDisappearedGifts, key: key)
 }
 
+private enum DonutgramGiftHistoryIdentity: Hashable {
+    case reference(StarGiftReference)
+    case publicDetails(String)
+}
+
+private func donutgramGiftHistoryIdentity(_ gift: ProfileGiftsContext.State.StarGift) -> DonutgramGiftHistoryIdentity? {
+    guard case let .generic(genericGift) = gift.gift else {
+        return nil
+    }
+    if let reference = gift.reference {
+        return .reference(reference)
+    }
+    let senderId = gift.fromPeer?.id ?? gift._fromPeerId
+    let comment = Data((gift.text ?? "").utf8).base64EncodedString()
+    let entities = (try? JSONEncoder().encode(gift.entities ?? []))?.base64EncodedString() ?? ""
+    return .publicDetails("\(genericGift.id):\(gift.date):\(senderId?.toInt64() ?? 0):\(comment):\(entities)")
+}
+
+private func donutgramGiftHistoryBase(_ gift: ProfileGiftsContext.State.StarGift) -> String? {
+    guard case let .generic(genericGift) = gift.gift else {
+        return nil
+    }
+    return "\(genericGift.id):\(gift.date)"
+}
+
 func giftsEntryId(peerId: EnginePeer.Id, collectionId: Int32?) -> ItemCacheEntryId {
     let cacheKey: ValueBoxKey
     if let collectionId {
@@ -2147,7 +2172,7 @@ private final class ProfileGiftsContextImpl {
                 let updatedCount = max(Int32(self.gifts.count), count)
                 self.count = updatedCount
                 self.dataState = .ready(canLoadMore: count != 0 && updatedCount > self.gifts.count && nextOffset != nil && nextOffset != initialNextOffset, nextOffset: nextOffset)
-                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, Int32(self.gifts.count) >= count {
+                if peerId != accountPeerId && collectionId == nil, case .ready(false, _) = self.dataState, (nextOffset == nil || Int32(self.gifts.count) >= count) {
                     self.updateGiftHistory()
                 }
             }
@@ -2164,22 +2189,43 @@ private final class ProfileGiftsContextImpl {
 
     private func updateGiftHistory() {
         let observedAt = Int32(Date().timeIntervalSince1970)
-        var known: [StarGiftReference: ProfileGiftsContext.State.DisappearedGift] = [:]
+        var known: [DonutgramGiftHistoryIdentity: ProfileGiftsContext.State.DisappearedGift] = [:]
+        var previousCounts: [DonutgramGiftHistoryIdentity: Int] = [:]
         for entry in self.giftHistory {
-            if let reference = entry.gift.reference {
-                known[reference] = entry
+            if let identity = donutgramGiftHistoryIdentity(entry.gift) {
+                previousCounts[identity, default: 0] += 1
+                known[identity] = entry
             }
         }
 
-        var visibleReferences = Set<StarGiftReference>()
+        for (identity, count) in previousCounts where count > 1 {
+            known.removeValue(forKey: identity)
+        }
+
+        var currentCounts: [DonutgramGiftHistoryIdentity: Int] = [:]
+        var currentBases = Set<String>()
+        for gift in self.gifts {
+            if let identity = donutgramGiftHistoryIdentity(gift) {
+                currentCounts[identity, default: 0] += 1
+            }
+            if let base = donutgramGiftHistoryBase(gift) {
+                currentBases.insert(base)
+            }
+        }
+
+        var visibleIdentities = Set<DonutgramGiftHistoryIdentity>()
         for (index, gift) in self.gifts.enumerated() {
-            guard case .generic = gift.gift, let reference = gift.reference else {
+            guard let identity = donutgramGiftHistoryIdentity(gift) else {
                 continue
             }
-            visibleReferences.insert(reference)
+            if case .publicDetails = identity, currentCounts[identity] != 1 || previousCounts[identity, default: 0] > 1 {
+                known.removeValue(forKey: identity)
+                continue
+            }
+            visibleIdentities.insert(identity)
             let previousReference = index > 0 ? self.gifts[index - 1].reference : nil
             let nextReference = index + 1 < self.gifts.count ? self.gifts[index + 1].reference : nil
-            known[reference] = ProfileGiftsContext.State.DisappearedGift(
+            known[identity] = ProfileGiftsContext.State.DisappearedGift(
                 gift: gift,
                 position: Int32(index),
                 previousReference: previousReference,
@@ -2188,10 +2234,14 @@ private final class ProfileGiftsContextImpl {
                 isMissing: false
             )
         }
-        for reference in Array(known.keys) where !visibleReferences.contains(reference) {
-            if var entry = known[reference] {
+        for identity in Array(known.keys) where !visibleIdentities.contains(identity) {
+            if var entry = known[identity] {
+                if case .publicDetails = identity, let base = donutgramGiftHistoryBase(entry.gift), currentBases.contains(base) {
+                    known.removeValue(forKey: identity)
+                    continue
+                }
                 entry.isMissing = true
-                known[reference] = entry
+                known[identity] = entry
             }
         }
         self.giftHistory = Array(known.values).sorted(by: { lhs, rhs in

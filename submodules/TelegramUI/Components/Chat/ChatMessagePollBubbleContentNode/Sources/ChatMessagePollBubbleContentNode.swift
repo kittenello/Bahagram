@@ -498,6 +498,7 @@ private final class ChatMessagePollOptionNode: ASDisplayNode {
     var option: TelegramMediaPollOption?
     var forceSelected: Bool?
     private(set) var currentResult: ChatMessagePollOptionResult?
+    private var allowsVotingWithResults = false
     private(set) var currentSelection: ChatMessagePollOptionSelection?
     var pressed: (() -> Void)?
     var selectionUpdated: (() -> Void)?
@@ -749,7 +750,7 @@ private final class ChatMessagePollOptionNode: ASDisplayNode {
             return
         }
         
-        if let _ = self.currentResult {
+        if self.currentResult != nil && !self.allowsVotingWithResults {
             self.resultPressed?()
             return
         }
@@ -849,14 +850,14 @@ private final class ChatMessagePollOptionNode: ASDisplayNode {
         })
     }
 
-    static func asyncLayout(_ maybeNode: ChatMessagePollOptionNode?) -> (_ context: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode))) {
+    static func asyncLayout(_ maybeNode: ChatMessagePollOptionNode?) -> (_ context: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ allowsVotingWithResults: Bool, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode))) {
         let makeTitleLayout = TextNodeWithEntities.asyncLayout(maybeNode?.titleNode)
         let currentResult = maybeNode?.currentResult
         let currentSelection = maybeNode?.currentSelection
         let currentTheme = maybeNode?.theme
 
-        return { context, presentationData, presentationContext, message, poll, option, translation, optionResult, forceSelected, hasAnyMedia, constrainedWidth in
-            let leftInset: CGFloat = 50.0
+        return { context, presentationData, presentationContext, message, poll, option, translation, optionResult, allowsVotingWithResults, forceSelected, hasAnyMedia, constrainedWidth in
+            let leftInset: CGFloat = allowsVotingWithResults && optionResult != nil ? 72.0 : 50.0
             let media = option.media
             let mediaInset: CGFloat
             if hasAnyMedia {
@@ -890,7 +891,7 @@ private final class ChatMessagePollOptionNode: ASDisplayNode {
                 message: message
             )
 
-            let shouldHaveRadioNode = optionResult == nil
+            let shouldHaveRadioNode = optionResult == nil || allowsVotingWithResults
             let isSelectable: Bool
             if shouldHaveRadioNode, poll.kind.multipleAnswers, forceSelected == nil, !Namespaces.Message.allNonRegular.contains(message.id.namespace) {
                 isSelectable = true
@@ -1030,6 +1031,7 @@ private final class ChatMessagePollOptionNode: ASDisplayNode {
                     }
 
                     node.option = option
+                    node.allowsVotingWithResults = allowsVotingWithResults
                     node.forceSelected = forceSelected
                     node.context = context
                     node.message = message
@@ -2657,7 +2659,7 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
             }
         }
 
-        var previousOptionNodeLayouts: [Data: (_ contet: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode)))] = [:]
+        var previousOptionNodeLayouts: [Data: (_ contet: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ allowsVotingWithResults: Bool, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode)))] = [:]
         for optionNode in self.optionNodes {
             if let option = optionNode.option {
                 previousOptionNodeLayouts[option.opaqueIdentifier] = ChatMessagePollOptionNode.asyncLayout(optionNode)
@@ -2939,6 +2941,7 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                 var pollOptionsFinalizeLayouts: [(hasResult: Bool, layout: (CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode))] = []
                 var addOptionFinalizeLayout: ((CGFloat) -> (CGSize, (Bool, Bool) -> ChatMessagePollAddOptionNode))?
                 var orderedPollOptions: [(Int, TelegramMediaPollOption)] = []
+                var allowsVotingWithResults = false
                 
                 var isRestricted = false
                 if let poll = poll {
@@ -2968,8 +2971,9 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                                 votedFor.insert(voter.opaqueIdentifier)
                             }
                         }
+                        allowsVotingWithResults = DGSimpleSettings.shared.showPollResultsBeforeVoting && !poll.hideResultsUntilClose && !didVote && !isClosed && !isPreviewingResults && !isRestricted
                         totalVoterCount = totalVoters
-                        if didVote || isClosed || isPreviewingResults || isRestricted || (DGSimpleSettings.shared.showPollResultsBeforeVoting && !poll.hideResultsUntilClose) {
+                        if didVote || isClosed || isPreviewingResults || isRestricted || allowsVotingWithResults {
                             for i in 0 ..< poll.options.count {
                                 inner: for optionVoters in voters {
                                     if optionVoters.opaqueIdentifier == poll.options[i].opaqueIdentifier {
@@ -2992,7 +2996,7 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                     let hasAnyOptionMedia = orderedPollOptions.contains(where: { $0.1.media != nil })
                     
                     for (i, option) in orderedPollOptions {
-                        let makeLayout: (_ context: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode)))
+                        let makeLayout: (_ context: AccountContext, _ presentationData: ChatPresentationData, _ presentationContext: ChatPresentationContext, _ message: Message, _ poll: TelegramMediaPoll, _ option: TelegramMediaPollOption, _ translation: TranslationMessageAttribute.Additional?, _ optionResult: ChatMessagePollOptionResult?, _ allowsVotingWithResults: Bool, _ forceSelected: Bool?, _ hasAnyMedia: Bool, _ constrainedWidth: CGFloat) -> (minimumWidth: CGFloat, layout: ((CGFloat) -> (CGSize, (Bool, Bool, Bool) -> ChatMessagePollOptionNode)))
                         if let previous = previousOptionNodeLayouts[option.opaqueIdentifier] {
                             makeLayout = previous
                         } else {
@@ -3026,7 +3030,7 @@ public class ChatMessagePollBubbleContentNode: ChatMessageBubbleContentNode {
                             forceSelected = votedFor.contains(option.opaqueIdentifier)
                         }
                         
-                        let result = makeLayout(item.context, item.presentationData, item.controllerInteraction.presentationContext, item.message, poll, option, translation, optionResult, forceSelected, hasAnyOptionMedia, constrainedSize.width - layoutConstants.bubble.borderInset * 2.0)
+                        let result = makeLayout(item.context, item.presentationData, item.controllerInteraction.presentationContext, item.message, poll, option, translation, optionResult, allowsVotingWithResults, forceSelected, hasAnyOptionMedia, constrainedSize.width - layoutConstants.bubble.borderInset * 2.0)
                         boundingSize.width = max(boundingSize.width, result.minimumWidth + layoutConstants.bubble.borderInset * 2.0)
                         pollOptionsFinalizeLayouts.append((optionResult != nil, result.1))
                     }

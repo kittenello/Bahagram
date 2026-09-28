@@ -70,10 +70,11 @@ final class GiftsListView: UIView {
             
     private var starsProducts: [ProfileGiftsContext.State.StarGift]?
     private var starsItems: [AnyHashable: (StarGiftReference?, ComponentView<Empty>)] = [:]
-    private var disappearedDates: [StarGiftReference: Int32] = [:]
+    private var disappearedDates: [Int32: Int32] = [:]
     private var disappearedBadges: [AnyHashable: UILabel] = [:]
     private var settingsObserver: NSObjectProtocol?
     private var showingDisappearedGifts = DGSimpleSettings.shared.showDisappearedGifts
+    private var wasAttachedToWindow = false
 
     private(set) var resultsAreEmpty = false
     private var filteredResultsAreEmpty = false
@@ -272,6 +273,17 @@ final class GiftsListView: UIView {
             }
         }
     }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        let isAttached = self.window != nil
+        defer { self.wasAttachedToWindow = isAttached }
+        guard isAttached && !self.wasAttachedToWindow && self.showingDisappearedGifts && !self.canSelect && self.profileGifts.collectionId == nil && self.peerId != self.context.account.peerId,
+              let state = self.profileGifts.currentState, case .ready(false, _) = state.dataState else {
+            return
+        }
+        self.profileGifts.reload()
+    }
     
     required init?(coder: NSCoder) {
         preconditionFailure()
@@ -285,20 +297,26 @@ final class GiftsListView: UIView {
     }
 
     private func giftsWithDisappeared(current: [ProfileGiftsContext.State.StarGift], history: [ProfileGiftsContext.State.DisappearedGift]) -> [ProfileGiftsContext.State.StarGift] {
-        var result = current
+        var result: [(gift: ProfileGiftsContext.State.StarGift, lastSeen: Int32?)] = current.map { ($0, nil) }
         let visible = Set(current.compactMap { $0.reference })
         for entry in history.sorted(by: { $0.position < $1.position }) {
-            guard let reference = entry.gift.reference, !visible.contains(reference) else { continue }
+            if let reference = entry.gift.reference, visible.contains(reference) {
+                continue
+            }
             var insertionIndex = min(max(0, Int(entry.position)), result.count)
-            if let next = entry.nextReference, let index = result.firstIndex(where: { $0.reference == next }) {
+            if let next = entry.nextReference, let index = result.firstIndex(where: { $0.gift.reference == next }) {
                 insertionIndex = index
-            } else if let previous = entry.previousReference, let index = result.firstIndex(where: { $0.reference == previous }) {
+            } else if let previous = entry.previousReference, let index = result.firstIndex(where: { $0.gift.reference == previous }) {
                 insertionIndex = index + 1
             }
-            result.insert(entry.gift, at: insertionIndex)
-            self.disappearedDates[reference] = entry.lastSeen
+            result.insert((entry.gift, entry.lastSeen), at: insertionIndex)
         }
-        return result
+        for (index, entry) in result.enumerated() {
+            if let lastSeen = entry.lastSeen {
+                self.disappearedDates[Int32(index)] = lastSeen
+            }
+        }
+        return result.map { $0.gift }
     }
 
     private func disappearedDateText(_ timestamp: Int32) -> String {
@@ -538,7 +556,7 @@ final class GiftsListView: UIView {
                 let id = "\(stableId)_\(info)"
                 let itemId = AnyHashable(id)
                 validIds.append(itemId)
-                let disappearedDate = product.reference.flatMap { self.disappearedDates[$0] }
+                let disappearedDate = self.disappearedDates[index]
                 
                 var itemTransition = transition
                 let visibleItem: ComponentView<Empty>
