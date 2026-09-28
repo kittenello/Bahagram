@@ -1170,6 +1170,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
     private var currentOverscrollItemExpansionTimestamp: Double?
     
     private var containerLayout: (layout: ContainerViewLayout, navigationBarHeight: CGFloat, visualNavigationHeight: CGFloat, cleanNavigationBarHeight: CGFloat, storiesInset: CGFloat)?
+    private var appearanceObserver: NSObjectProtocol?
+    private var lastHideSearch = DGSimpleSettings.shared.chatListHideSearch
     
     var contentScrollingEnded: ((ListView) -> Bool)?
     
@@ -1319,6 +1321,25 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         inlineContentPanRecognizer.cancelsTouchesInView = true
         self.inlineContentPanRecognizer = inlineContentPanRecognizer
         self.view.addGestureRecognizer(inlineContentPanRecognizer)
+
+        self.appearanceObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            if self.location == .chatList(groupId: .root), self.lastHideSearch != DGSimpleSettings.shared.chatListHideSearch {
+                self.lastHideSearch = DGSimpleSettings.shared.chatListHideSearch
+                self.mainContainerNode.currentItemNode.scrollHeightTopInset = (self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight) + ChatListNavigationBar.storiesScrollHeight
+                let _ = self.mainContainerNode.currentItemNode.scrollToOffsetFromTop(self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight, animated: false)
+            }
+            self.mainContainerNode.currentItemNode.forEachItemNode { node in
+                (node as? ChatListItemNode)?.updateMiniSenderAvatar()
+            }
+            self.controller?.requestLayout(transition: .immediate)
+        }
+    }
+
+    deinit {
+        if let appearanceObserver = self.appearanceObserver {
+            NotificationCenter.default.removeObserver(appearanceObserver)
+        }
     }
     
     override func didLoad() {
@@ -1677,7 +1698,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 strings: self.presentationData.strings,
                 statusBarHeight: layout.statusBarHeight ?? 0.0,
                 sideInset: layout.safeInsets.left,
-                search: ChatListNavigationBar.Search(isEnabled: true),
+                search: DGSimpleSettings.shared.chatListHideSearch && self.location == .chatList(groupId: .root) ? nil : ChatListNavigationBar.Search(isEnabled: true),
                 activeSearch: self.isSearchDisplayControllerActive,
                 primaryContent: headerContent?.primaryContent,
                 secondaryContent: headerContent?.secondaryContent,
@@ -1836,7 +1857,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         var storiesInset = storiesInset
         
         let navigationBarLayout = self.updateNavigationBar(layout: layout, deferScrollApplication: true, transition: ComponentTransition(transition))
-        self.mainContainerNode.initialScrollingOffset = ChatListNavigationBar.searchScrollHeight + navigationBarLayout.storiesInset
+        self.mainContainerNode.initialScrollingOffset = (DGSimpleSettings.shared.chatListHideSearch && self.location == .chatList(groupId: .root) ? 0.0 : ChatListNavigationBar.searchScrollHeight) + navigationBarLayout.storiesInset
         
         navigationBarHeight = navigationBarLayout.navigationHeight
         visualNavigationHeight = navigationBarLayout.navigationHeight

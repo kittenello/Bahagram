@@ -107,7 +107,6 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
             .toggle(1, 0, "premiumStatuses", "Скрыть премиум статусы", s.hidePremiumStatuses, true),
             .toggle(2, 0, "customBackgrounds", "Отключить кастомные фоны", s.disableCustomBackgrounds, true),
             .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
-            .toggle(4, 0, "snow", "Снег", s.forceSnow, true),
             .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
             .header(12, 2, "ОСТРОВ"), .islandStyles(13, 2, s.islandStyle),
             .header(20, 3, "ВКЛАДКИ"),
@@ -191,6 +190,7 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
         if s.hideArchive {
             result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
+        result.append(contentsOf: [.header(60, 6, "СПИСОК ЧАТОВ"), .disclosure(61, 6, "chatListAppearance", "Внешний вид", "")])
         return result
     }, toggle: { key, value in
         switch key {
@@ -225,8 +225,57 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
         case "camera": return dgRoundVideoCameraController(context: context)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
         case "doubleTapSeek": return dgDoubleTapSeekController(context: context)
+        case "chatListAppearance": return dgChatListAppearanceController(context: context)
         default: return nil
         }
+    })
+}
+
+private func dgChatListAppearanceController(context: AccountContext) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    return dgController(context: context, title: "Внешний вид", entries: {
+        [
+            .header(0, 0, "СПИСОК ЧАТОВ"),
+            .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideStatus, settings.chatListCenteredTitle, settings.chatListHideSearch, settings.chatListSenderAvatars, settings.chatListTitleMode.rawValue),
+            .toggle(2, 0, "snow", "Снег", settings.forceSnow, true),
+            .toggle(3, 0, "hideStatus", "Скрыть статус", settings.chatListHideStatus, true),
+            .toggle(4, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
+            .toggle(5, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
+            .toggle(6, 0, "senderAvatars", "Мини-аватарки отправителей", settings.chatListSenderAvatars, true),
+            .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode))
+        ]
+    }, toggle: { key, value in
+        switch key {
+        case "snow": settings.forceSnow = value
+        case "hideStatus": settings.chatListHideStatus = value
+        case "centerTitle": settings.chatListCenteredTitle = value
+        case "hideSearch": settings.chatListHideSearch = value
+        case "senderAvatars": settings.chatListSenderAvatars = value
+        default: break
+        }
+    }, open: { key in
+        key == "titleMode" ? dgChatListTitleModeController(context: context) : nil
+    })
+}
+
+private func dgChatListTitleModeTitle(_ mode: DGSimpleSettings.ChatListTitleMode) -> String {
+    switch mode {
+    case .donutgram: return "Donutgram"
+    case .username: return "Юзернейм"
+    case .nickname: return "Никнейм"
+    case .chats: return "Чаты"
+    }
+}
+
+private func dgChatListTitleModeController(context: AccountContext) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    let modes: [DGSimpleSettings.ChatListTitleMode] = [.donutgram, .username, .nickname, .chats]
+    return dgController(context: context, title: "Текст в заголовке", entries: {
+        modes.enumerated().map { index, mode in
+            .checkbox(Int32(index), 0, String(mode.rawValue), dgChatListTitleModeTitle(mode), settings.chatListTitleMode == mode)
+        }
+    }, select: { key in
+        settings.chatListTitleMode = DGSimpleSettings.ChatListTitleMode(rawValue: Int(key) ?? 0) ?? .chats
     })
 }
 

@@ -47,6 +47,13 @@ public final class DGSimpleSettings {
         case botApi = 1
     }
 
+    public enum ChatListTitleMode: Int, CaseIterable {
+        case chats = 0
+        case donutgram = 1
+        case username = 2
+        case nickname = 3
+    }
+
     private enum Key {
         static let saveDeletedMessages = "donutgram.spy.saveDeletedMessages"
         static let semiTransparentDeletedMessages = "donutgram.spy.semiTransparentDeletedMessages"
@@ -87,6 +94,11 @@ public final class DGSimpleSettings {
         static let disableCustomBackgrounds = "donutgram.appearance.disableCustomBackgrounds"
         static let hideStories = "donutgram.appearance.hideStories"
         static let forceSnow = "donutgram.appearance.forceSnow"
+        static let chatListHideStatus = "donutgram.chats.appearance.hideStatus"
+        static let chatListCenteredTitle = "donutgram.chats.appearance.centeredTitle"
+        static let chatListHideSearch = "donutgram.chats.appearance.hideSearch"
+        static let chatListSenderAvatars = "donutgram.chats.appearance.senderAvatars"
+        static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let localPremiumPeerIds = "donutgram.other.localPremiumPeerIds"
 
@@ -346,6 +358,14 @@ public final class DGSimpleSettings {
     public var disableCustomBackgrounds: Bool { get { bool(Key.disableCustomBackgrounds) } set { setBool(newValue, Key.disableCustomBackgrounds) } }
     public var hideStories: Bool { get { bool(Key.hideStories) } set { setBool(newValue, Key.hideStories) } }
     public var forceSnow: Bool { get { bool(Key.forceSnow) } set { setBool(newValue, Key.forceSnow) } }
+    public var chatListHideStatus: Bool { get { bool(Key.chatListHideStatus) } set { setBool(newValue, Key.chatListHideStatus) } }
+    public var chatListCenteredTitle: Bool { get { bool(Key.chatListCenteredTitle) } set { setBool(newValue, Key.chatListCenteredTitle) } }
+    public var chatListHideSearch: Bool { get { bool(Key.chatListHideSearch) } set { setBool(newValue, Key.chatListHideSearch) } }
+    public var chatListSenderAvatars: Bool { get { bool(Key.chatListSenderAvatars) } set { setBool(newValue, Key.chatListSenderAvatars) } }
+    public var chatListTitleMode: ChatListTitleMode {
+        get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
+        set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
+    }
     /// 0 is the standard island, 1 is a Donutgram badge, and 2 is a compact donut badge.
     public var islandStyle: Int { get { min(max(integer(Key.islandStyle), 0), 2) } set { setInteger(min(max(newValue, 0), 2), Key.islandStyle) } }
 

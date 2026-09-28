@@ -49,6 +49,11 @@ final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
     private var slider: UISlider?
     private var labels: [UILabel] = []
     private var layoutWidth: CGFloat = 0
+    private var leftInset: CGFloat = 0
+    private var rightInset: CGFloat = 0
+    private var hasTopCorners = true
+    private var hasBottomCorners = false
+    private let blockBackground = UIView()
 
     init() {
         super.init(layerBacked: false)
@@ -56,6 +61,10 @@ final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
 
     override func didLoad() {
         super.didLoad()
+        self.view.addSubview(self.blockBackground)
+        self.blockBackground.isUserInteractionEnabled = false
+        self.blockBackground.layer.cornerRadius = 22.0
+        self.blockBackground.clipsToBounds = true
         let slider = UISlider()
         slider.minimumValue = 0
         slider.maximumValue = 2
@@ -80,6 +89,18 @@ final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
             return (layout, { [weak self] in
                 self?.item = item
                 self?.layoutWidth = params.width
+                self?.leftInset = params.leftInset
+                self?.rightInset = params.rightInset
+                if case .sameSection(false) = neighbors.top {
+                    self?.hasTopCorners = false
+                } else {
+                    self?.hasTopCorners = true
+                }
+                if case .sameSection(false) = neighbors.bottom {
+                    self?.hasBottomCorners = false
+                } else {
+                    self?.hasBottomCorners = true
+                }
                 self?.updateControls()
             })
         }
@@ -87,14 +108,24 @@ final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
 
     private func updateControls() {
         guard let item else { return }
-        self.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+        self.backgroundColor = .clear
+        self.blockBackground.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+        var corners: CACornerMask = []
+        if self.hasTopCorners {
+            corners.formUnion([.layerMinXMinYCorner, .layerMaxXMinYCorner])
+        }
+        if self.hasBottomCorners {
+            corners.formUnion([.layerMinXMaxYCorner, .layerMaxXMaxYCorner])
+        }
+        self.blockBackground.layer.maskedCorners = corners
+        self.blockBackground.frame = CGRect(x: self.leftInset, y: 0, width: max(0, self.layoutWidth - self.leftInset - self.rightInset), height: 86)
         slider?.minimumTrackTintColor = item.theme.list.itemAccentColor
         slider?.maximumTrackTintColor = item.theme.list.itemSecondaryTextColor.withAlphaComponent(0.4)
         slider?.value = Float(item.value)
-        slider?.frame = CGRect(x: 20, y: 38, width: max(0, layoutWidth - 40), height: 38)
+        slider?.frame = CGRect(x: leftInset + 12, y: 38, width: max(0, layoutWidth - leftInset - rightInset - 24), height: 38)
         for (index, label) in labels.enumerated() {
             label.textColor = index == item.value ? item.theme.list.itemAccentColor : item.theme.list.itemSecondaryTextColor
-            let x = index == 0 ? 20.0 : (index == 1 ? layoutWidth / 2 - 48 : layoutWidth - 100)
+            let x = index == 0 ? leftInset + 12 : (index == 1 ? layoutWidth / 2 - 40 : layoutWidth - rightInset - 92)
             label.frame = CGRect(x: x, y: 10, width: 80, height: 22)
             label.textAlignment = index == 0 ? .left : (index == 1 ? .center : .right)
         }
