@@ -2229,6 +2229,25 @@ private final class ProfileGiftsContextImpl {
         }.start())
     }
     
+    func removeDisappearedGift(_ gift: ProfileGiftsContext.State.StarGift) {
+        let previousCount = self.giftHistory.count
+        self.giftHistory.removeAll(where: { entry in
+            return entry.isMissing && self.giftsMatchForHistory(entry.gift, gift)
+        })
+        guard self.giftHistory.count != previousCount else {
+            return
+        }
+        
+        let entries = self.giftHistory
+        let peerId = self.peerId
+        self.giftHistorySaveDisposable.set(self.account.postbox.transaction { transaction in
+            if let cached = CodableEntry(DonutgramGiftHistory(entries: entries)) {
+                transaction.putItemCacheEntry(id: donutgramGiftHistoryEntryId(peerId: peerId), entry: cached)
+            }
+        }.start())
+        self.pushState()
+    }
+    
     func updateStarGiftAddedToProfile(reference: StarGiftReference, added: Bool) {
         self.actionDisposable.set(
             _internal_updateStarGiftAddedToProfile(account: self.account, reference: reference, added: added).startStrict()
@@ -3203,6 +3222,12 @@ public final class ProfileGiftsContext {
     public func updateStarGiftAddedToProfile(reference: StarGiftReference, added: Bool) {
         self.impl.with { impl in
             impl.updateStarGiftAddedToProfile(reference: reference, added: added)
+        }
+    }
+    
+    public func removeDisappearedGift(_ gift: ProfileGiftsContext.State.StarGift) {
+        self.impl.with { impl in
+            impl.removeDisappearedGift(gift)
         }
     }
     
