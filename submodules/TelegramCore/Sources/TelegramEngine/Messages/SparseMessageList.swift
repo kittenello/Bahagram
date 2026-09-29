@@ -898,7 +898,8 @@ public final class SparseMessageCalendar {
                             }
 
                             updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
-                            let _ = transaction.addMessages(parsedMessages, location: .Random)
+                            // Donutgram: these messages may already be stored; keep their local-only state.
+                            let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: parsedMessages), location: .Random)
 
                             var minMessageId: Int32?
                             var messagesByDay: [Int32: SparseMessageCalendar.Entry] = [:]

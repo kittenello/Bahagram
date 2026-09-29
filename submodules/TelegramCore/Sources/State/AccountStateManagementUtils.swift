@@ -1833,6 +1833,10 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox: 
                         sentMessageIds.append(MessageId(peerId: peer.peerId, namespace: Namespaces.Message.Cloud, id: message))
                     }
                 }
+                // Donutgram: a published pseudo-reply keeps the local form of its scheduled copy.
+                if !sentMessageIds.isEmpty && sentMessageIds.count == messageIds.count {
+                    updatedState.donutgramMovePseudoRepliesToSentMessages(scheduledIds: messageIds, sentIds: sentMessageIds)
+                }
                 updatedState.deleteMessages(messageIds)
                 updatedState.addSentScheduledMessageIds(sentMessageIds)
             case let .updateDeleteQuickReplyMessages(updateDeleteQuickReplyMessagesData):
@@ -2506,7 +2510,8 @@ func resolveForumThreads(accountPeerId: PeerId, postbox: Postbox, source: FetchM
                         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: users)
                         updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
                         
-                        let _ = transaction.addMessages(storeMessages, location: .Random)
+                        // Donutgram: topic top messages may already be stored; keep their local-only state.
+                        let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: storeMessages), location: .Random)
                     }
                 }
             }
@@ -3822,6 +3827,9 @@ private func optimizedOperations(_ operations: [AccountStateMutationOperation]) 
     var currentAddQuickReplyMessages: OptimizeAddMessagesState?
     for operation in operations {
         switch operation {
+        case .DonutgramMovePseudoRepliesToSentMessages:
+            // Stays after the published copies are added and before the scheduled ones are deleted.
+            fallthrough
         case .DeleteMessages, .DeleteMessagesWithGlobalIds, .EditMessage, .UpdateMessagePoll, .UpdateMessageReactions, .UpdateMedia, .MergeApiChats, .MergeApiUsers, .MergePeerPresences, .UpdatePeer, .ReadInbox, .ReadOutbox, .ReadGroupFeedInbox, .ResetReadState, .ResetIncomingReadState, .UpdatePeerChatUnreadMark, .ResetMessageTagSummary, .UpdateNotificationSettings, .UpdateGlobalNotificationSettings, .UpdateSecretChat, .AddSecretMessages, .ReadSecretOutbox, .AddPeerInputActivity, .AddPeerLiveTypingDraftUpdate, .UpdateCachedPeerData, .UpdatePinnedItemIds, .UpdatePinnedSavedItemIds, .UpdatePinnedTopic, .UpdatePinnedTopicOrder, .ReadMessageContents, .UpdateMessageImpressionCount, .UpdateMessageForwardsCount, .UpdateInstalledStickerPacks, .UpdateRecentGifs, .UpdateChatInputState, .UpdateCall, .AddCallSignalingData, .UpdateLangPack, .UpdateMinAvailableMessage, .UpdateIsContact, .UpdatePeerChatInclusion, .UpdateTheme, .SyncChatListFilters, .UpdateChatListFilter, .UpdateChatListFilterOrder, .UpdateReadThread, .UpdateMessagesPinned, .UpdateGroupCallParticipants, .UpdateGroupCall, .UpdateGroupCallChainBlocks, .UpdateGroupCallMessage, .UpdateGroupCallOpaqueMessage, .UpdateAutoremoveTimeout, .UpdateAttachMenuBots, .UpdateAudioTranscription, .UpdateConfig, .UpdateExtendedMedia, .ResetForumTopic, .UpdateStory, .UpdateReadStories, .UpdateStoryStealthMode, .UpdateStorySentReaction, .UpdateNewAuthorization, .UpdateNewBotConnection, .UpdateWebBrowserSettings, .UpdateWebBrowserException, .UpdateWallpaper, .UpdateStarsBalance, .UpdateStarsRevenueStatus, .UpdateStarsReactionsDefaultPrivacy, .ReportMessageDelivery, .UpdateMonoForumNoPaidException, .UpdateStarGiftAuctionState, .UpdateStarGiftAuctionMyState, .UpdateEmojiGameInfo:
                 if let currentAddMessages = currentAddMessages, !currentAddMessages.messages.isEmpty {
                     result.append(.AddMessages(currentAddMessages.messages, currentAddMessages.location))
@@ -4258,8 +4266,9 @@ func replayFinalState(
                     }
                 }
             
-                // Donutgram: an update can resend a stored message; keep saved view-once media.
-                messages = donutgramPreservingSavedViewOnceMedia(transaction: transaction, messages: messages)
+                // Donutgram: an update can resend a stored message (the echo of a sent one
+                // too); keep its local-only state.
+                messages = donutgramPreservingLocalState(transaction: transaction, messages: messages)
                 let _ = transaction.addMessages(messages, location: location)
                 if case .UpperHistoryBlock = location {
                     for message in messages {
@@ -4423,15 +4432,18 @@ func replayFinalState(
                     }
                 }
             case let .AddScheduledMessages(messages):
+                // Donutgram: a scheduled copy replaces a stored message; keep its local-only state.
                 for message in messages {
                     if case let .Id(id) = message.id, let _ = transaction.getMessage(id) {
-                        transaction.updateMessage(id) { _ -> PostboxUpdateMessage in
-                            return .update(message)
+                        transaction.updateMessage(id) { currentMessage -> PostboxUpdateMessage in
+                            return .update(donutgramPreservingLocalState(previous: currentMessage, updated: message))
                         }
                     } else {
-                        let _ = transaction.addMessages(messages, location: .Random)
+                        let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: messages), location: .Random)
                     }
                 }
+            case let .DonutgramMovePseudoRepliesToSentMessages(scheduledIds, sentIds):
+                donutgramMovePseudoRepliesToSentMessages(transaction: transaction, scheduledIds: scheduledIds, sentIds: sentIds)
             case let .AddQuickReplyMessages(messages):
                 for message in messages {
                     if case let .Id(id) = message.id, let _ = transaction.getMessage(id) {

@@ -107,7 +107,8 @@ func _internal_getMessagesLoadIfNecessary(_ messageIds: [MessageId], postbox: Po
                                     storeMessages.append(message)
                                 }
                             }
-                            _ = transaction.addMessages(storeMessages, location: .Random)
+                            // Donutgram: `skipLocal` refetches stored messages; keep their local-only state.
+                            _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: storeMessages), location: .Random)
                         }
                         
                         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: users)

@@ -1267,7 +1267,8 @@ func applyLoadMessageHistoryThreadsResults(accountPeerId: PeerId, transaction: T
         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: result.chats, users: result.users)
         updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
         
-        let _ = InternalAccountState.addMessages(transaction: transaction, messages: result.messages, location: .Random)
+        // Donutgram: topic top messages may already be stored; keep their local-only state.
+        let _ = InternalAccountState.addMessages(transaction: transaction, messages: donutgramPreservingLocalState(transaction: transaction, messages: result.messages), location: .Random)
         
         for item in result.items {
             let info: StoredMessageHistoryThreadInfo?

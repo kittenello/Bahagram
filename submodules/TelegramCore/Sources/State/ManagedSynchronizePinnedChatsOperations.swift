@@ -252,8 +252,8 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
                         allPeersWithMessages.insert(message.id.peerId)
                     }
                 }
-                // Donutgram: chat top messages may already be stored; keep saved view-once media.
-                let _ = transaction.addMessages(donutgramPreservingSavedViewOnceMedia(transaction: transaction, messages: storeMessages), location: .UpperHistoryBlock)
+                // Donutgram: chat top messages may already be stored; keep their local-only state.
+                let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: storeMessages), location: .UpperHistoryBlock)
                 
                 transaction.resetIncomingReadStates(readStates)
                 
@@ -345,7 +345,8 @@ private func synchronizePinnedSavedChats(transaction: Transaction, postbox: Post
                 
                 transaction.setPeerPinnedThreads(peerId: accountPeerId, threadIds: resultingItemIds.map { $0.toInt64() })
                 
-                let _ = transaction.addMessages(storeMessages, location: .UpperHistoryBlock)
+                // Donutgram: saved chat top messages may already be stored; keep their local-only state.
+                let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: storeMessages), location: .UpperHistoryBlock)
                 
                 return .complete()
             }
