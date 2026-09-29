@@ -41,7 +41,7 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
           // Also covers messages that were tagged before the content check existed.
           donutgramCanSendAsPseudoReply(attributes: message.attributes, media: message.media),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
-          let source = transaction.getMessage(reply.messageId),
+          let source = donutgramPseudoReplySource(transaction: transaction, reply: reply),
           source.localTags.contains(.donutgramDeleted) else {
         return nil
     }
@@ -51,13 +51,8 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     // Keep the formatting a regular quote keeps: a plain copy would reveal spoilers.
     var excerptEntities = messageTextEntitiesInRange(entities: reply.quote?.entities ?? source.textEntitiesAttribute?.entities ?? [], range: NSRange(location: 0, length: (excerpt as NSString).length), onlyQuoteable: true)
     if excerpt.isEmpty {
-        if source.media.contains(where: { $0 is TelegramMediaImage }) {
-            excerpt = "Photo"
-        } else if let file = source.media.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile {
-            excerpt = file.isVoice ? "Voice message" : file.isInstantVideo ? "Video message" : file.isVideo ? "Video" : file.isSticker ? "Sticker" : "File"
-        } else {
-            excerpt = "Message"
-        }
+        // Nothing to quote: the app names what the message holds, in its language.
+        excerpt = donutgramMessageDescription(transaction: transaction, message: source)
     }
     // The composer checked only the body against the length limit, so the quote
     // gets what is left of it, in UTF-16 units. A long text goes out as several
