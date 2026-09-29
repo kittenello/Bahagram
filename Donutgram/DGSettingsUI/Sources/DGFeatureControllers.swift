@@ -385,6 +385,8 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
         focusKey = "hideArchive"
     } else if page == "appearance" && key == "dialogIdFormat" && !DGSimpleSettings.shared.showProfileId {
         focusKey = "profileId"
+    } else if page == "general" && key == "transparentDeleted" && !DGSimpleSettings.shared.saveDeletedMessages {
+        focusKey = "saveDeleted"
     } else {
         focusKey = key
     }

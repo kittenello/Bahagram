@@ -108,6 +108,16 @@ enum DGListEntry: ItemListNodeEntry {
         case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _, _), let .appIcons(id, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _): return id
         }
     }
+    // The tag the row's node reports: the one item(presentationData:arguments:) gives the item,
+    // or the fixed key of the speed slider and chat list preview nodes.
+    var tag: ItemListItemTag? {
+        switch self {
+        case let .toggle(_, _, key, _, _, _), let .disclosure(_, _, key, _, _), let .checkbox(_, _, key, _, _), let .input(_, _, key, _, _): return DGSettingItemTag(key: key)
+        case .speedSlider: return DGSettingItemTag(key: "downloadAcceleration")
+        case .chatListPreview: return DGSettingItemTag(key: "chatListPreview")
+        default: return nil
+        }
+    }
     static func < (lhs: DGListEntry, rhs: DGListEntry) -> Bool { lhs.stableId < rhs.stableId }
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
@@ -173,7 +183,15 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries(), style: .blocks, ensureVisibleItemTag: focusTag, animateChanges: true)
+        let listEntries = entries()
+        // Scroll to a linked row by index: on open the list builds nodes only for the visible area plus 500 pt, and a lookup
+        // by tag (ensureVisibleItemTag, itemNode(forTag:)) can't reach rows below that. The list applies this to the first state only.
+        // .Down: with .Up, ListView snaps the gap a centered bottom row leaves under the list to the top, scrolling the row away.
+        var focusScroll: ListViewScrollToItem?
+        if let focusTag, let index = listEntries.firstIndex(where: { $0.tag?.isEqual(to: focusTag) ?? false }) {
+            focusScroll = ListViewScrollToItem(index: index, position: .center(.top), animated: false, curve: .Default(duration: nil), directionHint: .Down)
+        }
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: listEntries, style: .blocks, initialScrollToItem: focusScroll, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
     let controller = ItemListController(context: context, state: signal)
@@ -196,12 +214,16 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
         }
     }
     if let focusTag {
-        var didHighlight = false
+        // One shot: the first transaction has already scrolled to the row. A retry on later transactions would flash
+        // a row that shows up only afterwards (e.g. when its parent toggle is switched on), long after the link was opened.
+        var focusHandled = false
         controller.afterTransactionCompleted = { [weak controller] in
-            guard !didHighlight, let controller, let node = controller.itemNode(forTag: focusTag) else { return }
-            didHighlight = true
-            controller.ensureItemNodeVisible(node)
-            dgHighlightSettingView(node.view)
+            guard !focusHandled, let controller else { return }
+            focusHandled = true
+            if let node = controller.itemNode(forTag: focusTag) {
+                controller.ensureItemNodeVisible(node, animated: false)
+                dgHighlightSettingView(node.view)
+            }
         }
     }
     pushControllerImpl = { [weak controller] pushed in (controller?.navigationController as? NavigationController)?.pushViewController(pushed) }
