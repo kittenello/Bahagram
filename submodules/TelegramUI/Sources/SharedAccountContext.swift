@@ -470,6 +470,21 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             }
         }))
         
+        // A reply to a deleted message that Donutgram kept goes out with a quote of it.
+        // TelegramCore has no strings, so this names the media the way the reply header does.
+        donutgramSetMessageDescriber { [currentPresentationData = self.currentPresentationData] message, accountPeerId, contentSettings in
+            let presentationData = currentPresentationData.with { $0 }
+            let kind = messageContentKind(contentSettings: contentSettings, message: message, strings: presentationData.strings, nameDisplayOrder: presentationData.nameDisplayOrder, dateTimeFormat: presentationData.dateTimeFormat, accountPeerId: accountPeerId)
+            // Text the header builds from other parts of a message would slip past the
+            // quote's safeguards: a service message names contacts as this account saved
+            // them, and a rich message's preview shows its spoilers.
+            if case .text = kind {
+                return presentationData.strings.VoiceOver_ChatList_Message
+            }
+            let description = stringForMediaKind(kind, strings: presentationData.strings).0.string
+            return description.isEmpty ? presentationData.strings.VoiceOver_ChatList_Message : description
+        }
+
         self.inAppNotificationSettingsDisposable = (self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings])
         |> deliverOnMainQueue).start(next: { [weak self] sharedData in
             if let strongSelf = self {

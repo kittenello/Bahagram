@@ -9,7 +9,7 @@ import MtProtoKit
 private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
     guard message.localTags.contains(.donutgramPseudoReply),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
-          let source = transaction.getMessage(reply.messageId),
+          let source = donutgramPseudoReplySource(transaction: transaction, reply: reply),
           source.localTags.contains(.donutgramDeleted) else {
         return nil
     }
@@ -18,13 +18,8 @@ private func donutgramPseudoReplyContent(transaction: Transaction, message: Mess
     let name = author?.debugDisplayTitle ?? ""
     var excerpt = reply.quote?.text ?? source.text
     if excerpt.isEmpty {
-        if source.media.contains(where: { $0 is TelegramMediaImage }) {
-            excerpt = "Photo"
-        } else if let file = source.media.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile {
-            excerpt = file.isVoice ? "Voice message" : file.isInstantVideo ? "Video message" : file.isVideo ? "Video" : file.isSticker ? "Sticker" : "File"
-        } else {
-            excerpt = "Message"
-        }
+        // Nothing to quote: the app names what the message holds, in its language.
+        excerpt = donutgramMessageDescription(transaction: transaction, message: source)
     }
     if excerpt.count > 100 {
         excerpt = String(excerpt.prefix(99)) + "…"
