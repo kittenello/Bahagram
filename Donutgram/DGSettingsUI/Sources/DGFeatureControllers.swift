@@ -6,10 +6,10 @@ import SwiftSignalKit
 import TelegramUIPreferences
 import TelegramCore
 
-public func dgSpySettingsController(context: AccountContext) -> ViewController {
+public func dgSpySettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
-    return dgController(context: context, title: "Основные", entries: {
+    return dgController(context: context, page: .general, title: "Основные", focusKey: focusKey, entries: {
         var result: [DGListEntry] = [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .disclosure(1, 0, "ghost", "Режим призрака", s.ghostModeEnabled ? "Включен" : "Выключен"), .header(10, 1, "СОХРАНЕНИЕ СООБЩЕНИЙ"), .toggle(11, 1, "saveDeleted", "Сохранять удаленки", s.saveDeletedMessages, true)]
         if s.saveDeletedMessages { result.append(.toggle(12, 1, "transparentDeleted", "Полупрозрачные удаленки", s.semiTransparentDeletedMessages, true)) }
         result.append(contentsOf: [.toggle(13, 1, "saveEdits", "Сохранять историю правок", s.saveEditHistory, true), .toggle(14, 1, "saveOnce", "Сохранять одноразки", s.saveViewOnceMedia, true), .toggle(15, 1, "saveBots", "Сохранять в чатах с ботами", s.saveInBotChats, true), .toggle(16, 1, "disappearedGifts", "Видеть удаленные подарки", s.showDisappearedGifts, true), .header(20, 2, "ПЕРЕСЫЛКА"), .toggle(21, 2, "bypassForward", "Запрещенная рассылка", s.bypassForwardRestrictions, true), .header(25, 3, "УСКОРЕНИЕ ЗАГРУЗКИ"), .speedSlider(26, 3, s.downloadAcceleration), .toggle(27, 3, "accelerateUpload", "Ускорение отправки", s.accelerateUpload, true), .info(28, 3, "Ультра использует больше одновременных соединений. На медленном интернете это может мешать загрузке файлов и просмотру видео."), .header(30, 4, "ДРУГОЕ"), .disclosure(31, 4, "visualPhone", "Визуальный номер", s.visualPhoneEnabled ? (s.visualPhoneNumber.isEmpty ? "Включен" : s.visualPhoneNumber) : "Выключен"), .disclosure(32, 4, "visualRating", "Визуальный рейтинг", s.visualRatingLevel(accountId: accountId).map { String($0) } ?? "Выключен"), .disclosure(33, 4, "visualUsernames", "Визуальные NFT-юзернеймы", "\(s.visualUsernames(accountId: accountId).count)"), .disclosure(34, 4, "visualId", "Визуальный ID", s.visualProfileId(accountId: accountId).isEmpty ? "Выключен" : s.visualProfileId(accountId: accountId)), .toggle(35, 4, "localPremium", "Локальный TG Premium", s.localPremium(accountId: accountId), true)])
@@ -33,39 +33,39 @@ public func dgSpySettingsController(context: AccountContext) -> ViewController {
     })
 }
 
-private func dgVisualIdController(context: AccountContext) -> ViewController {
+private func dgVisualIdController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
-    return dgController(context: context, title: "Визуальный ID", entries: {
+    return dgController(context: context, page: .visualId, title: "Визуальный ID", focusKey: focusKey, entries: {
         [.header(0, 0, "ID ПРОФИЛЯ"), .input(1, 0, "visualId", settings.visualProfileId(accountId: accountId), "Любой текст"), .info(2, 0, "Меняется только ID в вашем профиле на этом устройстве. Пустое поле возвращает настоящий ID. Нажатие на ID копирует настоящий номер Telegram.")]
     }, textUpdated: { key, value in
         if key == "visualId" { settings.setVisualProfileId(value, accountId: accountId) }
     })
 }
 
-private func dgVisualRatingController(context: AccountContext) -> ViewController {
+private func dgVisualRatingController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
-    return dgController(context: context, title: "Визуальный рейтинг", entries: {
+    return dgController(context: context, page: .visualRating, title: "Визуальный рейтинг", focusKey: focusKey, entries: {
         [.header(0, 0, "УРОВЕНЬ"), .input(1, 0, "level", settings.visualRatingLevel(accountId: accountId).map { String($0) } ?? "", "1–100"), .info(2, 0, "Укажите уровень от 1 до 100. Значок и его узор выбираются тем же компонентом, что и в Telegram. Пустое поле возвращает реальный рейтинг. Изменение видно только в Donutgram на этом устройстве.")]
     }, textUpdated: { key, value in
         if key == "level" { settings.setVisualRatingLevel(Int(value), accountId: accountId) }
     })
 }
 
-private func dgVisualUsernamesController(context: AccountContext) -> ViewController {
+private func dgVisualUsernamesController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
     let accountId = context.account.peerId.toInt64()
-    return dgController(context: context, title: "Визуальные NFT-юзернеймы", entries: {
+    return dgController(context: context, page: .visualUsernames, title: "Визуальные NFT-юзернеймы", focusKey: focusKey, entries: {
         [.header(0, 0, "ИМЕНА ЧЕРЕЗ ЗАПЯТУЮ"), .input(1, 0, "names", settings.visualUsernames(accountId: accountId).map { "@\($0.name)" }.joined(separator: ", "), "@username, @username2"), .info(2, 0, "Имена добавляются только локально. Активность и порядок меняются в редакторе имён. Карточка Telegram покажет дату добавления и условную цену от 9 TON. Реальные ссылки, владельцы и данные Telegram не меняются.")]
     }, textUpdated: { key, value in
         if key == "names" { settings.updateVisualUsernames(value, accountId: accountId) }
     })
 }
 
-private func dgVisualPhoneController(context: AccountContext) -> ViewController {
+private func dgVisualPhoneController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Визуальный номер", entries: {
+    return dgController(context: context, page: .visualPhone, title: "Визуальный номер", focusKey: focusKey, entries: {
         [.header(0, 0, "ПОДМЕНА НОМЕРА"), .toggle(1, 0, "enabled", "Показывать другой номер", s.visualPhoneEnabled, true), .input(2, 0, "number", s.visualPhoneNumber, "+888 0156 2794"), .info(3, 0, "Меняется только отображение номера в вашем профиле на этом устройстве. Реальный номер Telegram и данные аккаунта остаются прежними.")]
     }, toggle: { key, value in
         if key == "enabled" { s.visualPhoneEnabled = value }
@@ -74,9 +74,9 @@ private func dgVisualPhoneController(context: AccountContext) -> ViewController 
     })
 }
 
-private func dgGhostSettingsController(context: AccountContext) -> ViewController {
+private func dgGhostSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Режим призрака", entries: {
+    return dgController(context: context, page: .ghost, title: "Режим призрака", focusKey: focusKey, entries: {
         let count = [s.ghostReadMessages, s.ghostReadStories, s.ghostSendOnline, s.ghostSendTyping, !s.ghostAutomaticOffline].filter { !$0 }.count
         let silent = ["Никогда", "В режиме призрака", "Всегда"][min(max(s.ghostSendWithoutSound, 0), 2)]
         return [.header(0, 0, "РЕЖИМ ПРИЗРАКА"), .toggle(1, 0, "enabled", "Режим призрака", s.ghostModeEnabled, true), .disclosure(2, 0, "options", "Параметры режима призрака", "\(count)/5"), .toggle(3, 0, "readOnAction", "Читать при действиях", s.ghostReadOnAction, s.ghostModeEnabled), .toggle(4, 0, "scheduled", "Использовать отложку", s.ghostUseScheduledMessages, s.ghostModeEnabled), .disclosure(5, 0, "silent", "Отправлять без звука", silent), .toggle(6, 0, "stories", "Предлагать призрака для сторис", s.ghostSuggestForStories, true)]
@@ -85,23 +85,23 @@ private func dgGhostSettingsController(context: AccountContext) -> ViewControlle
     }, open: { key in key == "options" ? dgGhostOptionsController(context: context) : (key == "silent" ? dgSilentModeController(context: context) : nil) })
 }
 
-private func dgGhostOptionsController(context: AccountContext) -> ViewController {
+private func dgGhostOptionsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Параметры призрака", entries: {
+    return dgController(context: context, page: .ghostOptions, title: "Параметры призрака", focusKey: focusKey, entries: {
         [.header(0, 0, "НЕ ОТПРАВЛЯТЬ"), .toggle(1, 0, "messages", "Отметки о прочтении сообщений", !s.ghostReadMessages, true), .toggle(2, 0, "stories", "Отметки о просмотре историй", !s.ghostReadStories, true), .toggle(3, 0, "online", "Статус «онлайн»", !s.ghostSendOnline, true), .toggle(4, 0, "typing", "Статус «печатает»", !s.ghostSendTyping, true), .toggle(5, 0, "offline", "Автоматический «офлайн»", s.ghostAutomaticOffline, true)]
     }, toggle: { key, value in
         switch key { case "messages": s.ghostReadMessages = !value; case "stories": s.ghostReadStories = !value; case "online": s.ghostSendOnline = !value; case "typing": s.ghostSendTyping = !value; case "offline": s.ghostAutomaticOffline = value; default: break }
     })
 }
 
-private func dgSilentModeController(context: AccountContext) -> ViewController {
+private func dgSilentModeController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Отправлять без звука", entries: { [.checkbox(0, 0, "0", "Никогда", s.ghostSendWithoutSound == 0), .checkbox(1, 0, "1", "В режиме призрака", s.ghostSendWithoutSound == 1), .checkbox(2, 0, "2", "Всегда", s.ghostSendWithoutSound == 2)] }, select: { s.ghostSendWithoutSound = Int($0) ?? 0 })
+    return dgController(context: context, page: .silent, title: "Отправлять без звука", focusKey: focusKey, entries: { [.checkbox(0, 0, "0", "Никогда", s.ghostSendWithoutSound == 0), .checkbox(1, 0, "1", "В режиме призрака", s.ghostSendWithoutSound == 1), .checkbox(2, 0, "2", "Всегда", s.ghostSendWithoutSound == 2)] }, select: { s.ghostSendWithoutSound = Int($0) ?? 0 })
 }
 
-func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
+func dgAppearanceSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Оформление", entries: {
+    return dgController(context: context, page: .appearance, title: "Оформление", focusKey: focusKey, entries: {
         var entries: [DGListEntry] = [
             .header(0, 0, "ОСНОВНОЕ"),
             .toggle(1, 0, "premiumStatuses", "Скрыть премиум статусы", s.hidePremiumStatuses, true),
@@ -139,17 +139,17 @@ func dgAppearanceSettingsController(context: AccountContext) -> ViewController {
     }, open: { key in key == "dialogIdFormat" ? dgDialogIdFormatController(context: context) : nil })
 }
 
-private func dgDialogIdFormatController(context: AccountContext) -> ViewController {
+private func dgDialogIdFormatController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "ID диалога", entries: {
+    return dgController(context: context, page: .dialogId, title: "ID диалога", focusKey: focusKey, entries: {
         [.checkbox(0, 0, "0", "Telegram API", s.dialogIdFormat == .telegramApi),
          .checkbox(1, 0, "1", "Bot API", s.dialogIdFormat == .botApi)]
     }, select: { s.dialogIdFormat = $0 == "1" ? .botApi : .telegramApi })
 }
 
-func dgChatsSettingsController(context: AccountContext) -> ViewController {
+func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Чаты", entries: {
+    return dgController(context: context, page: .chats, title: "Чаты", focusKey: focusKey, entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
         let transcription = dgTranscriptionBackendTitle(s.transcriptionBackend)
         let cameraTitle: String
@@ -231,9 +231,9 @@ func dgChatsSettingsController(context: AccountContext) -> ViewController {
     })
 }
 
-private func dgChatListAppearanceController(context: AccountContext) -> ViewController {
+private func dgChatListAppearanceController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
-    return dgController(context: context, title: "Внешний вид", entries: {
+    return dgController(context: context, page: .chatListAppearance, title: "Внешний вид", focusKey: focusKey, entries: {
         [
             .header(0, 0, "СПИСОК ЧАТОВ"),
             .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideStatus, settings.chatListCenteredTitle, settings.chatListHideSearch, settings.chatListSenderAvatars, settings.chatListTitleMode.rawValue),
@@ -267,10 +267,10 @@ private func dgChatListTitleModeTitle(_ mode: DGSimpleSettings.ChatListTitleMode
     }
 }
 
-private func dgChatListTitleModeController(context: AccountContext) -> ViewController {
+private func dgChatListTitleModeController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
     let modes: [DGSimpleSettings.ChatListTitleMode] = [.donutgram, .username, .nickname, .chats]
-    return dgController(context: context, title: "Текст в заголовке", entries: {
+    return dgController(context: context, page: .chatListTitle, title: "Текст в заголовке", focusKey: focusKey, entries: {
         modes.enumerated().map { index, mode in
             .checkbox(Int32(index), 0, String(mode.rawValue), dgChatListTitleModeTitle(mode), settings.chatListTitleMode == mode)
         }
@@ -279,28 +279,28 @@ private func dgChatListTitleModeController(context: AccountContext) -> ViewContr
     })
 }
 
-private func dgDoubleTapSeekController(context: AccountContext) -> ViewController {
+private func dgDoubleTapSeekController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
     let values = [0, 5, 10, 15, 30]
-    return dgController(context: context, title: "Перемотка двойным нажатием", entries: {
+    return dgController(context: context, page: .doubleTapSeek, title: "Перемотка двойным нажатием", focusKey: focusKey, entries: {
         values.enumerated().map { index, value in
             .checkbox(Int32(index), 0, String(value), value == 0 ? "Отключено" : "\(value) секунд", settings.doubleTapSeekSeconds == value)
         }
     }, select: { settings.doubleTapSeekSeconds = Int($0) ?? 15 })
 }
 
-private func dgRoundVideoCameraController(context: AccountContext) -> ViewController {
+private func dgRoundVideoCameraController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Камера в кружках", entries: {
+    return dgController(context: context, page: .camera, title: "Камера в кружках", focusKey: focusKey, entries: {
         [.checkbox(0, 0, "0", "Фронтальная", s.roundVideoCamera == .front),
          .checkbox(1, 0, "1", "Основная", s.roundVideoCamera == .rear),
          .checkbox(2, 0, "2", "Спрашивать", s.roundVideoCamera == .ask)]
     }, select: { s.roundVideoCamera = DGSimpleSettings.RoundVideoCamera(rawValue: Int($0) ?? 0) ?? .front })
 }
 
-private func dgAutoPauseMediaController(context: AccountContext) -> ViewController {
+private func dgAutoPauseMediaController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Авто пауза", entries: {
+    return dgController(context: context, page: .autoPause, title: "Авто пауза", focusKey: focusKey, entries: {
         [.toggle(0, 0, "1", "Видео", s.autoPauseMedia & 1 != 0, true),
          .toggle(1, 0, "2", "Голосовых", s.autoPauseMedia & 2 != 0, true),
          .toggle(2, 0, "4", "Кружков", s.autoPauseMedia & 4 != 0, true)]
@@ -310,9 +310,9 @@ private func dgAutoPauseMediaController(context: AccountContext) -> ViewControll
     })
 }
 
-func dgDownloadsSettingsController(context: AccountContext) -> ViewController {
+func dgDownloadsSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let settings = DGSimpleSettings.shared
-    return dgController(context: context, title: "Скачивание", entries: {
+    return dgController(context: context, page: .downloads, title: "Скачивание", focusKey: focusKey, entries: {
         [.header(0, 0, "СКАЧИВАНИЕ"), .toggle(1, 0, "downloadTikTok", "Скачивать TikTok", settings.downloadTikTok, true), .toggle(2, 0, "downloadShorts", "Скачивать YT Shorts", settings.downloadYouTubeShorts, true), .toggle(3, 0, "signDownloads", "Подписывать", settings.signDownloadedMedia, true)]
     }, toggle: { key, value in
         switch key { case "downloadTikTok": settings.downloadTikTok = value; case "downloadShorts": settings.downloadYouTubeShorts = value; case "signDownloads": settings.signDownloadedMedia = value; default: break }
@@ -327,9 +327,9 @@ private func dgTranscriptionBackendTitle(_ backend: DGSimpleSettings.Transcripti
     }
 }
 
-private func dgTranscriptionController(context: AccountContext) -> ViewController {
+private func dgTranscriptionController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Голос в текст", entries: {
+    return dgController(context: context, page: .transcription, title: "Голос в текст", focusKey: focusKey, entries: {
         let backend = s.transcriptionBackend
         let info: String
         switch backend {
@@ -341,55 +341,55 @@ private func dgTranscriptionController(context: AccountContext) -> ViewControlle
     }, select: { s.transcriptionBackend = DGSimpleSettings.TranscriptionBackend(rawValue: $0) ?? .auto })
 }
 
-private func dgHiddenReactionsController(context: AccountContext) -> ViewController {
+private func dgHiddenReactionsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
-    return dgController(context: context, title: "Скрыть реакции", entries: { [.toggle(0, 0, "1", "Каналы", s.hiddenReactions & 1 != 0, true), .toggle(1, 0, "2", "Группы", s.hiddenReactions & 2 != 0, true), .toggle(2, 0, "4", "Личные чаты", s.hiddenReactions & 4 != 0, true)] }, toggle: { key, value in
+    return dgController(context: context, page: .reactions, title: "Скрыть реакции", focusKey: focusKey, entries: { [.toggle(0, 0, "1", "Каналы", s.hiddenReactions & 1 != 0, true), .toggle(1, 0, "2", "Группы", s.hiddenReactions & 2 != 0, true), .toggle(2, 0, "4", "Личные чаты", s.hiddenReactions & 4 != 0, true)] }, toggle: { key, value in
         let mask = Int(key) ?? 0
         s.hiddenReactions = value ? (s.hiddenReactions | mask) : (s.hiddenReactions & ~mask)
     })
 }
 
-func dgSupportController(context: AccountContext) -> ViewController {
-    dgController(context: context, title: "Поддержка", entries: { [.header(0, 0, "ПОДДЕРЖКА"), .info(1, 0, "Раздел подготовлен для ссылок на поддержку и информацию о Donutgram.")] })
+func dgSupportController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    dgController(context: context, page: .support, title: "Поддержка", focusKey: focusKey, entries: { [.header(0, 0, "ПОДДЕРЖКА"), .info(1, 0, "Раздел подготовлен для ссылок на поддержку и информацию о Donutgram.")] })
 }
 
 public func dgSettingsControllerForLink(context: AccountContext, page: String, key: String) -> ViewController? {
-    let makeController: (() -> ViewController)?
-    switch page {
-    case "root": makeController = { dgSettingsController(context: context) }
-    case "general": makeController = { dgSpySettingsController(context: context) }
-    case "ghost": makeController = { dgGhostSettingsController(context: context) }
-    case "ghost-options": makeController = { dgGhostOptionsController(context: context) }
-    case "silent": makeController = { dgSilentModeController(context: context) }
-    case "appearance": makeController = { dgAppearanceSettingsController(context: context) }
-    case "dialog-id": makeController = { dgDialogIdFormatController(context: context) }
-    case "chats": makeController = { dgChatsSettingsController(context: context) }
-    case "chat-list-appearance": makeController = { dgChatListAppearanceController(context: context) }
-    case "chat-list-title": makeController = { dgChatListTitleModeController(context: context) }
-    case "double-tap-seek": makeController = { dgDoubleTapSeekController(context: context) }
-    case "camera": makeController = { dgRoundVideoCameraController(context: context) }
-    case "auto-pause": makeController = { dgAutoPauseMediaController(context: context) }
-    case "downloads": makeController = { dgDownloadsSettingsController(context: context) }
-    case "transcription": makeController = { dgTranscriptionController(context: context) }
-    case "reactions": makeController = { dgHiddenReactionsController(context: context) }
-    case "visual-id": makeController = { dgVisualIdController(context: context) }
-    case "visual-rating": makeController = { dgVisualRatingController(context: context) }
-    case "visual-usernames": makeController = { dgVisualUsernamesController(context: context) }
-    case "visual-phone": makeController = { dgVisualPhoneController(context: context) }
-    case "support": makeController = { dgSupportController(context: context) }
-    default: makeController = nil
+    guard let page = DGSettingsPage(rawValue: page) else {
+        return nil
     }
-    guard let makeController else { return nil }
     let focusKey: String
-    if page == "chats" && key == "openArchiveOnPull" && !DGSimpleSettings.shared.hideArchive {
+    if page == .chats && key == "openArchiveOnPull" && !DGSimpleSettings.shared.hideArchive {
         focusKey = "hideArchive"
-    } else if page == "appearance" && key == "dialogIdFormat" && !DGSimpleSettings.shared.showProfileId {
+    } else if page == .appearance && key == "dialogIdFormat" && !DGSimpleSettings.shared.showProfileId {
         focusKey = "profileId"
-    } else if page == "general" && key == "transparentDeleted" && !DGSimpleSettings.shared.saveDeletedMessages {
+    } else if page == .general && key == "transparentDeleted" && !DGSimpleSettings.shared.saveDeletedMessages {
         focusKey = "saveDeleted"
     } else {
         focusKey = key
     }
-    dgPrepareSettingLinkFocus(page: page, key: focusKey)
-    return makeController()
+    let makeController: (AccountContext, String?) -> ViewController
+    switch page {
+    case .root: makeController = dgSettingsController
+    case .general: makeController = dgSpySettingsController
+    case .ghost: makeController = dgGhostSettingsController
+    case .ghostOptions: makeController = dgGhostOptionsController
+    case .silent: makeController = dgSilentModeController
+    case .appearance: makeController = dgAppearanceSettingsController
+    case .dialogId: makeController = dgDialogIdFormatController
+    case .chats: makeController = dgChatsSettingsController
+    case .chatListAppearance: makeController = dgChatListAppearanceController
+    case .chatListTitle: makeController = dgChatListTitleModeController
+    case .doubleTapSeek: makeController = dgDoubleTapSeekController
+    case .camera: makeController = dgRoundVideoCameraController
+    case .autoPause: makeController = dgAutoPauseMediaController
+    case .downloads: makeController = dgDownloadsSettingsController
+    case .transcription: makeController = dgTranscriptionController
+    case .reactions: makeController = dgHiddenReactionsController
+    case .visualId: makeController = dgVisualIdController
+    case .visualRating: makeController = dgVisualRatingController
+    case .visualUsernames: makeController = dgVisualUsernamesController
+    case .visualPhone: makeController = dgVisualPhoneController
+    case .support: makeController = dgSupportController
+    }
+    return makeController(context, focusKey)
 }

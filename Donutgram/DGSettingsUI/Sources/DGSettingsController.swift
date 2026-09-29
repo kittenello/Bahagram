@@ -153,9 +153,8 @@ enum DGListEntry: ItemListNodeEntry {
     }
 }
 
-func dgController(context: AccountContext, title: String, entries: @escaping () -> [DGListEntry], restartRequiredKeys: Set<String> = [], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
-    let page = dgSettingPageId(title: title)
-    let focusTag = dgTakeSettingLinkFocus(page: page)
+func dgController(context: AccountContext, page: DGSettingsPage, title: String, focusKey: String?, entries: @escaping () -> [DGListEntry], restartRequiredKeys: Set<String> = [], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
+    let focusTag = focusKey.map { DGSettingItemTag(key: $0) }
     let initialState = DGListState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
@@ -245,8 +244,8 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
     return controller
 }
 
-public func dgSettingsController(context: AccountContext) -> ViewController {
-    return dgController(context: context, title: "Настройки Donutgram", entries: {
+public func dgSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    return dgController(context: context, page: .root, title: "Настройки Donutgram", focusKey: focusKey, entries: {
         [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", "")]
     }, open: { key in
         switch key {
