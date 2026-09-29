@@ -134,6 +134,7 @@ public class ItemListSingleLineInputItem: ListViewItem, ItemListItem {
 
 public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDelegate, ItemListItemNode, ItemListItemFocusableNode {
     private let backgroundNode: ASDisplayNode
+    private let highlightNode: ASDisplayNode
     private let topStripeNode: ASDisplayNode
     private let bottomStripeNode: ASDisplayNode
     private let maskNode: ASImageNode
@@ -154,6 +155,9 @@ public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDeleg
     public init() {
         self.backgroundNode = ASDisplayNode()
         self.backgroundNode.isLayerBacked = true
+
+        self.highlightNode = ASDisplayNode()
+        self.highlightNode.isLayerBacked = true
         
         self.topStripeNode = ASDisplayNode()
         self.topStripeNode.isLayerBacked = true
@@ -220,6 +224,20 @@ public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDeleg
         self.textNode.textField.delegate = self
         self.textNode.textField.addTarget(self, action: #selector(self.textFieldTextChanged(_:)), for: .editingChanged)
         self.textNode.hitTestSlop = UIEdgeInsets(top: -5.0, left: -5.0, bottom: -5.0, right: -5.0)
+    }
+
+    public func displayHighlight() {
+        if self.backgroundNode.supernode != nil {
+            self.insertSubnode(self.highlightNode, aboveSubnode: self.backgroundNode)
+        } else {
+            self.insertSubnode(self.highlightNode, at: 0)
+        }
+
+        Queue.mainQueue().after(1.2, {
+            self.highlightNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false, completion: { _ in
+                self.highlightNode.removeFromSupernode()
+            })
+        })
     }
     
     public func asyncLayout() -> (_ item: ItemListSingleLineInputItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
@@ -300,6 +318,7 @@ public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDeleg
                         strongSelf.topStripeNode.backgroundColor = item.presentationData.theme.list.itemBlocksSeparatorColor
                         strongSelf.bottomStripeNode.backgroundColor = item.presentationData.theme.list.itemBlocksSeparatorColor
                         strongSelf.backgroundNode.backgroundColor = item.presentationData.theme.list.itemBlocksBackgroundColor
+                        strongSelf.highlightNode.backgroundColor = item.presentationData.theme.list.itemSearchHighlightColor
                         
                         strongSelf.textNode.textField.textColor = item.secondaryStyle ? item.presentationData.theme.list.itemSecondaryTextColor : item.presentationData.theme.list.itemPrimaryTextColor
                         strongSelf.textNode.textField.keyboardAppearance = item.presentationData.theme.rootController.keyboardColor.keyboardAppearance
@@ -458,6 +477,7 @@ public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDeleg
                     strongSelf.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.presentationData.theme, top: hasTopCorners, bottom: hasBottomCorners, glass: item.systemStyle == .glass) : nil
                     
                     strongSelf.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
+                    strongSelf.highlightNode.frame = strongSelf.backgroundNode.frame
                     strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
                     strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                     strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height - UIScreenPixel), size: CGSize(width: layoutSize.width - bottomStripeInset - params.rightInset - separatorRightInset, height: separatorHeight))

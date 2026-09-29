@@ -195,7 +195,7 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
         return (controllerState, (listState, arguments))
     }
     let controller = ItemListController(context: context, state: signal)
-    let longPressHandler = DGSettingsLongPressHandler(controller: controller, page: page)
+    let longPressHandler = DGSettingsLongPressHandler(context: context, controller: controller, page: page)
     // As in upstream theme settings: the chat preview item lays out views, so list updates must run on the main thread.
     controller.alwaysSynchronous = true
     // Re-read the entries on return from a sub-page, but not on other re-appearances (tab switches, dismissed modals):
@@ -222,7 +222,7 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
             focusHandled = true
             if let node = controller.itemNode(forTag: focusTag) {
                 controller.ensureItemNodeVisible(node, animated: false)
-                dgHighlightSettingView(node.view)
+                (node as? ItemListItemNode)?.displayHighlight()
             }
         }
     }

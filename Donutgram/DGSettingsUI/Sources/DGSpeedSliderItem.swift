@@ -83,6 +83,11 @@ final class DGSpeedSliderItemNode: ListViewItemNode, ItemListItemNode {
         updateControls()
     }
 
+    func displayHighlight() {
+        guard let item else { return }
+        dgDisplayHighlight(in: self.blockBackground, theme: item.theme)
+    }
+
     func asyncLayout() -> (_ item: DGSpeedSliderItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
             let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 86), insets: itemListNeighborsGroupedInsets(neighbors, params))
