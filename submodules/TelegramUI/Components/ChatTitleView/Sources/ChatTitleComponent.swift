@@ -13,6 +13,7 @@ import PhoneNumberFormat
 import TelegramStringFormatting
 import EmojiStatusComponent
 import GlassBackgroundComponent
+import DGSimpleSettings
 
 public final class ChatNavigationBarTitleView: UIView, NavigationBarTitleView {
     private final class ContentData: Equatable {
@@ -765,7 +766,7 @@ public final class ChatTitleComponent: Component {
                                     } else {
                                         userPresence = TelegramUserPresence(status: .none, lastActivity: 0)
                                     }
-                                    let (string, activity) = stringAndActivityForUserPresence(strings: component.strings, dateTimeFormat: component.dateTimeFormat, presence: EnginePeer.Presence(userPresence), relativeTo: Int32(timestamp))
+                                    let (string, activity) = stringAndActivityForUserPresence(strings: component.strings, dateTimeFormat: component.dateTimeFormat, presence: EnginePeer.Presence(userPresence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime)
                                     let attributedString = NSAttributedString(string: string, font: subtitleFont, textColor: activity ? component.theme.rootController.navigationBar.accentTextColor : component.theme.chat.inputPanel.inputControlColor)
                                     state = .info(attributedString, activity ? .online : .lastSeenTime)
                                 } else {
