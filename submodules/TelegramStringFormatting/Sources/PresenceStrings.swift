@@ -1,5 +1,4 @@
 import Foundation
-import DGSimpleSettings
 import TelegramCore
 import TelegramPresentationData
 import TextFormat
@@ -572,7 +571,7 @@ public func stringForStoryActivityTimestamp(strings: PresentationStrings, dateTi
     }
 }
 
-public func stringAndActivityForUserPresence(strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, presence: EnginePeer.Presence, relativeTo timestamp: Int32, expanded: Bool = DGSimpleSettings.shared.relativeOnlineTime) -> (String, Bool) {
+public func stringAndActivityForUserPresence(strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, presence: EnginePeer.Presence, relativeTo timestamp: Int32, expanded: Bool = false) -> (String, Bool) {
     switch presence.status {
     case let .present(statusTimestamp):
         if statusTimestamp >= timestamp {
