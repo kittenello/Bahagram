@@ -31,6 +31,17 @@ func donutgramIsPseudoReplyLocalAttribute(_ attribute: MessageAttribute) -> Bool
     return attribute is ReplyMessageAttribute || attribute is TextEntitiesMessageAttribute || attribute is DonutgramPseudoReplyPrefixMessageAttribute
 }
 
+/// The quote a stored pseudo-reply went out with, if this build sent it.
+func donutgramStoredPseudoReplyPrefix(_ message: Message) -> DonutgramPseudoReplyPrefixMessageAttribute? {
+    return message.attributes.first(where: { $0 is DonutgramPseudoReplyPrefixMessageAttribute }) as? DonutgramPseudoReplyPrefixMessageAttribute
+}
+
+/// The local tags a pseudo-reply keeps over its server copies: the tag itself, and the mark of
+/// a later part of a split text, which must not get the quote when it is edited.
+func donutgramPseudoReplyLocalTags(_ message: Message) -> LocalMessageTags {
+    return message.localTags.intersection([.donutgramPseudoReply, .donutgramPseudoReplyContinuation])
+}
+
 /// The part of a pseudo-reply's `sentText` in front of its `body`. The sent text is the
 /// quote, then a line break and the body when there is one, or the body alone when no
 /// quote went out. Nil for any other shape.
@@ -51,11 +62,16 @@ private func donutgramPseudoReplyPrefix(sentText: String, body: String) -> Strin
 }
 
 /// Stores on a pseudo-reply that goes out as `sentText` what its server copy has in front
-/// of the local text.
-func donutgramStorePseudoReplyPrefix(transaction: Transaction, messageId: MessageId, sentText: String) {
+/// of the local text: `body`, or the stored text when no `body` is given. An edit passes the
+/// new body, which a scheduled message stores only when the server copy comes back.
+func donutgramStorePseudoReplyPrefix(transaction: Transaction, messageId: MessageId, sentText: String, body: String? = nil) {
     transaction.updateMessage(messageId, update: { currentMessage in
+        // After an edit the stored copy may already be the server one, no pseudo-reply.
+        guard currentMessage.localTags.contains(.donutgramPseudoReply) else {
+            return .skip
+        }
         var attributes = currentMessage.attributes.filter { !($0 is DonutgramPseudoReplyPrefixMessageAttribute) }
-        if let prefix = donutgramPseudoReplyPrefix(sentText: sentText, body: currentMessage.text) {
+        if let prefix = donutgramPseudoReplyPrefix(sentText: sentText, body: body ?? currentMessage.text) {
             attributes.append(DonutgramPseudoReplyPrefixMessageAttribute(text: prefix))
         }
         return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init), authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
@@ -87,10 +103,12 @@ private func donutgramPseudoReplyBody(text: String, prefix: String) -> String? {
 /// that was sent, the quote and the entities over it are cut off and the reply to the
 /// deleted message stays. Otherwise (the quote was removed or changed on another device,
 /// the text is empty without it, or no quote was stored) the server copy replaces the
-/// local one as it is, and the message is no longer a pseudo-reply.
+/// local one as it is. Where the caller takes the local tags from the server copy
+/// (`.EditMessage`, `.AddScheduledMessages`) the message is no longer a pseudo-reply;
+/// `addMessages` and the album acknowledgement keep the stored tags.
 func donutgramPreservingPseudoReply(previous: Message, updated: StoreMessage) -> StoreMessage {
     guard previous.localTags.contains(.donutgramPseudoReply),
-          let prefix = previous.attributes.first(where: { $0 is DonutgramPseudoReplyPrefixMessageAttribute }) as? DonutgramPseudoReplyPrefixMessageAttribute,
+          let prefix = donutgramStoredPseudoReplyPrefix(previous),
           let body = donutgramPseudoReplyBody(text: updated.text, prefix: prefix.text),
           !body.isEmpty || updated.media.contains(where: { !($0 is TelegramMediaWebpage) }) else {
         return updated
@@ -106,5 +124,11 @@ func donutgramPreservingPseudoReply(previous: Message, updated: StoreMessage) ->
         attributes.append(TextEntitiesMessageAttribute(entities: bodyEntities))
     }
     attributes.append(prefix)
-    return updated.withUpdatedText(body).withUpdatedAttributes(attributes).withUpdatedLocalTags(updated.localTags.union(.donutgramPseudoReply))
+    var tags = updated.tags
+    var globalTags = updated.globalTags
+    if !prefix.text.isEmpty {
+        // A link that was only in the quote no longer puts the message into the shared links.
+        (tags, globalTags) = tagsForStoreMessage(incoming: updated.flags.contains(.Incoming), attributes: attributes, media: updated.media, textEntities: bodyEntities, isPinned: updated.tags.contains(.pinned))
+    }
+    return StoreMessage(id: updated.id, customStableId: updated.customStableId, globallyUniqueId: updated.globallyUniqueId, groupingKey: updated.groupingKey, threadId: updated.threadId, timestamp: updated.timestamp, flags: updated.flags, tags: tags, globalTags: globalTags, localTags: updated.localTags.union(donutgramPseudoReplyLocalTags(previous)), forwardInfo: updated.forwardInfo, authorId: updated.authorId, text: body, attributes: attributes, media: updated.media)
 }

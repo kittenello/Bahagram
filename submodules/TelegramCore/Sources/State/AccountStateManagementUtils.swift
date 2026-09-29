@@ -4529,7 +4529,7 @@ func replayFinalState(
                 if let previousMessage = transaction.getMessage(id) {
                     // A pseudo-reply's server copy starts with the quote it was sent with,
                     // so it is compared and stored in the form its local copy shows.
-                    message = donutgramPreservingPseudoReply(previous: previousMessage, updated: serverMessage)
+                    message = donutgramPseudoReplyLocalForm(previous: previousMessage, updated: serverMessage)
                     donutgramHasStoredRevision = donutgramStorePreviousMessageRevision(
                         transaction: transaction,
                         previousMessage: previousMessage,

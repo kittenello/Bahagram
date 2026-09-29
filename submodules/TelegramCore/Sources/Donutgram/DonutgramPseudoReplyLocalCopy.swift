@@ -39,10 +39,11 @@ private func donutgramLeadingQuote(_ entities: [MessageTextEntity]) -> MessageTe
 
 /// Returns `updated`, a copy of a pseudo-reply whose local form is `localText` under
 /// `localReply`, in that local form: the body without the quote, the reply to the deleted
-/// message and the local tag. The body is taken from `updated`, so an edit made elsewhere
-/// shows up.
-private func donutgramLocalPseudoReplyCopy(localReply: ReplyMessageAttribute, localText: String, updated: StoreMessage) -> StoreMessage {
-    let localTags = updated.localTags.union(.donutgramPseudoReply)
+/// message and the local tags (`pseudoReplyTags`, see donutgramPseudoReplyLocalTags). The
+/// body is taken from `updated`, so an edit made elsewhere shows up. `prefix`, the quote the
+/// pseudo-reply went out with, stays for later edits (donutgramPreservingPseudoReply).
+private func donutgramLocalPseudoReplyCopy(localReply: ReplyMessageAttribute, localText: String, pseudoReplyTags: LocalMessageTags, prefix: DonutgramPseudoReplyPrefixMessageAttribute?, updated: StoreMessage) -> StoreMessage {
+    let localTags = updated.localTags.union(.donutgramPseudoReply).union(pseudoReplyTags)
     // Already the local form: a local update, or the copy of a message that went out as a
     // normal reply because the deleted message was gone by the time it was sent.
     if updated.attributes.contains(where: { ($0 as? ReplyMessageAttribute)?.messageId == localReply.messageId }) {
@@ -75,10 +76,13 @@ private func donutgramLocalPseudoReplyCopy(localReply: ReplyMessageAttribute, lo
         }
     }
 
-    var attributes = updated.attributes.filter { !($0 is ReplyMessageAttribute) && !($0 is TextEntitiesMessageAttribute) }
+    var attributes = updated.attributes.filter { !donutgramIsPseudoReplyLocalAttribute($0) }
     attributes.append(localReply)
     if !entities.isEmpty {
         attributes.append(TextEntitiesMessageAttribute(entities: entities))
+    }
+    if let prefix {
+        attributes.append(prefix)
     }
     if isStripped {
         // A link that was only in the quote no longer puts the message into the shared links.
@@ -87,11 +91,19 @@ private func donutgramLocalPseudoReplyCopy(localReply: ReplyMessageAttribute, lo
     return StoreMessage(id: updated.id, customStableId: updated.customStableId, globallyUniqueId: updated.globallyUniqueId, groupingKey: updated.groupingKey, threadId: updated.threadId, timestamp: updated.timestamp, flags: updated.flags, tags: tags, globalTags: globalTags, localTags: localTags, forwardInfo: updated.forwardInfo, authorId: updated.authorId, text: text, attributes: attributes, media: updated.media)
 }
 
-private func donutgramLocalPseudoReplyCopy(previous: Message, updated: StoreMessage) -> StoreMessage {
+/// Returns `updated`, a server copy about to replace the stored `previous`, in the local form
+/// of a pseudo-reply. Every write of a server copy goes through it, `.EditMessage` included,
+/// so they all agree on the body.
+func donutgramPseudoReplyLocalForm(previous: Message, updated: StoreMessage) -> StoreMessage {
     guard let localReply = donutgramLocalReply(previous) else {
         return updated
     }
-    return donutgramLocalPseudoReplyCopy(localReply: localReply, localText: previous.text, updated: updated)
+    // A pseudo-reply sent by this build stores the quote that went out: cut exactly that. If
+    // the server text no longer starts with it, the quote was removed or changed elsewhere.
+    if donutgramStoredPseudoReplyPrefix(previous) != nil {
+        return donutgramPreservingPseudoReply(previous: previous, updated: updated)
+    }
+    return donutgramLocalPseudoReplyCopy(localReply: localReply, localText: previous.text, pseudoReplyTags: donutgramPseudoReplyLocalTags(previous), prefix: nil, updated: updated)
 }
 
 /// The local form of a scheduled pseudo-reply whose published copy is not stored yet.
@@ -99,6 +111,10 @@ private struct DonutgramScheduledPseudoReply: Codable {
     let reply: Data
     let text: String
     let mediaIds: [MediaId]
+    // The quote it went out with and whether it is a later part of a split text; nil in an
+    // entry stored before they were kept.
+    let prefix: String?
+    let isContinuation: Bool?
 }
 
 private func donutgramPublishedPseudoReplyKey(_ id: MessageId) -> ItemCacheEntryId {
@@ -117,7 +133,8 @@ private func donutgramPublishedPseudoReplyCopy(transaction: Transaction, id: Mes
     if let entry = transaction.retrieveItemCacheEntry(id: key) {
         transaction.removeItemCacheEntry(id: key)
         if let scheduled = entry.get(DonutgramScheduledPseudoReply.self), scheduled.mediaIds == mediaIds, let localReply = PostboxDecoder(buffer: MemoryBuffer(data: scheduled.reply)).decodeRootObject() as? ReplyMessageAttribute {
-            let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, updated: published)
+            let pseudoReplyTags: LocalMessageTags = scheduled.isContinuation == true ? .donutgramPseudoReplyContinuation : []
+            let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, pseudoReplyTags: pseudoReplyTags, prefix: scheduled.prefix.map { DonutgramPseudoReplyPrefixMessageAttribute(text: $0) }, updated: published)
             if localCopy.text == scheduled.text {
                 return localCopy
             }
@@ -146,7 +163,7 @@ private func donutgramPublishedPseudoReplyCopy(transaction: Transaction, id: Mes
         guard distance <= maxDistance, let localReply = donutgramLocalReply(scheduled), scheduled.media.compactMap({ $0.id }) == mediaIds else {
             return true
         }
-        let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, updated: published)
+        let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, pseudoReplyTags: donutgramPseudoReplyLocalTags(scheduled), prefix: donutgramStoredPseudoReplyPrefix(scheduled), updated: published)
         if localCopy.text == scheduled.text && abs(distance) < (best?.distance ?? Int32.max) {
             best = (distance: abs(distance), copy: localCopy)
         }
@@ -158,7 +175,7 @@ private func donutgramPublishedPseudoReplyCopy(transaction: Transaction, id: Mes
 /// Returns `updated`, a server copy about to replace the stored `previous`, with the state
 /// that only this client keeps: saved view-once media and the local form of a pseudo-reply.
 func donutgramPreservingLocalState(previous: Message, updated: StoreMessage) -> StoreMessage {
-    return donutgramLocalPseudoReplyCopy(previous: previous, updated: donutgramPreservingSavedViewOnceMedia(previous: previous, updated: updated))
+    return donutgramPseudoReplyLocalForm(previous: previous, updated: donutgramPreservingSavedViewOnceMedia(previous: previous, updated: updated))
 }
 
 /// `donutgramPreservingLocalState(previous:updated:)` for server messages passed to
@@ -171,7 +188,7 @@ func donutgramPreservingLocalState(transaction: Transaction, messages: [StoreMes
             return message
         }
         if let previous = transaction.getMessage(id) {
-            return donutgramLocalPseudoReplyCopy(previous: previous, updated: message)
+            return donutgramPseudoReplyLocalForm(previous: previous, updated: message)
         } else if message.flags.contains(.WasScheduled), let localCopy = donutgramPublishedPseudoReplyCopy(transaction: transaction, id: id, published: message) {
             return localCopy
         } else {
@@ -190,19 +207,21 @@ func donutgramMovePseudoRepliesToSentMessages(transaction: Transaction, schedule
             continue
         }
         let mediaIds = scheduled.media.compactMap { $0.id }
+        let pseudoReplyTags = donutgramPseudoReplyLocalTags(scheduled)
+        let prefix = donutgramStoredPseudoReplyPrefix(scheduled)
         if transaction.messageExists(id: sentId) {
             transaction.updateMessage(sentId, update: { current in
                 guard current.media.compactMap({ $0.id }) == mediaIds, donutgramLocalReply(current)?.messageId != localReply.messageId else {
                     return .skip
                 }
-                let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, updated: donutgramStoreMessage(current))
+                let localCopy = donutgramLocalPseudoReplyCopy(localReply: localReply, localText: scheduled.text, pseudoReplyTags: pseudoReplyTags, prefix: prefix, updated: donutgramStoreMessage(current))
                 // Both copies have the same body; anything else is not the published copy.
                 return localCopy.text == scheduled.text ? .update(localCopy) : .skip
             })
         } else {
             let encoder = PostboxEncoder()
             encoder.encodeRootObject(localReply)
-            if let entry = CodableEntry(DonutgramScheduledPseudoReply(reply: encoder.makeData(), text: scheduled.text, mediaIds: mediaIds)) {
+            if let entry = CodableEntry(DonutgramScheduledPseudoReply(reply: encoder.makeData(), text: scheduled.text, mediaIds: mediaIds, prefix: prefix?.text, isContinuation: pseudoReplyTags.contains(.donutgramPseudoReplyContinuation))) {
                 transaction.putItemCacheEntry(id: donutgramPublishedPseudoReplyKey(sentId), entry: entry)
             }
         }
