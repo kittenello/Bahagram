@@ -4532,6 +4532,7 @@ func replayFinalState(
                     var updatedFlags = message.flags
                     var updatedLocalTags = message.localTags
                     var updatedAttributes = message.attributes
+                    var updatedText = message.text
 
                     if donutgramHasStoredRevision || previousMessage.localTags.contains(.donutgramHasEditHistory) {
                         updatedLocalTags.insert(.donutgramHasEditHistory)
@@ -4546,6 +4547,7 @@ func replayFinalState(
                         updatedLocalTags.insert(.donutgramPseudoReply)
                         updatedAttributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
                         updatedAttributes.append(contentsOf: previousMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                        updatedText = previousMessage.text
                     }
 
                     if previousMessage.localTags.contains(.OutgoingLiveLocation) {
@@ -4563,9 +4565,11 @@ func replayFinalState(
                         return current
                     })
                     
-                    if previousMessage.text == message.text {
+                    // Donutgram: a pseudo-reply keeps its local text and entities, so compare
+                    // what gets stored, not the server copy with the quote prefix.
+                    if previousMessage.text == updatedText {
                         let previousEntities = previousMessage.textEntitiesAttribute?.entities ?? []
-                        let updatedEntities = (message.attributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities ?? []
+                        let updatedEntities = (updatedAttributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities ?? []
                         if previousEntities == updatedEntities, let translation = previousMessage.attributes.first(where: { $0 is TranslationMessageAttribute }) as? TranslationMessageAttribute {
                             if message.attributes.firstIndex(where: { $0 is TranslationMessageAttribute }) == nil {
                                 updatedAttributes.append(translation)
@@ -4591,7 +4595,6 @@ func replayFinalState(
                     
                     // Donutgram: keep the media of a saved view-once message that the server
                     // copy only carries as an "expired" placeholder.
-                    let updatedText = previousMessage.localTags.contains(.donutgramPseudoReply) ? previousMessage.text : message.text
                     return .update(donutgramPreservingSavedViewOnceMedia(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia).withUpdatedText(updatedText)))
                 })
                 if let generatedEvent = generatedEvent {
