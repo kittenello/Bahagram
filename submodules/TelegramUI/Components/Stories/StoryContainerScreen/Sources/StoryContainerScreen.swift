@@ -433,6 +433,7 @@ private final class StoryContainerScreenComponent: Component {
         private var donutgramHeldSeenIds: [EngineStoryId] = []
         private var didPresentDonutgramGhostPrompt: Bool = false
         private var isDisplayingDonutgramGhostPrompt: Bool = false
+        private var didReceiveStealthModeState: Bool = false
         
         private var previousSeekTime: Double?
         private var initialSeekTimestamp: Double?
@@ -1158,13 +1159,21 @@ private final class StoryContainerScreenComponent: Component {
             // Statistics open stories with `readGlobally: false`, which never
             // sends a receipt, so there is nothing to ask about.
             let sendsReceipt = (component.content as? SingleStoryContentContextImpl)?.readGlobally ?? true
-            if !sendsReceipt || !settings.ghostSuggestForStories || settings.ghostModeEnabled || isAnswered || id.peerId == component.context.account.peerId {
+            // Stealth mode hides the view while it lasts, so there is nothing to
+            // ask about until it lapses.
+            let isStealthModeActive = StoryContainerScreen.isDonutgramStealthModeActive(until: self.stealthModeActiveUntilTimestamp)
+            if !sendsReceipt || !settings.ghostSuggestForStories || settings.ghostModeEnabled || isAnswered || isStealthModeActive || id.peerId == component.context.account.peerId {
                 component.content.markAsSeen(id: id)
                 return
             }
             
             if !self.donutgramHeldSeenIds.contains(id) {
                 self.donutgramHeldSeenIds.append(id)
+            }
+            // Before the stealth state arrives there is no telling whether to
+            // ask; its subscription runs the held receipts through here again.
+            if !self.didReceiveStealthModeState {
+                return
             }
             if !self.didPresentDonutgramGhostPrompt {
                 self.didPresentDonutgramGhostPrompt = true
@@ -1185,10 +1194,9 @@ private final class StoryContainerScreenComponent: Component {
                 self.didPresentDonutgramGhostPrompt = false
                 return
             }
-            // The story is already open, so the question can't be skipped by a
-            // tap outside. «Да» has turned ghost mode on by the time `answered`
-            // runs, so the held receipts stay local; «Нет» sends them.
-            let alertController = StoryContainerScreen.makeDonutgramStoryGhostAlert(context: component.context, dismissOnOutsideTap: false, answered: { [weak self, weak controller] in
+            // «Да» has turned ghost mode on by the time `answered` runs, so the
+            // held receipts stay local; «Нет» sends them.
+            let alertController = StoryContainerScreen.makeDonutgramStoryGhostAlert(context: component.context, answered: { [weak self, weak controller] in
                 controller?.donutgramGhostPromptAnswered = true
                 guard let self, let component = self.component else {
                     return
@@ -1383,6 +1391,16 @@ private final class StoryContainerScreenComponent: Component {
                         self.stealthModeActiveUntilTimestamp = state.stealthModeState.activeUntilTimestamp
                         if update {
                             self.state?.updated(transition: .immediate)
+                        }
+                    }
+                    if !self.didReceiveStealthModeState {
+                        self.didReceiveStealthModeState = true
+                        // Receipts held while the stealth state was unknown go
+                        // through the ghost gate again.
+                        let heldIds = self.donutgramHeldSeenIds
+                        self.donutgramHeldSeenIds.removeAll()
+                        for heldId in heldIds {
+                            self.donutgramMarkAsSeen(id: heldId)
                         }
                     }
                 })

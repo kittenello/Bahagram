@@ -3458,9 +3458,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                                     guard let self else {
                                         return
                                     }
+                                    // No ghost question before opening: the viewer
+                                    // lets receipts through while stealth mode lasts
+                                    // and asks once it lapses.
                                     self.openStories(peerId: peer.id, completion: { storyController in
                                         presentTooltip(storyController)
-                                    })
+                                    }, skipGhostPrompt: true)
                                 })
                             } else {
                                 self.presentStealthModeUpgrade(action: { [weak self] in
@@ -4358,11 +4361,6 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     public func openStories(peerId: EnginePeer.Id, completion: @escaping (StoryContainerScreen) -> Void = { _ in }, skipGhostPrompt: Bool = false) {
-        if peerId != self.context.account.peerId && !skipGhostPrompt && StoryContainerScreen.confirmDonutgramStoryOpenIfNeeded(context: self.context, parentController: self, proceed: { [weak self] in
-            self?.openStories(peerId: peerId, completion: completion, skipGhostPrompt: true)
-        }) {
-            return
-        }
         if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
             if navigationBarView.storiesUnlocked {
                 self.shouldFixStorySubscriptionOrder = true
@@ -4489,59 +4487,70 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 return
             }
             
-            var transitionIn: StoryContainerScreen.TransitionIn?
-            if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
-                if navigationBarView.storiesUnlocked {
-                    if let componentView = self.chatListHeaderView() {
-                        if let (transitionView, _) = componentView.storyPeerListView()?.transitionViewForItem(peerId: peerId) {
-                            transitionIn = StoryContainerScreen.TransitionIn(
-                                sourceView: transitionView,
-                                sourceRect: transitionView.bounds,
-                                sourceCornerRadius: transitionView.bounds.height * 0.5,
-                                sourceIsAvatar: true
-                            )
-                        }
-                    }
+            let open: (Bool) -> Void = { [weak self] answered in
+                guard let self else {
+                    return
                 }
-            }
-            
-            let storyContainerScreen = StoryContainerScreen(
-                context: self.context,
-                content: storyContent,
-                transitionIn: transitionIn,
-                transitionOut: { [weak self] peerId, _ in
-                    guard let self else {
-                        return nil
-                    }
-                    
-                    if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
-                        if navigationBarView.storiesUnlocked {
-                            if let componentView = self.chatListHeaderView() {
-                                if let (transitionView, transitionContentView) = componentView.storyPeerListView()?.transitionViewForItem(peerId: peerId) {
-                                    return StoryContainerScreen.TransitionOut(
-                                        destinationView: transitionView,
-                                        transitionView: transitionContentView,
-                                        destinationRect: transitionView.bounds,
-                                        destinationCornerRadius: transitionView.bounds.height * 0.5,
-                                        destinationIsAvatar: true,
-                                        completed: {}
-                                    )
-                                }
+                
+                var transitionIn: StoryContainerScreen.TransitionIn?
+                if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+                    if navigationBarView.storiesUnlocked {
+                        if let componentView = self.chatListHeaderView() {
+                            if let (transitionView, _) = componentView.storyPeerListView()?.transitionViewForItem(peerId: peerId) {
+                                transitionIn = StoryContainerScreen.TransitionIn(
+                                    sourceView: transitionView,
+                                    sourceRect: transitionView.bounds,
+                                    sourceCornerRadius: transitionView.bounds.height * 0.5,
+                                    sourceIsAvatar: true
+                                )
                             }
                         }
                     }
-                    
-                    return nil
                 }
-            )
-            // `skipGhostPrompt` is only set once the question above was
-            // answered. Own stories skip the question; the viewer asks it
-            // itself once it moves on to someone else's.
-            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
-            if let componentView = self.chatListHeaderView() {
-                componentView.storyPeerListView()?.setPreviewedItem(signal: storyContainerScreen.focusedItem)
+                
+                let storyContainerScreen = StoryContainerScreen(
+                    context: self.context,
+                    content: storyContent,
+                    transitionIn: transitionIn,
+                    transitionOut: { [weak self] peerId, _ in
+                        guard let self else {
+                            return nil
+                        }
+                        
+                        if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+                            if navigationBarView.storiesUnlocked {
+                                if let componentView = self.chatListHeaderView() {
+                                    if let (transitionView, transitionContentView) = componentView.storyPeerListView()?.transitionViewForItem(peerId: peerId) {
+                                        return StoryContainerScreen.TransitionOut(
+                                            destinationView: transitionView,
+                                            transitionView: transitionContentView,
+                                            destinationRect: transitionView.bounds,
+                                            destinationCornerRadius: transitionView.bounds.height * 0.5,
+                                            destinationIsAvatar: true,
+                                            completed: {}
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        return nil
+                    }
+                )
+                // `answered` is true only once the question below was answered.
+                storyContainerScreen.donutgramGhostPromptAnswered = answered
+                if let componentView = self.chatListHeaderView() {
+                    componentView.storyPeerListView()?.setPreviewedItem(signal: storyContainerScreen.focusedItem)
+                }
+                self.push(storyContainerScreen)
             }
-            self.push(storyContainerScreen)
+            // Own stories, «Смотреть анонимно» and an empty list skip the
+            // question; the viewer asks it itself when a receipt needs it.
+            if skipGhostPrompt || peerId == self.context.account.peerId || storyContentState.slice == nil {
+                open(false)
+            } else {
+                let _ = StoryContainerScreen.askDonutgramStoryGhostIfNeeded(context: self.context, parentController: self, open: open).startStandalone()
+            }
         })
     }
     
