@@ -5,6 +5,7 @@ import AsyncDisplayKit
 import SwiftSignalKit
 import Postbox
 import TelegramPresentationData
+import TelegramStringFormatting
 import AccountContext
 import AvatarNode
 import TelegramCore
@@ -880,6 +881,12 @@ private func avatarHeaderSize() -> CGFloat {
     return 34.0
 }
 
+// The online dot plus its 2 pt ring, at the bottom-right corner of the avatar.
+private func presenceCutoutFrame() -> CGRect {
+    let avatarSize = avatarHeaderSize()
+    return CGRect(x: avatarSize - 11.0, y: avatarSize - 11.0, width: 12.0, height: 12.0)
+}
+
 public final class ChatMessageAvatarHeader: ListViewItemHeader {
     public struct Id: Hashable {
         public var peerId: PeerId
@@ -975,9 +982,13 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     private let containerNode: ContextControllerSourceNode
     public let avatarNode: AvatarNode
     private let presenceIndicatorNode: ASDisplayNode
+    private let presenceCutoutLayer: SimpleShapeLayer
+    private var isPresenceIndicatorVisible: Bool = false
     private let presenceDisposable = MetaDisposable()
+    private var presenceTimer: SwiftSignalKit.Timer?
     private var presence: EnginePeer.Presence?
     private var settingsObserver: NSObjectProtocol?
+    private var foregroundObserver: NSObjectProtocol?
     private var avatarVideoNode: AvatarVideoNode?
         
     private var cachedDataDisposable = MetaDisposable()
@@ -1016,6 +1027,9 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
         self.avatarNode.contentNode.displaysAsynchronously = !presentationData.isPreview
         self.presenceIndicatorNode = ASDisplayNode()
         self.presenceIndicatorNode.isLayerBacked = true
+        self.presenceIndicatorNode.isHidden = true
+        self.presenceIndicatorNode.cornerRadius = 4.0
+        self.presenceCutoutLayer = SimpleShapeLayer()
 
         let isRotated = controllerInteraction?.chatIsRotated ?? true
         
@@ -1027,7 +1041,17 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
 
         self.addSubnode(self.containerNode)
         self.containerNode.addSubnode(self.avatarNode)
-        self.containerNode.addSubnode(self.presenceIndicatorNode)
+        // Inside the avatar, so the dot scales, fades and hides together with its cut-out.
+        self.avatarNode.addSubnode(self.presenceIndicatorNode)
+        // The ring around the dot is a hole in the avatar rather than a painted border,
+        // so it shows the wallpaper under any theme.
+        let avatarBounds = CGRect(origin: CGPoint(), size: CGSize(width: avatarHeaderSize(), height: avatarHeaderSize()))
+        let presenceCutoutPath = UIBezierPath(rect: avatarBounds)
+        presenceCutoutPath.append(UIBezierPath(ovalIn: presenceCutoutFrame()))
+        self.presenceCutoutLayer.frame = avatarBounds
+        self.presenceCutoutLayer.fillColor = UIColor.white.cgColor
+        self.presenceCutoutLayer.fillRule = .evenOdd
+        self.presenceCutoutLayer.path = presenceCutoutPath.cgPath
         self.updatePresenceIndicator()
         if peerId.namespace == Namespaces.Peer.CloudUser && peerId != context.account.peerId {
             self.presenceDisposable.set((context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Presence(id: peerId))
@@ -1037,6 +1061,11 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
             }))
         }
         self.settingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updatePresenceIndicator()
+        }
+        // The presence timer doesn't count the time the device sleeps, so re-check
+        // when the app comes back.
+        self.foregroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
             self?.updatePresenceIndicator()
         }
 
@@ -1065,28 +1094,44 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     deinit {
         self.cachedDataDisposable.dispose()
         self.presenceDisposable.dispose()
+        self.presenceTimer?.invalidate()
         if let settingsObserver = self.settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
+        }
+        if let foregroundObserver = self.foregroundObserver {
+            NotificationCenter.default.removeObserver(foregroundObserver)
         }
     }
 
     private func updatePresenceIndicator() {
-        guard DGSimpleSettings.shared.showOnlineIndicator, let presence = self.presence else {
-            self.presenceIndicatorNode.isHidden = true
-            return
+        self.presenceTimer?.invalidate()
+        self.presenceTimer = nil
+
+        var isVisible = false
+        if DGSimpleSettings.shared.showOnlineIndicator, let presence = self.presence {
+            isVisible = true
+            let timestamp = Int32(CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970)
+            // Same rule as the user's chat title and profile: with a hidden last seen,
+            // they count as online for 30 s after they were last seen writing or reading.
+            if case let .online(until) = relativeUserPresenceStatus(presence, relativeTo: timestamp) {
+                self.presenceIndicatorNode.backgroundColor = self.presentationData.theme.theme.chatList.onlineDotColor
+                // Nothing arrives when the online period runs out (e.g. the user lost
+                // the network), so re-check once it has passed.
+                let timer = SwiftSignalKit.Timer(timeout: Double(until - timestamp + 1), repeat: false, completion: { [weak self] in
+                    self?.updatePresenceIndicator()
+                }, queue: Queue.mainQueue())
+                self.presenceTimer = timer
+                timer.start()
+            } else {
+                // Same gray as the offline dot in the chat list.
+                self.presenceIndicatorNode.backgroundColor = UIColor.systemGray
+            }
         }
-        let now = Int32(Date().timeIntervalSince1970)
-        let isOnline: Bool
-        if case let .present(until) = presence.status {
-            isOnline = until >= now
-        } else {
-            isOnline = false
+        if self.isPresenceIndicatorVisible != isVisible {
+            self.isPresenceIndicatorVisible = isVisible
+            self.presenceIndicatorNode.isHidden = !isVisible
+            self.avatarNode.contentNode.layer.mask = isVisible ? self.presenceCutoutLayer : nil
         }
-        self.presenceIndicatorNode.isHidden = self.isAvatarHidden
-        self.presenceIndicatorNode.backgroundColor = isOnline ? .systemGreen : .systemGray
-        self.presenceIndicatorNode.cornerRadius = 6.0
-        self.presenceIndicatorNode.borderWidth = 2.0
-        self.presenceIndicatorNode.borderColor = UIColor.systemBackground.cgColor
     }
 
     public func setCustomLetters(context: AccountContext, theme: PresentationTheme, synchronousLoad: Bool, letters: [String], emptyColor: UIColor) {
@@ -1265,6 +1310,7 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     public func updatePresentationData(_ presentationData: ChatPresentationData, context: AccountContext) {
         if self.presentationData !== presentationData {
             self.presentationData = presentationData
+            self.updatePresenceIndicator()
             self.setNeedsLayout()
         }
     }
@@ -1275,7 +1321,7 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
         self.avatarNode.position = avatarFrame.center
         self.avatarNode.bounds = CGRect(origin: CGPoint(), size: avatarFrame.size)
         self.avatarNode.updateSize(size: avatarFrame.size)
-        self.presenceIndicatorNode.frame = CGRect(x: avatarFrame.maxX - 11.0, y: avatarFrame.maxY - 11.0, width: 12.0, height: 12.0)
+        self.presenceIndicatorNode.frame = presenceCutoutFrame().insetBy(dx: 2.0, dy: 2.0)
     }
 
     override public func animateRemoved(duration: Double) {
@@ -1313,7 +1359,6 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     
     public func updateAvatarIsHidden(isHidden: Bool, transition: ContainedViewLayoutTransition) {
         self.isAvatarHidden = isHidden
-        self.updatePresenceIndicator()
         var avatarTransform: CATransform3D = CATransform3DIdentity
         if isHidden {
             let scale: CGFloat = isHidden ? 0.001 : 1.0
