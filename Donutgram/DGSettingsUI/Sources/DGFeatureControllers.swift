@@ -364,6 +364,9 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case "appearance": makeController = { dgAppearanceSettingsController(context: context) }
     case "dialog-id": makeController = { dgDialogIdFormatController(context: context) }
     case "chats": makeController = { dgChatsSettingsController(context: context) }
+    case "chat-list-appearance": makeController = { dgChatListAppearanceController(context: context) }
+    case "chat-list-title": makeController = { dgChatListTitleModeController(context: context) }
+    case "double-tap-seek": makeController = { dgDoubleTapSeekController(context: context) }
     case "camera": makeController = { dgRoundVideoCameraController(context: context) }
     case "auto-pause": makeController = { dgAutoPauseMediaController(context: context) }
     case "downloads": makeController = { dgDownloadsSettingsController(context: context) }

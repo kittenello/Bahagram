@@ -107,7 +107,7 @@ public class ItemListCheckboxItem: ListViewItem, ItemListItem {
     }
 }
 
-public class ItemListCheckboxItemNode: ItemListRevealOptionsItemNode {
+public class ItemListCheckboxItemNode: ItemListRevealOptionsItemNode, ItemListItemNode {
     private let backgroundNode: ASDisplayNode
     private let topStripeNode: ASDisplayNode
     private let bottomStripeNode: ASDisplayNode
