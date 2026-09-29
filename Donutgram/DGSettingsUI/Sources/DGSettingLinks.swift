@@ -3,6 +3,9 @@ import UIKit
 import AsyncDisplayKit
 import ItemListUI
 import Display
+import AccountContext
+import TelegramPresentationData
+import UndoUI
 
 struct DGSettingItemTag: ItemListItemTag {
     let key: String
@@ -53,25 +56,28 @@ func dgSettingPageId(title: String) -> String {
     }
 }
 
-func dgHighlightSettingView(_ view: UIView) {
-    let highlight = UIView(frame: view.bounds)
-    highlight.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    highlight.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.22)
-    highlight.isUserInteractionEnabled = false
-    highlight.layer.cornerRadius = 12.0
-    view.addSubview(highlight)
-    UIView.animate(withDuration: 0.6, delay: 2.2, options: [.curveEaseOut], animations: {
-        highlight.alpha = 0.0
+// displayHighlight() for the DG items that draw their block with a UIView, as ItemListUI draws it:
+// the search highlight color under the content, inside the block's corners, for 1.2 s.
+func dgDisplayHighlight(in blockView: UIView, theme: PresentationTheme) {
+    let highlightView = UIView(frame: blockView.bounds)
+    highlightView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    highlightView.backgroundColor = theme.list.itemSearchHighlightColor
+    highlightView.isUserInteractionEnabled = false
+    blockView.insertSubview(highlightView, at: 0)
+    UIView.animate(withDuration: 0.3, delay: 1.2, options: [], animations: {
+        highlightView.alpha = 0.0
     }, completion: { _ in
-        highlight.removeFromSuperview()
+        highlightView.removeFromSuperview()
     })
 }
 
 final class DGSettingsLongPressHandler: NSObject, UIGestureRecognizerDelegate {
+    let context: AccountContext
     weak var controller: ItemListController?
     let page: String
 
-    init(controller: ItemListController, page: String) {
+    init(context: AccountContext, controller: ItemListController, page: String) {
+        self.context = context
         self.controller = controller
         self.page = page
     }
@@ -120,19 +126,29 @@ final class DGSettingsLongPressHandler: NSObject, UIGestureRecognizerDelegate {
               let url = URL(string: "tg://settings/donutgram/\(page)/\(target.key)") else {
             return
         }
-        let menu = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        menu.addAction(UIAlertAction(title: "Копировать ссылку", style: .default, handler: { _ in
-            UIPasteboard.general.string = url.absoluteString
-        }))
-        menu.addAction(UIAlertAction(title: "Поделиться ссылкой", style: .default, handler: { [weak controller] _ in
-            let share = UIActivityViewController(activityItems: [url.absoluteString], applicationActivities: nil)
-            share.popoverPresentationController?.sourceView = target.view
-            share.popoverPresentationController?.sourceRect = target.view.bounds
-            controller?.present(share, animated: true)
-        }))
-        menu.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        menu.popoverPresentationController?.sourceView = target.view
-        menu.popoverPresentationController?.sourceRect = target.view.bounds
-        controller.present(menu, animated: true)
+        // Telegram's sheet, not a UIAlertController: that one follows the iOS appearance instead of the app theme.
+        let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+        let actionSheet = ActionSheetController(presentationData: presentationData)
+        actionSheet.setItemGroups([ActionSheetItemGroup(items: [
+            ActionSheetButtonItem(title: "Копировать ссылку", action: { [weak actionSheet, weak controller] in
+                actionSheet?.dismissAnimated()
+                UIPasteboard.general.string = url.absoluteString
+                controller?.present(UndoOverlayController(presentationData: presentationData, content: .linkCopied(title: nil, text: presentationData.strings.Conversation_LinkCopied), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .current)
+            }),
+            ActionSheetButtonItem(title: "Поделиться ссылкой", action: { [weak actionSheet, weak controller] in
+                actionSheet?.dismissAnimated()
+                let share = UIActivityViewController(activityItems: [url.absoluteString], applicationActivities: nil)
+                share.popoverPresentationController?.sourceView = target.view
+                share.popoverPresentationController?.sourceRect = target.view.bounds
+                controller?.present(share, animated: true)
+            })
+        ]), ActionSheetItemGroup(items: [
+            ActionSheetButtonItem(title: "Отмена", font: .bold, action: { [weak actionSheet] in
+                actionSheet?.dismissAnimated()
+            })
+        ])])
+        // The sheet ignores the keyboard inset: with a text field focused it would open under the keyboard.
+        controller.view.endEditing(true)
+        controller.present(actionSheet, in: .window(.root))
     }
 }

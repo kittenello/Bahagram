@@ -118,6 +118,11 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
         self.updateControls()
     }
 
+    func displayHighlight() {
+        guard let item else { return }
+        dgDisplayHighlight(in: self.block, theme: item.theme)
+    }
+
     func asyncLayout() -> (_ item: DGChatListPreviewItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
             let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 166.0), insets: itemListNeighborsGroupedInsets(neighbors, params))
