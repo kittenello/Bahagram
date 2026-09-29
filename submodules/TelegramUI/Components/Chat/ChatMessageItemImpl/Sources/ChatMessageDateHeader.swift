@@ -985,6 +985,7 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
     private let presenceCutoutLayer: SimpleShapeLayer
     private var isPresenceIndicatorVisible: Bool = false
     private let presenceDisposable = MetaDisposable()
+    private var isObservingPresence: Bool = false
     private var presenceTimer: SwiftSignalKit.Timer?
     private var presence: EnginePeer.Presence?
     private var settingsObserver: NSObjectProtocol?
@@ -1052,21 +1053,13 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
         self.presenceCutoutLayer.fillColor = UIColor.white.cgColor
         self.presenceCutoutLayer.fillRule = .evenOdd
         self.presenceCutoutLayer.path = presenceCutoutPath.cgPath
-        self.updatePresenceIndicator()
-        if peerId.namespace == Namespaces.Peer.CloudUser && peerId != context.account.peerId {
-            self.presenceDisposable.set((context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Presence(id: peerId))
-            |> deliverOnMainQueue).startStrict(next: { [weak self] presence in
-                self?.presence = presence
-                self?.updatePresenceIndicator()
-            }))
-        }
-        self.settingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.updatePresenceIndicator()
-        }
-        // The presence timer doesn't count the time the device sleeps, so re-check
-        // when the app comes back.
-        self.foregroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.updatePresenceIndicator()
+        // Only other users get the dot, and never in a preview: a message rendered into
+        // a story would keep it in the picture.
+        if peerId.namespace == Namespaces.Peer.CloudUser && peerId != context.account.peerId && !presentationData.isPreview {
+            self.settingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.updatePresenceSubscription()
+            }
+            self.updatePresenceSubscription()
         }
 
         if let peer = peer {
@@ -1101,6 +1094,46 @@ public final class ChatMessageAvatarHeaderNodeImpl: ListViewItemHeaderNode, Chat
         if let foregroundObserver = self.foregroundObserver {
             NotificationCenter.default.removeObserver(foregroundObserver)
         }
+    }
+
+    // The dot is off by default, and every header of a group chat would otherwise keep
+    // its own Postbox view alive for it, so the presence is read only while it's on.
+    private func updatePresenceSubscription() {
+        let isEnabled = DGSimpleSettings.shared.showOnlineIndicator
+        if self.isObservingPresence != isEnabled {
+            self.isObservingPresence = isEnabled
+            if isEnabled {
+                // Just the presence table: a peer view would also load the cached data,
+                // contacts and notification settings of the user.
+                let peerId = self.peerId
+                let presencesKey = PostboxViewKey.peerPresences(peerIds: Set([peerId]))
+                self.presenceDisposable.set((self.context.account.postbox.combinedView(keys: [presencesKey])
+                |> map { views -> EnginePeer.Presence? in
+                    guard let view = views.views[presencesKey] as? PeerPresencesView, let presence = view.presences[peerId] else {
+                        return nil
+                    }
+                    return EnginePeer.Presence(presence)
+                }
+                |> distinctUntilChanged
+                |> deliverOnMainQueue).startStrict(next: { [weak self] presence in
+                    self?.presence = presence
+                    self?.updatePresenceIndicator()
+                }))
+                // The presence timer doesn't count the time the device sleeps, so re-check
+                // when the app comes back.
+                self.foregroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+                    self?.updatePresenceIndicator()
+                }
+            } else {
+                self.presenceDisposable.set(nil)
+                self.presence = nil
+                if let foregroundObserver = self.foregroundObserver {
+                    self.foregroundObserver = nil
+                    NotificationCenter.default.removeObserver(foregroundObserver)
+                }
+            }
+        }
+        self.updatePresenceIndicator()
     }
 
     private func updatePresenceIndicator() {
