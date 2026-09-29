@@ -50,6 +50,50 @@ func requestEditMessage(accountPeerId: PeerId, postbox: Postbox, network: Networ
     }
 }
 
+// Donutgram: a pseudo-reply is stored as its body alone, while its server copy
+// starts with a quote of the deleted message (donutgramPseudoReplyContent). The
+// editor holds only that body, so the edit has to quote again, or the quote is
+// gone for everyone else. A copy that a server echo already overwrote shows the
+// quote in its text and has no local reply left, so it gets no second quote.
+private func donutgramPseudoReplyEditContent(transaction: Transaction, message: Message, text: String, entities: TextEntitiesMessageAttribute?, associatedPeers: SimpleDictionary<PeerId, Peer>) -> (String, [Api.MessageEntity])? {
+    guard message.localTags.contains(.donutgramPseudoReply) else {
+        return nil
+    }
+    var attributes = message.attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+    if let entities {
+        attributes.append(entities)
+    }
+    var peers = message.peers
+    for (peerId, peer) in associatedPeers {
+        peers[peerId] = peer
+    }
+    guard let content = donutgramPseudoReplyContent(transaction: transaction, message: message.withUpdatedText(text).withUpdatedAttributes(attributes).withUpdatedPeers(peers)) else {
+        return nil
+    }
+    // An album quotes the deleted message once, in the caption of its first item.
+    if message.groupingKey != nil, let first = transaction.getMessageGroup(message.id)?.first, first.id != message.id {
+        return (text, entities.map { apiTextAttributeEntities($0, associatedPeers: peers) } ?? [])
+    }
+    return content
+}
+
+// Donutgram: after such an edit the server copy has the quote in its text instead
+// of the reply to the deleted message. Keep the pseudo-reply as it was stored after
+// sending: that reply, the body as typed, and the local tags a server copy never has.
+// This holds only for the edited message, and only while its stored copy still has
+// that reply: a server echo may have replaced it with the server form meanwhile.
+private func donutgramKeepingPseudoReply(previous: Message, updated: StoreMessage, localBody: (messageId: MessageId, text: String, entities: TextEntitiesMessageAttribute?)?) -> StoreMessage {
+    guard let localBody, previous.id == localBody.messageId, previous.localTags.contains(.donutgramPseudoReply), previous.attributes.contains(where: { $0 is ReplyMessageAttribute }) else {
+        return updated
+    }
+    var attributes = updated.attributes.filter { !($0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute) }
+    attributes.append(contentsOf: previous.attributes.filter { $0 is ReplyMessageAttribute })
+    if let entities = localBody.entities {
+        attributes.append(entities)
+    }
+    return updated.withUpdatedText(localBody.text).withUpdatedAttributes(attributes).withUpdatedLocalTags(updated.localTags.union(previous.localTags))
+}
+
 private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox, network: Network, stateManager: AccountStateManager, transformOutgoingMessageMedia: TransformOutgoingMessageMedia?, messageMediaPreuploadManager: MessageMediaPreuploadManager, mediaReferenceRevalidationContext: MediaReferenceRevalidationContext, messageId: MessageId, text: String, media: RequestEditMessageMedia, entities: TextEntitiesMessageAttribute?, richText: RichTextMessageAttribute?, inlineStickers: [MediaId: Media], webpagePreviewAttribute: WebpagePreviewMessageAttribute?, invertMediaAttribute: InvertMediaMessageAttribute?, disableUrlPreview: Bool, scheduleInfoAttribute: OutgoingScheduleInfoMessageAttribute?, forceReupload: Bool) -> Signal<RequestEditMessageResult, RequestEditMessageInternalError> {
     let uploadedMedia: Signal<PendingMessageUploadedContentResult?, NoError>
     switch media {
@@ -112,9 +156,9 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                 pendingMediaContent = content.content
             }
         }
-        return postbox.transaction { transaction -> (Peer?, Message?, SimpleDictionary<PeerId, Peer>) in
+        return postbox.transaction { transaction -> (Peer?, Message?, SimpleDictionary<PeerId, Peer>, (String, [Api.MessageEntity])?) in
             guard let message = transaction.getMessage(messageId) else {
-                return (nil, nil, SimpleDictionary())
+                return (nil, nil, SimpleDictionary(), nil)
             }
             
             for (_, file) in inlineStickers {
@@ -130,7 +174,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                             if let _ = scheduleInfoAttribute {
                                 break
                             } else {
-                                return (nil, nil, SimpleDictionary())
+                                return (nil, nil, SimpleDictionary(), nil)
                             }
                     }
                 }
@@ -145,16 +189,21 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                     }
                 }
             }
-            return (transaction.getPeer(messageId.peerId), message, peers)
+            let pseudoReplyContent = donutgramPseudoReplyEditContent(transaction: transaction, message: message, text: text, entities: entities, associatedPeers: peers)
+            return (transaction.getPeer(messageId.peerId), message, peers, pseudoReplyContent)
         }
         |> mapError { _ -> RequestEditMessageInternalError in }
-        |> mapToSignal { peer, message, associatedPeers -> Signal<RequestEditMessageResult, RequestEditMessageInternalError> in
+        |> mapToSignal { peer, message, associatedPeers, pseudoReplyContent -> Signal<RequestEditMessageResult, RequestEditMessageInternalError> in
             if let peer, let message, let inputPeer = apiInputPeer(peer) {
                 var flags: Int32 = 1 << 11
                 
                 var apiEntities: [Api.MessageEntity]?
                 if let entities {
                     apiEntities = apiTextAttributeEntities(entities, associatedPeers: associatedPeers)
+                    flags |= Int32(1 << 3)
+                }
+                if let pseudoReplyContent {
+                    apiEntities = pseudoReplyContent.1
                     flags |= Int32(1 << 3)
                 }
                 
@@ -209,7 +258,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                     flags |= Int32(1 << 17)
                 }
                 
-                return network.request(Api.functions.messages.editMessage(flags: flags, peer: inputPeer, id: messageId.id, message: text, media: inputMedia, replyMarkup: nil, entities: apiEntities, scheduleDate: effectiveScheduleTime, scheduleRepeatPeriod: effectiveScheduleRepeatPeriod, quickReplyShortcutId: quickReplyShortcutId, richMessage: apiRichMessage))
+                return network.request(Api.functions.messages.editMessage(flags: flags, peer: inputPeer, id: messageId.id, message: pseudoReplyContent?.0 ?? text, media: inputMedia, replyMarkup: nil, entities: apiEntities, scheduleDate: effectiveScheduleTime, scheduleRepeatPeriod: effectiveScheduleRepeatPeriod, quickReplyShortcutId: quickReplyShortcutId, richMessage: apiRichMessage))
                 |> map { result -> Api.Updates? in
                     return result
                 }
@@ -249,6 +298,10 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                 applyMediaResourceChanges(from: richText, to: toRichText, postbox: postbox, force: true)
                             }
                             
+                            // Donutgram: the edit went out as a pseudo-reply
+                            // (donutgramPseudoReplyEditContent); the local copy keeps the typed body.
+                            let donutgramLocalBody = pseudoReplyContent.map { _ in (messageId: messageId, text: text, entities: entities) }
+
                             switch result {
                             case let .updates(updatesData):
                                 let (updates, users, chats) = (updatesData.updates, updatesData.users, updatesData.chats)
@@ -277,7 +330,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(donutgramKeepingPseudoReply(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia), localBody: donutgramLocalBody))
                                             })
                                         }
                                     case .updateNewMessage(let data):
@@ -303,7 +356,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(donutgramKeepingPseudoReply(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia), localBody: donutgramLocalBody))
                                             })
                                         }
                                     case .updateEditChannelMessage(let data):
@@ -329,7 +382,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(donutgramKeepingPseudoReply(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia), localBody: donutgramLocalBody))
                                             })
                                         }
                                     case .updateNewChannelMessage(let data):
@@ -355,7 +408,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
                                                 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(donutgramKeepingPseudoReply(previous: previousMessage, updated: message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia), localBody: donutgramLocalBody))
                                             })
                                         }
                                     default:

@@ -6,7 +6,7 @@ import MtProtoKit
 
 // A deleted reply target only exists in this client's Postbox. Send a real
 // blockquote so the other participant can see the reference as well.
-private func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
+func donutgramPseudoReplyContent(transaction: Transaction, message: Message) -> (String, [Api.MessageEntity])? {
     guard message.localTags.contains(.donutgramPseudoReply),
           let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute,
           let source = transaction.getMessage(reply.messageId),
