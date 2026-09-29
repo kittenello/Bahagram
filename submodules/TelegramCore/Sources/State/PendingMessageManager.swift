@@ -1546,6 +1546,10 @@ public final class PendingMessageManager {
                                     if let pseudoContent {
                                         messageEntities = pseudoContent.1
                                     }
+                                    if groupPseudoReplyContent != nil, message.localTags.contains(.donutgramPseudoReply) {
+                                        // Only the first item carries the quote.
+                                        donutgramStorePseudoReplyPrefix(transaction: transaction, messageId: message.id, sentText: pseudoContent?.0 ?? text)
+                                    }
                                     
                                     var singleFlags: Int32 = 0
                                     if let _ = messageEntities {
@@ -1973,6 +1977,7 @@ public final class PendingMessageManager {
                     replyTodoItemId = nil
                     replyPollOption = nil
                     messageEntities = pseudoReplyContent.1
+                    donutgramStorePseudoReplyPrefix(transaction: transaction, messageId: message.id, sentText: pseudoReplyContent.0)
                 }
                 
                 if case .forward = content.content {
@@ -2438,7 +2443,9 @@ public final class PendingMessageManager {
     private func applyAcknowledgedMessage(postbox: Postbox, message: Message) -> Signal<Void, NoError> {
         return postbox.transaction { transaction -> Void in
             transaction.updateMessage(message.id, update: { currentMessage in
-                var attributes = message.attributes
+                // Donutgram: not `message.attributes`: the send transaction can add
+                // attributes after that copy was read (donutgramStorePseudoReplyPrefix).
+                var attributes = currentMessage.attributes
                 var found = false
                 for i in 0 ..< attributes.count {
                     if let attribute = attributes[i] as? OutgoingMessageInfoAttribute {

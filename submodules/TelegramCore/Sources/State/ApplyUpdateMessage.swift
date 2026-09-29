@@ -314,11 +314,12 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
             }
 
             if currentMessage.localTags.contains(.donutgramPseudoReply) {
-                // The server stores the blockquote. Keep the original body and
-                // reply locally, including after the local id becomes a cloud id.
+                // The server stores the blockquote. Keep the original body, the
+                // reply and the quote that was sent (for later edits) locally,
+                // including after the local id becomes a cloud id.
                 text = currentMessage.text
-                attributes.removeAll(where: { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
-                attributes.append(contentsOf: currentMessage.attributes.filter { $0 is ReplyMessageAttribute || $0 is TextEntitiesMessageAttribute })
+                attributes.removeAll(where: donutgramIsPseudoReplyLocalAttribute)
+                attributes.append(contentsOf: currentMessage.attributes.filter(donutgramIsPseudoReplyLocalAttribute))
             }
             
             let updatedId: MessageId
