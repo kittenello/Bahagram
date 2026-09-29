@@ -162,6 +162,7 @@ public struct Namespaces {
         // not collide with the edit-history cache.
         public static let donutgramEditHistory: Int8 = 120
         public static let donutgramDisappearedGifts: Int8 = 121
+        public static let donutgramPublishedPseudoReplies: Int8 = 122
     }
     
     public struct UnorderedItemList {

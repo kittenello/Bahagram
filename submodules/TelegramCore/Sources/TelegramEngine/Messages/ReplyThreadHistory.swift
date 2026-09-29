@@ -178,7 +178,8 @@ private class ReplyThreadHistoryContextImpl {
                         
                         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: users)
                         
-                        let _ = transaction.addMessages(parsedMessages, location: .Random)
+                        // Donutgram: the thread root may already be stored; keep its local-only state.
+                        let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: parsedMessages), location: .Random)
                         
                         updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
                         
@@ -710,7 +711,8 @@ func _internal_fetchChannelReplyThreadMessage(account: Account, messageId: Messa
                     
                     let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: users)
                     
-                    let _ = transaction.addMessages(parsedMessages, location: .Random)
+                    // Donutgram: the thread root may already be stored; keep its local-only state.
+                    let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: parsedMessages), location: .Random)
                     
                     updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
                     
