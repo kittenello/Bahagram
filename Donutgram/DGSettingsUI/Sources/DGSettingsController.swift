@@ -185,7 +185,9 @@ func dgController(context: AccountContext, title: String, entries: @escaping () 
     controller.didAppear = { [weak controller] firstTime in
         if firstTime {
             let gesture = UILongPressGestureRecognizer(target: longPressHandler, action: #selector(DGSettingsLongPressHandler.handle(_:)))
-            gesture.cancelsTouchesInView = false
+            // Keep the default cancelsTouchesInView: when the menu opens, the list gets touchesCancelled
+            // and does not open the row on release, as with its own scroll pan.
+            gesture.delegate = longPressHandler
             controller?.view.addGestureRecognizer(gesture)
         }
         if !firstTime && needsRefreshOnAppear {

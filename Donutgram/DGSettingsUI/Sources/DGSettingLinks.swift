@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import AsyncDisplayKit
 import ItemListUI
 import Display
 
@@ -63,7 +64,7 @@ func dgHighlightSettingView(_ view: UIView) {
     })
 }
 
-final class DGSettingsLongPressHandler: NSObject {
+final class DGSettingsLongPressHandler: NSObject, UIGestureRecognizerDelegate {
     weak var controller: ItemListController?
     let page: String
 
@@ -72,21 +73,48 @@ final class DGSettingsLongPressHandler: NSObject {
         self.page = page
     }
 
-    @objc func handle(_ gesture: UILongPressGestureRecognizer) {
-        guard gesture.state == .began, let controller = self.controller else {
-            return
-        }
-        let point = gesture.location(in: controller.view)
-        var target: (key: String, view: UIView)?
+    private func target(at point: CGPoint, in controller: ItemListController) -> (key: String, view: UIView)? {
+        var found: (key: String, view: UIView)?
         controller.forEachItemNode { node in
-            guard target == nil,
+            guard found == nil,
                   let tag = (node as? ItemListItemNode)?.tag as? DGSettingItemTag,
                   node.view.bounds.contains(node.view.convert(point, from: controller.view)) else {
                 return
             }
-            target = (tag.key, node.view)
+            found = (tag.key, node.view)
         }
-        guard let target, let url = URL(string: "tg://settings/donutgram/\(page)/\(target.key)") else {
+        return found
+    }
+
+    // Only a hold on a list row opens the menu. Touches outside the list (the navigation bar over a row scrolled
+    // under it, a toast) and on a row's own control (switch, slider, text field, clear button) keep their behavior.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        var currentView = touch.view
+        while let view = currentView {
+            if view is UIControl || view.asyncdisplaykit_node is ASControlNode {
+                return false
+            }
+            if view is ListViewBackingView {
+                return true
+            }
+            currentView = view.superview
+        }
+        return false
+    }
+
+    // Beginning cancels the touch in the list, so it must not begin where there is no link to show.
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let controller = self.controller else {
+            return false
+        }
+        return self.target(at: gestureRecognizer.location(in: controller.view), in: controller) != nil
+    }
+
+    @objc func handle(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began,
+              let controller = self.controller,
+              let target = self.target(at: gesture.location(in: controller.view), in: controller),
+              let url = URL(string: "tg://settings/donutgram/\(page)/\(target.key)") else {
             return
         }
         let menu = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
