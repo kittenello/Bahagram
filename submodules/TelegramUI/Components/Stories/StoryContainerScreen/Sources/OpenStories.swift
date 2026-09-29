@@ -9,116 +9,165 @@ import AvatarNode
 import DGSimpleSettings
 
 public extension StoryContainerScreen {
-    // The `ghostSuggestForStories` question. The openers below ask it before
-    // opening; the viewer asks it itself for every other way in (see
+    // The `ghostSuggestForStories` question. The openers ask it once the story
+    // has loaded, before the viewer opens (see `askDonutgramStoryGhostIfNeeded`);
+    // the viewer asks it itself for every other way in (see
     // `donutgramMarkAsSeen`). «Да» turns ghost mode on with story receipts
     // hidden before `answered` runs. The standard controller closes itself when
-    // a button is tapped.
-    internal static func makeDonutgramStoryGhostAlert(context: AccountContext, dismissOnOutsideTap: Bool = true, answered: @escaping () -> Void) -> AlertController {
+    // a button is tapped. A tap outside does nothing: closed without an answer
+    // (Escape), the opener opens nothing and the viewer keeps holding its
+    // receipts.
+    internal static func makeDonutgramStoryGhostAlert(context: AccountContext, answered: @escaping () -> Void) -> AlertController {
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        // The buttons stay tappable while the alert fades out. Only the first
+        // tap counts, or an opener would push a second viewer.
+        var didAnswer = false
         return standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: "Режим призрака", text: "Вы хотите включить Режим призрака перед просмотром истории?", actions: [
             TextAlertAction(type: .defaultAction, title: "Нет", action: {
+                if didAnswer {
+                    return
+                }
+                didAnswer = true
                 answered()
             }),
             TextAlertAction(type: .genericAction, title: "Да", action: {
+                if didAnswer {
+                    return
+                }
+                didAnswer = true
                 let settings = DGSimpleSettings.shared
                 settings.ghostReadStories = false
                 settings.ghostModeEnabled = true
                 answered()
             })
-        ], dismissOnOutsideTap: dismissOnOutsideTap)
+        ], dismissOnOutsideTap: false)
     }
 
-    static func confirmDonutgramStoryOpenIfNeeded(context: AccountContext, parentController: ViewController, proceed: @escaping () -> Void) -> Bool {
-        let settings = DGSimpleSettings.shared
-        guard settings.ghostSuggestForStories && !settings.ghostModeEnabled else {
-            return false
-        }
-        parentController.present(makeDonutgramStoryGhostAlert(context: context, answered: proceed), in: .window(.root))
-        return true
+    // Whether stealth mode still hides story views. Its last half minute counts
+    // as over: the local deadline runs a round trip late, and the server judges
+    // a receipt when it arrives.
+    internal static func isDonutgramStealthModeActive(until activeUntilTimestamp: Int32?) -> Bool {
+        return (activeUntilTimestamp ?? 0) - 30 > Int32(Date().timeIntervalSince1970)
     }
 
-    static func openArchivedStories(context: AccountContext, parentController: ViewController, avatarNode: AvatarNode, sharedProgressDisposable: MetaDisposable?, skipGhostPrompt: Bool = false) {
-        if !skipGhostPrompt && confirmDonutgramStoryOpenIfNeeded(context: context, parentController: parentController, proceed: { [weak parentController, weak avatarNode] in
-            guard let parentController, let avatarNode else { return }
-            openArchivedStories(context: context, parentController: parentController, avatarNode: avatarNode, sharedProgressDisposable: sharedProgressDisposable, skipGhostPrompt: true)
-        }) {
-            return
+    // The question before a viewer opens, as the last step of the opener's
+    // loading signal, so the opener's progress and cancellation cover the
+    // stealth check as well. It calls `open` with whether the question was
+    // answered. `open(false)` runs without a question when there is nothing to
+    // ask: the setting is off, ghost mode is on, or stealth mode hides the view
+    // for now (the viewer asks once it lapses). It also runs when
+    // `parentController` has no window, e.g. a chat list covered by a chat:
+    // `present` would show nothing there, so the viewer asks instead. `open`
+    // runs on subscription when the setting is off or ghost mode is on, and on
+    // a later main-queue turn otherwise. Closed without an answer (Escape),
+    // nothing opens. The signal is cold: nothing runs until it is subscribed.
+    static func askDonutgramStoryGhostIfNeeded(context: AccountContext, parentController: ViewController?, open: @escaping (_ answered: Bool) -> Void) -> Signal<Never, NoError> {
+        return deferred { [weak parentController] () -> Signal<Never, NoError> in
+            let settings = DGSimpleSettings.shared
+            if !settings.ghostSuggestForStories || settings.ghostModeEnabled {
+                open(false)
+                return .complete()
+            }
+            return context.engine.data.get(TelegramEngine.EngineData.Item.Configuration.StoryConfigurationState())
+            |> deliverOnMainQueue
+            |> mapToSignal { state -> Signal<Never, NoError> in
+                if isDonutgramStealthModeActive(until: state.stealthModeState.activeUntilTimestamp) {
+                    open(false)
+                } else if let parentController, parentController.window != nil {
+                    parentController.present(makeDonutgramStoryGhostAlert(context: context, answered: {
+                        open(true)
+                    }), in: .window(.root))
+                } else {
+                    open(false)
+                }
+                return .complete()
+            }
         }
+    }
+
+    static func openArchivedStories(context: AccountContext, parentController: ViewController, avatarNode: AvatarNode, sharedProgressDisposable: MetaDisposable?) {
         let storyContent = StoryContentContextImpl(context: context, isHidden: true, focusedPeerId: nil, singlePeer: false)
         let signal = storyContent.state
         |> take(1)
-        |> mapToSignal { state -> Signal<Void, NoError> in
+        |> mapToSignal { state -> Signal<StoryContentContextState, NoError> in
             if let slice = state.slice {
                 return waitUntilStoryMediaPreloaded(context: context, peerId: slice.effectivePeer.id, storyItem: slice.item.storyItem)
                 |> timeout(4.0, queue: .mainQueue(), alternate: .complete())
-                |> map { _ -> Void in
+                |> map { _ -> StoryContentContextState in
                 }
-                |> then(.single(Void()))
+                |> then(.single(state))
             } else {
-                return .single(Void())
+                return .single(state)
             }
         }
         |> deliverOnMainQueue
-        |> map { [weak parentController, weak avatarNode] _ -> Void in
-            var transitionIn: StoryContainerScreen.TransitionIn?
-            if let avatarNode {
-                transitionIn = StoryContainerScreen.TransitionIn(
-                    sourceView: avatarNode.view,
-                    sourceRect: avatarNode.view.bounds,
-                    sourceCornerRadius: avatarNode.view.bounds.width * 0.5,
-                    sourceIsAvatar: false
-                )
-                avatarNode.isHidden = true
-            }
-            
-            let storyContainerScreen = StoryContainerScreen(
-                context: context,
-                content: storyContent,
-                transitionIn: transitionIn,
-                transitionOut: { peerId, _ in
-                    if let avatarNode {
-                        let destinationView = avatarNode.view
-                        return StoryContainerScreen.TransitionOut(
-                            destinationView: destinationView,
-                            transitionView: StoryContainerScreen.TransitionView(
-                                makeView: { [weak destinationView] in
-                                    let parentView = UIView()
-                                    if let copyView = destinationView?.snapshotContentTree(unhide: true) {
-                                        parentView.addSubview(copyView)
-                                    }
-                                    return parentView
-                                },
-                                updateView: { copyView, state, transition in
-                                    guard let view = copyView.subviews.first else {
+        |> mapToSignal { [weak parentController, weak avatarNode] state -> Signal<Never, NoError> in
+            let open: (Bool) -> Void = { answered in
+                var transitionIn: StoryContainerScreen.TransitionIn?
+                if let avatarNode {
+                    transitionIn = StoryContainerScreen.TransitionIn(
+                        sourceView: avatarNode.view,
+                        sourceRect: avatarNode.view.bounds,
+                        sourceCornerRadius: avatarNode.view.bounds.width * 0.5,
+                        sourceIsAvatar: false
+                    )
+                    avatarNode.isHidden = true
+                }
+                
+                let storyContainerScreen = StoryContainerScreen(
+                    context: context,
+                    content: storyContent,
+                    transitionIn: transitionIn,
+                    transitionOut: { peerId, _ in
+                        if let avatarNode {
+                            let destinationView = avatarNode.view
+                            return StoryContainerScreen.TransitionOut(
+                                destinationView: destinationView,
+                                transitionView: StoryContainerScreen.TransitionView(
+                                    makeView: { [weak destinationView] in
+                                        let parentView = UIView()
+                                        if let copyView = destinationView?.snapshotContentTree(unhide: true) {
+                                            parentView.addSubview(copyView)
+                                        }
+                                        return parentView
+                                    },
+                                    updateView: { copyView, state, transition in
+                                        guard let view = copyView.subviews.first else {
+                                            return
+                                        }
+                                        let size = state.sourceSize.interpolate(to: state.destinationSize, amount: state.progress)
+                                        transition.setPosition(view: view, position: CGPoint(x: size.width * 0.5, y: size.height * 0.5))
+                                        transition.setScale(view: view, scale: size.width / state.destinationSize.width)
+                                    },
+                                    insertCloneTransitionView: nil
+                                ),
+                                destinationRect: destinationView.bounds,
+                                destinationCornerRadius: destinationView.bounds.width * 0.5,
+                                destinationIsAvatar: false,
+                                completed: { [weak avatarNode] in
+                                    guard let avatarNode else {
                                         return
                                     }
-                                    let size = state.sourceSize.interpolate(to: state.destinationSize, amount: state.progress)
-                                    transition.setPosition(view: view, position: CGPoint(x: size.width * 0.5, y: size.height * 0.5))
-                                    transition.setScale(view: view, scale: size.width / state.destinationSize.width)
-                                },
-                                insertCloneTransitionView: nil
-                            ),
-                            destinationRect: destinationView.bounds,
-                            destinationCornerRadius: destinationView.bounds.width * 0.5,
-                            destinationIsAvatar: false,
-                            completed: { [weak avatarNode] in
-                                guard let avatarNode else {
-                                    return
+                                    avatarNode.isHidden = false
                                 }
-                                avatarNode.isHidden = false
-                            }
-                        )
-                    } else {
-                        return nil
+                            )
+                        } else {
+                            return nil
+                        }
                     }
-                }
-            )
-            // `skipGhostPrompt` is only set once the question above was answered.
-            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
-            parentController?.push(storyContainerScreen)
+                )
+                // `answered` is true only once the question below was answered.
+                storyContainerScreen.donutgramGhostPromptAnswered = answered
+                parentController?.push(storyContainerScreen)
+            }
+            // Nothing loaded, nothing to ask about: the viewer asks if a story
+            // turns up.
+            if state.slice == nil {
+                open(false)
+                return .complete()
+            }
+            return askDonutgramStoryGhostIfNeeded(context: context, parentController: parentController, open: open)
         }
-        |> ignoreValues
         
         let disposable = avatarNode.pushLoadingStatus(signal: signal)
         if let sharedProgressDisposable {
@@ -213,12 +262,6 @@ public extension StoryContainerScreen {
         completion: @escaping (StoryContainerScreen) -> Void = { _ in },
         skipGhostPrompt: Bool = false
     ) {
-        if peerId != context.account.peerId && !skipGhostPrompt && confirmDonutgramStoryOpenIfNeeded(context: context, parentController: parentController, proceed: { [weak parentController] in
-            guard let parentController else { return }
-            openPeerStoriesCustom(context: context, peerId: peerId, focusOnId: focusOnId, isHidden: isHidden, initialOrder: initialOrder, singlePeer: singlePeer, parentController: parentController, transitionIn: transitionIn, transitionOut: transitionOut, setFocusedItem: setFocusedItem, setProgress: setProgress, completion: completion, skipGhostPrompt: true)
-        }) {
-            return
-        }
         let storyContent = StoryContentContextImpl(context: context, isHidden: isHidden, focusedPeerId: peerId, focusedStoryId: focusOnId, singlePeer: singlePeer, fixedOrder: initialOrder)
         let signal = storyContent.state
         |> take(1)
@@ -241,29 +284,38 @@ public extension StoryContainerScreen {
             }
         }
         |> deliverOnMainQueue
-        |> map { [weak parentController] state -> Void in
+        |> mapToSignal { [weak parentController] state -> Signal<Never, NoError> in
             if state.slice == nil {
-                return
+                return .complete()
             }
             
-            let transitionIn: StoryContainerScreen.TransitionIn? = transitionIn()
-            
-            let storyContainerScreen = StoryContainerScreen(
-                context: context,
-                content: storyContent,
-                transitionIn: transitionIn,
-                transitionOut: { peerId, _ in
-                    return transitionOut(peerId)
-                }
-            )
-            // `skipGhostPrompt` is only set once the question was answered, here
-            // or by the caller (ChatListController.openStories).
-            storyContainerScreen.donutgramGhostPromptAnswered = skipGhostPrompt
-            setFocusedItem(storyContainerScreen.focusedItem)
-            parentController?.push(storyContainerScreen)
-            completion(storyContainerScreen)
+            let open: (Bool) -> Void = { answered in
+                let transitionIn: StoryContainerScreen.TransitionIn? = transitionIn()
+                
+                let storyContainerScreen = StoryContainerScreen(
+                    context: context,
+                    content: storyContent,
+                    transitionIn: transitionIn,
+                    transitionOut: { peerId, _ in
+                        return transitionOut(peerId)
+                    }
+                )
+                // `answered` is true only once the question below was answered.
+                storyContainerScreen.donutgramGhostPromptAnswered = answered
+                setFocusedItem(storyContainerScreen.focusedItem)
+                parentController?.push(storyContainerScreen)
+                completion(storyContainerScreen)
+            }
+            // Own stories open without the question; the viewer asks it once it
+            // moves on to someone else's. «Смотреть анонимно» (`skipGhostPrompt`)
+            // skips it too: the viewer lets receipts through while stealth mode
+            // lasts and asks once it lapses.
+            if skipGhostPrompt || peerId == context.account.peerId {
+                open(false)
+                return .complete()
+            }
+            return askDonutgramStoryGhostIfNeeded(context: context, parentController: parentController, open: open)
         }
-        |> ignoreValues
         
         setProgress(signal)
     }
