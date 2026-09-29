@@ -67,8 +67,9 @@ private func donutgramPseudoReplyEditContent(transaction: Transaction, accountPe
     for (peerId, peer) in associatedPeers {
         peers[peerId] = peer
     }
-    // The same rule the editor limits the body by (ChatControllerLoadDisplayNode).
-    let isCaption = message.media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile })
+    // Any media but a link preview makes the text a caption, with its own length limit
+    // (paid media included, as at sending).
+    let isCaption = message.media.contains(where: { !($0 is TelegramMediaWebpage) })
     guard let content = donutgramPseudoReplyContent(transaction: transaction, message: message.withUpdatedText(text).withUpdatedAttributes(attributes).withUpdatedPeers(peers), accountPeerId: accountPeerId, isCaption: isCaption) else {
         return nil
     }
@@ -421,6 +422,13 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                 break
                             }
                             
+                            // Donutgram: from now on server copies start with the quote this edit
+                            // sent (donutgramPreservingPseudoReply). A scheduled message gets its
+                            // server copy only through these updates, so it has the old body here.
+                            if let pseudoReplyContent {
+                                donutgramStorePseudoReplyPrefix(transaction: transaction, messageId: messageId, sentText: pseudoReplyContent.0, body: text)
+                            }
+
                             stateManager.addUpdates(result)
                             
                             return .done(true)
