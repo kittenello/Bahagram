@@ -157,6 +157,7 @@ enum AccountStateMutationOperation {
     case UpdateStarGiftAuctionState(giftId: Int64, state: GiftAuctionContext.State.AuctionState)
     case UpdateStarGiftAuctionMyState(giftId: Int64, state: GiftAuctionContext.State.MyState)
     case UpdateEmojiGameInfo(info: EmojiGameInfo)
+    case DonutgramMovePseudoRepliesToSentMessages(scheduledIds: [MessageId], sentIds: [MessageId])
 }
 
 struct HoleFromPreviousState {
@@ -777,6 +778,10 @@ struct AccountMutableState {
         self.addOperation(.UpdateEmojiGameInfo(info: info))
     }
     
+    mutating func donutgramMovePseudoRepliesToSentMessages(scheduledIds: [MessageId], sentIds: [MessageId]) {
+        self.addOperation(.DonutgramMovePseudoRepliesToSentMessages(scheduledIds: scheduledIds, sentIds: sentIds))
+    }
+
     mutating func addOperation(_ operation: AccountStateMutationOperation) {
         switch operation {
         case .DeleteMessages, .DeleteMessagesWithGlobalIds, .EditMessage, .UpdateMessagePoll, .UpdateMessageReactions, .UpdateMedia, .ReadOutbox, .ReadGroupFeedInbox, .MergePeerPresences, .UpdateSecretChat, .AddSecretMessages, .ReadSecretOutbox, .AddPeerInputActivity, .AddPeerLiveTypingDraftUpdate, .UpdateCachedPeerData, .UpdatePinnedItemIds, .UpdatePinnedSavedItemIds, .UpdatePinnedTopic, .UpdatePinnedTopicOrder, .ReadMessageContents, .UpdateMessageImpressionCount, .UpdateMessageForwardsCount, .UpdateInstalledStickerPacks, .UpdateRecentGifs, .UpdateChatInputState, .UpdateCall, .AddCallSignalingData, .UpdateLangPack, .UpdateMinAvailableMessage, .UpdatePeerChatUnreadMark, .UpdateIsContact, .UpdatePeerChatInclusion, .UpdateTheme, .UpdateWallpaper, .SyncChatListFilters, .UpdateChatListFilterOrder, .UpdateChatListFilter, .UpdateReadThread, .UpdateGroupCallParticipants, .UpdateGroupCall, .UpdateGroupCallChainBlocks, .UpdateGroupCallMessage, .UpdateGroupCallOpaqueMessage, .UpdateMessagesPinned, .UpdateAutoremoveTimeout, .UpdateAttachMenuBots, .UpdateAudioTranscription, .UpdateConfig, .UpdateExtendedMedia, .ResetForumTopic, .UpdateStory, .UpdateReadStories, .UpdateStoryStealthMode, .UpdateStorySentReaction, .UpdateNewAuthorization, .UpdateNewBotConnection, .UpdateWebBrowserSettings, .UpdateWebBrowserException, .UpdateStarsBalance, .UpdateStarsRevenueStatus, .UpdateStarsReactionsDefaultPrivacy, .ReportMessageDelivery, .UpdateMonoForumNoPaidException, .UpdateStarGiftAuctionState, .UpdateStarGiftAuctionMyState, .UpdateEmojiGameInfo:
@@ -838,6 +843,8 @@ struct AccountMutableState {
             case .UpdateChannelInvalidationPts:
                 break
             case .UpdateChannelSynchronizedUntilMessage:
+                break
+            case .DonutgramMovePseudoRepliesToSentMessages:
                 break
             case let .UpdateNotificationSettings(subject, notificationSettings):
                 if case let .peer(peerId, threadId) = subject {

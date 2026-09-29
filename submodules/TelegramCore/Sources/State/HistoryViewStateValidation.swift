@@ -890,8 +890,8 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                             if currentMessage.localTags.contains(.OutgoingLiveLocation) {
                                                 updatedLocalTags.insert(.OutgoingLiveLocation)
                                             }
-                                            // Donutgram: keep the saved view-once state that the server copy lacks.
-                                            return .update(donutgramPreservingSavedViewOnceMedia(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
+                                            // Donutgram: keep the local-only state that the server copy lacks.
+                                            return .update(donutgramPreservingLocalState(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
                                         } else {
                                             var storeForwardInfo: StoreMessageForwardInfo?
                                             if let forwardInfo = currentMessage.forwardInfo {
@@ -917,7 +917,8 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                         print("\(id) missing")
                                     }
                                 } else {
-                                    let _ = transaction.addMessages([message], location: .Random)
+                                    // Donutgram: a published scheduled pseudo-reply gets its local form.
+                                    let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: [message]), location: .Random)
                                 }
                             }
                         }
@@ -1139,8 +1140,8 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                                         if currentMessage.localTags.contains(.OutgoingLiveLocation) {
                                             updatedLocalTags.insert(.OutgoingLiveLocation)
                                         }
-                                        // Donutgram: keep the saved view-once state that the server copy lacks.
-                                        return .update(donutgramPreservingSavedViewOnceMedia(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
+                                        // Donutgram: keep the local-only state that the server copy lacks.
+                                        return .update(donutgramPreservingLocalState(previous: currentMessage, updated: message.withUpdatedLocalTags(updatedLocalTags)))
                                     } else {
                                         var storeForwardInfo: StoreMessageForwardInfo?
                                         if let forwardInfo = currentMessage.forwardInfo {
@@ -1166,7 +1167,8 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                                     print("\(id) missing")
                                 }
                             } else {
-                                let _ = transaction.addMessages([message], location: .Random)
+                                // Donutgram: a published scheduled pseudo-reply gets its local form.
+                                let _ = transaction.addMessages(donutgramPreservingLocalState(transaction: transaction, messages: [message]), location: .Random)
                             }
                         }
                     }
