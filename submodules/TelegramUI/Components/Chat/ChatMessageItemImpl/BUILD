@@ -17,6 +17,7 @@ swift_library(
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/TelegramCore",
         "//submodules/TelegramPresentationData",
+        "//submodules/TelegramStringFormatting",
         "//submodules/TelegramUIPreferences",
         "//submodules/AccountContext",
         "//submodules/Emoji",
