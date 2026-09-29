@@ -71,6 +71,7 @@ final class GiftsListView: UIView {
     private var starsProducts: [ProfileGiftsContext.State.StarGift]?
     private var starsItems: [AnyHashable: (StarGiftReference?, ComponentView<Empty>)] = [:]
     private var disappearedItemDates: [String: Int32] = [:]
+    private weak var disappearedGiftController: GiftViewScreen?
     private var settingsObserver: NSObjectProtocol?
     private var showingDisappearedGifts = DGSimpleSettings.shared.showDisappearedGifts
 
@@ -323,11 +324,32 @@ final class GiftsListView: UIView {
     }
 
     private func openDisappearedGift(_ gift: ProfileGiftsContext.State.StarGift) {
+        if let previousController = self.disappearedGiftController {
+            previousController.dismiss(animated: false, completion: nil)
+            self.disappearedGiftController = nil
+        }
+        
+        let subject = GiftViewScreen.Subject.profileGift(self.peerId, gift)
         let controller = GiftViewScreen(
             context: self.context,
-            subject: .profileGift(self.peerId, gift),
-            headerText: "Подарок был скрыт или был продан."
+            subject: subject,
+            allSubjects: [subject],
+            index: 0,
+            headerText: "Подарок был скрыт или был продан.",
+            deleteDisappearedGift: { [weak self] in
+                self?.profileGifts.removeDisappearedGift(gift)
+            },
+            profileGiftsContext: self.profileGifts
         )
+        self.disappearedGiftController = controller
+        controller.disposed = { [weak self, weak controller] in
+            guard let self else {
+                return
+            }
+            if self.disappearedGiftController === controller {
+                self.disappearedGiftController = nil
+            }
+        }
         self.parentController?.push(controller)
     }
 
@@ -602,6 +624,9 @@ final class GiftsListView: UIView {
                 var itemAlpha: CGFloat = 1.0
                 if isAdded {
                     itemAlpha = 0.3
+                }
+                if disappearedDate != nil {
+                    itemAlpha = 0.42
                 }
                 
                 let _ = visibleItem.update(
