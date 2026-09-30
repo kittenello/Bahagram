@@ -23,6 +23,7 @@ import ThemeAccentColorScreen
 import WallpaperGridScreen
 import PeerNameColorItem
 import DeviceModel
+import DGSimpleSettings
 
 private final class ThemeSettingsControllerArguments {
     let context: AccountContext
@@ -40,7 +41,7 @@ private final class ThemeSettingsControllerArguments {
     let openStickersAndEmoji: () -> Void
     let toggleSendWithCmdEnter: (Bool) -> Void
     let toggleShowNextMediaOnTap: (Bool) -> Void
-    let selectAppIcon: (PresentationAppIcon) -> Void
+    let openIconAndIsland: () -> Void
     let editTheme: (PresentationCloudTheme) -> Void
     let themeContextAction: (Bool, PresentationThemeReference, ASDisplayNode, ContextGesture?) -> Void
     let colorContextAction: (Bool, PresentationThemeReference, ThemeSettingsColorOption?, ASDisplayNode, ContextGesture?) -> Void
@@ -61,7 +62,7 @@ private final class ThemeSettingsControllerArguments {
         openStickersAndEmoji: @escaping () -> Void,
         toggleSendWithCmdEnter: @escaping (Bool) -> Void,
         toggleShowNextMediaOnTap: @escaping (Bool) -> Void,
-        selectAppIcon: @escaping (PresentationAppIcon) -> Void,
+        openIconAndIsland: @escaping () -> Void,
         editTheme: @escaping (PresentationCloudTheme) -> Void,
         themeContextAction: @escaping (Bool, PresentationThemeReference, ASDisplayNode, ContextGesture?) -> Void,
         colorContextAction: @escaping (Bool, PresentationThemeReference, ThemeSettingsColorOption?, ASDisplayNode, ContextGesture?) -> Void
@@ -81,7 +82,7 @@ private final class ThemeSettingsControllerArguments {
         self.openStickersAndEmoji = openStickersAndEmoji
         self.toggleSendWithCmdEnter = toggleSendWithCmdEnter
         self.toggleShowNextMediaOnTap = toggleShowNextMediaOnTap
-        self.selectAppIcon = selectAppIcon
+        self.openIconAndIsland = openIconAndIsland
         self.editTheme = editTheme
         self.themeContextAction = themeContextAction
         self.colorContextAction = colorContextAction
@@ -132,7 +133,8 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
     case textSize(PresentationTheme, String, String)
     case bubbleSettings(PresentationTheme, String, String)
     case iconHeader(PresentationTheme, String)
-    case iconItem(PresentationTheme, PresentationStrings, [PresentationAppIcon], Bool, String?)
+    // Donutgram: the «Иконка и остров» row; the alternate icon (nil is the default) and the island mark are diff keys.
+    case iconItem(PresentationTheme, String?, Int)
     case powerSaving
     case stickersAndEmoji
     case otherHeader(PresentationTheme, String)
@@ -266,8 +268,8 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
-            case let .iconItem(lhsTheme, lhsStrings, lhsIcons, lhsIsPremium, lhsValue):
-                if case let .iconItem(rhsTheme, rhsStrings, rhsIcons, rhsIsPremium, rhsValue) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsIcons == rhsIcons, lhsIsPremium == rhsIsPremium, lhsValue == rhsValue {
+            case let .iconItem(lhsTheme, lhsIconName, lhsIslandMark):
+                if case let .iconItem(rhsTheme, rhsIconName, rhsIslandMark) = rhs, lhsTheme === rhsTheme, lhsIconName == rhsIconName, lhsIslandMark == rhsIslandMark {
                     return true
                 } else {
                     return false
@@ -370,9 +372,9 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
             case let .iconHeader(_, text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-            case let .iconItem(theme, strings, icons, isPremium, value):
-                return ThemeSettingsAppIconItem(theme: theme, strings: strings, systemStyle: .glass, sectionId: self.section, icons: icons, isPremium: isPremium, currentIconName: value, updated: { icon in
-                    arguments.selectAppIcon(icon)
+            case let .iconItem(_, iconName, islandMark):
+                return donutgramIconAndIslandItem(presentationData: presentationData, sectionId: self.section, iconName: iconName, islandMark: islandMark, action: {
+                    arguments.openIconAndIsland()
                 }, tag: ThemeSettingsEntryTag.icon)
             case .powerSaving:
                 return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: nil, title: presentationData.strings.AppearanceSettings_Animations, label: "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
@@ -405,9 +407,7 @@ private func themeSettingsControllerEntries(
     mediaSettings: MediaDisplaySettings,
     themeReference: PresentationThemeReference,
     availableThemes: [PresentationThemeReference],
-    availableAppIcons: [PresentationAppIcon],
     currentAppIconName: String?,
-    isPremium: Bool,
     chatThemes: [PresentationThemeReference],
     animatedEmojiStickers: [String: [StickerPackItem]],
     accountPeer: EnginePeer?,
@@ -482,10 +482,12 @@ private func themeSettingsControllerEntries(
     entries.append(.powerSaving)
     entries.append(.stickersAndEmoji)
     
-    if !availableAppIcons.isEmpty {
+    // Donutgram: one row instead of the icon grid, the icons and the islands are picked on «Иконка и остров».
+    // Without an island the row itself is called «Иконка приложения», so it goes without the header.
+    if DeviceMetrics.deviceHasAppBadge {
         entries.append(.iconHeader(presentationData.theme, strings.Appearance_AppIcon.uppercased()))
-        entries.append(.iconItem(presentationData.theme, presentationData.strings, availableAppIcons, isPremium, currentAppIconName))
     }
+    entries.append(.iconItem(presentationData.theme, currentAppIconName, DGSimpleSettings.shared.islandMarkIndex(iconName: currentAppIconName)))
     
     entries.append(.otherHeader(presentationData.theme, strings.Appearance_Other.uppercased()))
     if DeviceModel.current.isIpad {
@@ -522,22 +524,10 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     
     let _ = context.engine.themes.wallpapers().start()
     
-    let currentAppIcon: PresentationAppIcon?
-    var appIcons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
-    if let alternateIconName = context.sharedContext.applicationBindings.getAlternateIconName() {
-        currentAppIcon = appIcons.filter { $0.name == alternateIconName }.first
-    } else {
-        currentAppIcon = appIcons.filter { $0.isDefault }.first
-    }
-    
-    let premiumConfiguration = PremiumConfiguration.with(appConfiguration: context.currentAppConfiguration.with { $0 })
-    if premiumConfiguration.isPremiumDisabled || context.account.testingEnvironment {
-        appIcons = appIcons.filter { !$0.isPremium } 
-    }
-    
-    let availableAppIcons: Signal<[PresentationAppIcon], NoError> = .single(appIcons)
-    let currentAppIconName = ValuePromise<String?>()
-    currentAppIconName.set(currentAppIcon?.name ?? "Blue")
+    // Donutgram: the «Иконка и остров» row reads the current icon and island when the list updates. Bumped whenever
+    // this page appears, as they may have changed on «Иконка и остров».
+    let iconAndIslandRevision = ValuePromise<Int>(0, ignoreRepeated: true)
+    var iconAndIslandRevisionValue = 0
     
     let cloudThemes = Promise<[TelegramTheme]>()
     let updatedCloudThemes = context.engine.themes.themes(accountManager: context.sharedContext.accountManager)
@@ -619,26 +609,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         let _ = updateMediaDisplaySettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
             return current.withUpdatedShowNextMediaOnTap(value)
         }).start()
-    }, selectAppIcon: { icon in
-        let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
-        |> deliverOnMainQueue).start(next: { peer in
-            let isPremium = peer?.isPremium ?? false
-            if icon.isPremium && !isPremium {
-                var replaceImpl: ((ViewController) -> Void)?
-                let controller = PremiumDemoScreen(context: context, subject: .appIcons, source: .other, action: {
-                    let controller = PremiumIntroScreen(context: context, source: .appIcons)
-                    replaceImpl?(controller)
-                })
-                replaceImpl = { [weak controller] c in
-                    controller?.replace(with: c)
-                }
-                pushControllerImpl?(controller)
-            } else {
-                currentAppIconName.set(icon.name)
-                context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { _ in
-                })
-            }
-        })
+    }, openIconAndIsland: {
+        pushControllerImpl?(context.sharedContext.makeDonutgramIconAndIslandController(context: context))
     }, editTheme: { theme in
         let controller = editThemeController(context: context, mode: .edit(theme), navigateToChat: { peerId in
             let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
@@ -1101,19 +1073,15 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
             SharedDataKeys.chatThemes
         ]),
         cloudThemes.get(),
-        availableAppIcons,
-        currentAppIconName.get(),
+        iconAndIslandRevision.get(),
         removedThemeIndexesPromise.get(),
         animatedEmojiStickers,
-        context.account.postbox.peerView(id: context.account.peerId),
         context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
     )
-    |> map { presentationData, sharedData, cloudThemes, availableAppIcons, currentAppIconName, removedThemeIndexes, animatedEmojiStickers, peerView, accountPeer -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, sharedData, cloudThemes, _, removedThemeIndexes, animatedEmojiStickers, accountPeer -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let settings = sharedData.entries[ApplicationSpecificSharedDataKeys.presentationThemeSettings]?.get(PresentationThemeSettings.self) ?? PresentationThemeSettings.defaultSettings
         let chatSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.chatSettings]?.get(ChatSettings.self) ?? ChatSettings.defaultSettings
         let mediaSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.mediaDisplaySettings]?.get(MediaDisplaySettings.self) ?? MediaDisplaySettings.defaultSettings
-        
-        let isPremium = peerView.peers[peerView.peerId]?.isPremium ?? false
         
         let themeReference: PresentationThemeReference
         if presentationData.autoNightModeTriggered {
@@ -1150,13 +1118,17 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         chatThemes.insert(.builtin(.dayClassic), at: 0)
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.Appearance_Title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: themeSettingsControllerEntries(presentationData: presentationData, presentationThemeSettings: settings, chatSettings: chatSettings, mediaSettings: mediaSettings, themeReference: themeReference, availableThemes: availableThemes, availableAppIcons: availableAppIcons, currentAppIconName: currentAppIconName, isPremium: isPremium, chatThemes: chatThemes, animatedEmojiStickers: animatedEmojiStickers, accountPeer: accountPeer, nameColors: context.peerNameColors), style: .blocks, ensureVisibleItemTag: focusOnItemTag, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: themeSettingsControllerEntries(presentationData: presentationData, presentationThemeSettings: settings, chatSettings: chatSettings, mediaSettings: mediaSettings, themeReference: themeReference, availableThemes: availableThemes, currentAppIconName: context.sharedContext.applicationBindings.getAlternateIconName(), chatThemes: chatThemes, animatedEmojiStickers: animatedEmojiStickers, accountPeer: accountPeer, nameColors: context.peerNameColors), style: .blocks, ensureVisibleItemTag: focusOnItemTag, animateChanges: false)
         
         return (controllerState, (listState, arguments))
     }
     
     let controller = ThemeSettingsControllerImpl(context: context, state: signal)
     controller.alwaysSynchronous = true
+    controller.didAppear = { _ in
+        iconAndIslandRevisionValue += 1
+        iconAndIslandRevision.set(iconAndIslandRevisionValue)
+    }
     pushControllerImpl = { [weak controller] c in
         (controller?.navigationController as? NavigationController)?.pushViewController(c)
     }

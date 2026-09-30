@@ -318,17 +318,26 @@ filegroup(
 
 alternate_icon_folders = [
     "BlueIcon",
-    # Donutgram pig icons
-    "DgSnout",
-    "DgSnoutHead",
-    "DgPigPlane",
-    "DgPigPlaneEars",
-    "DgPilot",
-    "DgPilotLens",
-    "Dg3D",
-    "Dg3DCircle",
-    "DgGlass",
-    "DgGlassEyes",
+    # Donutgram donut icons
+    "DgRing",
+    "DgBitten",
+    "DgChat",
+    "DgHeart",
+    "DgKawaii",
+    "DgPigDonut",
+    "DgPixel",
+    "DgDonut3D",
+    "DgPlanet",
+    "DgPlane",
+    "DgDrip",
+    "DgPerspective",
+    "DgSticker",
+    "DgCatDonut",
+    "DgChrome",
+    "DgGlassDonut",
+    "DgGhost",
+    "DgCoffee",
+    "DgWatercolor",
     # Donutgram boykisser icons
     "DgKisser",
     "DgKisserRed",
@@ -1192,7 +1201,6 @@ swift_library(
         ":WidgetAssets",
     ],
     deps = [
-        "//Donutgram/DGSimpleSettings:DGSimpleSettings",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/WidgetItems:WidgetItems_iOS14",
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
@@ -1645,8 +1653,6 @@ plist_fragment(
     <string>You can use Siri to send messages.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>We need this to transcribe audio messages on your request.</string>
-    <key>NSSupportsLiveActivities</key>
-    <true/>
     <key>NSUserActivityTypes</key>
     <array>
         <string>INSendMessageIntent</string>

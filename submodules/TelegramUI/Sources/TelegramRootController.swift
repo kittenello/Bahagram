@@ -316,6 +316,8 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         let themeController = themeSettingsController(context: self.context, focusOnItemTag: .icon)
         var controllers: [UIViewController] = Array(self.viewControllers.prefix(1))
         controllers.append(themeController)
+        // Donutgram: the icons are picked one level deeper, on «Иконка и остров».
+        controllers.append(self.context.sharedContext.makeDonutgramIconAndIslandController(context: self.context))
         self.setViewControllers(controllers, animated: true)
     }
     

@@ -1,4 +1,5 @@
 import UIKit
+import DeviceModel
 
 public enum DeviceType {
     case phone
@@ -409,29 +410,44 @@ public enum DeviceMetrics: CaseIterable, Equatable {
         }
     }
     
-    public var showAppBadge: Bool {
-        if case .iPhoneX = self {
-            return false
-        }
-        return self.hasTopNotch || self.dynamicIslandAppBadgeOffset != nil
-    }
-    
     // The badge sits under the notch or the Dynamic Island, so it only shows up in screenshots.
-    public var appBadgeOffset: CGFloat {
-        return self.dynamicIslandAppBadgeOffset ?? 5.0
+    // It is keyed by the hardware model, not the screen size: phones with notches of different
+    // depth share a screen size, and Display Zoom reports a smaller screen for the same cutout.
+    public var showAppBadge: Bool {
+        return DeviceMetrics.deviceHasAppBadge
     }
     
-    // Centers the 22pt badge in the island. Display-zoomed modes are left out: the island
-    // sits elsewhere in their coordinate space.
-    private var dynamicIslandAppBadgeOffset: CGFloat? {
-        switch self {
-            case .iPhone14Pro:
+    /// Whether this iPhone has a notch or a Dynamic Island to hide the badge under.
+    public static var deviceHasAppBadge: Bool {
+        return DeviceMetrics.appBadgeBaseOffset(model: DeviceModel.current) != nil
+    }
+    
+    public var appBadgeOffset: CGFloat {
+        guard let offset = DeviceMetrics.appBadgeBaseOffset(model: DeviceModel.current) else {
+            return 0.0
+        }
+        // Display Zoom maps fewer, larger points onto the same panel; this keeps the badge
+        // at the same physical height.
+        let scaleFactor = UIScreen.main.scale / UIScreen.main.nativeScale
+        return floorToScreenPixels(offset * scaleFactor)
+    }
+    
+    // Top offset in unzoomed points: under the notch, or centered in the island for the 22pt badge.
+    private static func appBadgeBaseOffset(model: DeviceModel) -> CGFloat? {
+        switch model {
+            case .iPhoneX, .iPhoneXS, .iPhone11Pro, .iPhone12Mini, .iPhone13Mini:
+                return 2.0
+            case .iPhoneXSMax, .iPhone11ProMax, .iPhone12, .iPhone12Pro, .iPhone13, .iPhone13Pro, .iPhone14, .iPhone16e:
+                return 4.0
+            case .iPhoneXR, .iPhone11, .iPhone12ProMax, .iPhone13ProMax, .iPhone14Plus:
+                return 6.0
+            case .iPhone14Pro, .iPhone15, .iPhone15Pro, .iPhone16:
                 return 18.0
-            case .iPhone14ProMax:
+            case .iPhone14ProMax, .iPhone15Plus, .iPhone15ProMax, .iPhone16Plus:
                 return 19.0
-            case .iPhone16Pro:
+            case .iPhone16Pro, .iPhone17, .iPhone17Pro:
                 return 21.0
-            case .iPhone16ProMax, .iPhoneAir:
+            case .iPhone16ProMax, .iPhone17ProMax, .iPhoneAir:
                 return 22.0
             default:
                 return nil

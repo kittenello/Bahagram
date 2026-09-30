@@ -46,6 +46,7 @@ import NavigationBarImpl
 import ContextUI
 import ContextControllerImpl
 import ProxyServerPreviewScreen
+import DGSimpleSettings
 
 #if canImport(AppCenter)
 import AppCenter
@@ -399,6 +400,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let (window, hostView) = nativeWindowHostView()
         let statusBarHost = ApplicationStatusBarHost(scene: window.windowScene)
         self.mainWindow = Window1(hostView: hostView, statusBarHost: statusBarHost)
+        self.updateDonutgramBadge()
         if let traitCollection = window.rootViewController?.traitCollection {
             if #available(iOS 13.0, *) {
                 switch traitCollection.userInterfaceStyle {
@@ -962,9 +964,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon", isDefault: true)
                 ]
                 
-                // Donutgram pig, boykisser and cat icons, see Telegram/Telegram-iOS/Dg*.alticon
-                for name in ["DgSnout", "DgSnoutHead", "DgPigPlane", "DgPigPlaneEars", "DgPilot", "DgPilotLens", "Dg3D", "Dg3DCircle", "DgGlass", "DgGlassEyes", "DgKisser", "DgKisserRed", "DgCat"] {
-                    icons.append(PresentationAppIcon(name: name, imageName: name))
+                // Donutgram icons, each paired with an island, see Telegram/Telegram-iOS/Dg*.alticon
+                for mark in DGSimpleSettings.appMarks {
+                    if let name = mark.iconName {
+                        icons.append(PresentationAppIcon(name: name, imageName: name))
+                    }
                 }
                 
                 return icons
@@ -982,7 +986,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 if let error = error {
                    Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
                 }
-                completion(error == nil)
+                // UIKit calls this off the main queue. Every icon picker ends up here, so «Остров как у иконки»
+                // follows the icon whichever one was used.
+                Queue.mainQueue().async {
+                    self.updateDonutgramBadge()
+                    completion(error == nil)
+                }
             })
         }, forceOrientation: { orientation in
             let value = orientation.rawValue
@@ -1897,10 +1906,16 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }))
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
-        if #available(iOS 16.2, *) {
-            Task { @MainActor in DGIslandActivityManager.shared.setForeground(false) }
+    /// The Donutgram island badge under the notch or the Dynamic Island: the current app icon's pair, or the one
+    /// picked by hand when «Остров как у иконки» is off. Set here so that Display does not depend on DGSimpleSettings.
+    func updateDonutgramBadge() {
+        let mark = DGSimpleSettings.appMarks[DGSimpleSettings.shared.islandMarkIndex(iconName: UIApplication.shared.alternateIconName)]
+        if let image = UIImage(bundleImageName: mark.islandAssetName) {
+            self.mainWindow?.badgeView.image = image
         }
+    }
+
+    func applicationWillResignActive(_ application: UIApplication) {
         self.isActiveValue = false
         self.isActivePromise.set(false)
         self.clearNotificationsManager?.commitNow()
@@ -2007,9 +2022,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        if #available(iOS 16.2, *) {
-            Task { @MainActor in DGIslandActivityManager.shared.setForeground(true) }
-        }
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
         self.isActiveValue = true

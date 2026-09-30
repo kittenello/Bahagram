@@ -5,6 +5,7 @@ import Postbox
 import SwiftSignalKit
 import TelegramUIPreferences
 import TelegramCore
+import SettingsUI
 
 public func dgSpySettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
@@ -107,8 +108,7 @@ func dgAppearanceSettingsController(context: AccountContext, focusKey: String? =
             .toggle(1, 0, "premiumStatuses", "Скрыть премиум статусы", s.hidePremiumStatuses, true),
             .toggle(2, 0, "customBackgrounds", "Отключить кастомные фоны", s.disableCustomBackgrounds, true),
             .toggle(3, 0, "hideStories", "Скрыть сторис", s.hideStories, true),
-            .header(10, 1, "ПРИЛОЖЕНИЕ"), .appIcons(11, 1),
-            .header(12, 2, "ОСТРОВ"), .islandStyles(13, 2, s.islandStyle),
+            .header(10, 1, "ПРИЛОЖЕНИЕ"), dgIconAndIslandRow(context: context, id: 11, section: 1),
             .header(20, 3, "ВКЛАДКИ"),
             .toggle(21, 3, "hideTabBar", "Скрыть панель вкладок", s.hideTabBar, true),
             .toggle(22, 3, "contacts", "Вкладка Контакты", s.showContactsTab, !s.hideTabBar),
@@ -134,9 +134,64 @@ func dgAppearanceSettingsController(context: AccountContext, focusKey: String? =
         return entries
     }, restartRequiredKeys: ["premiumStatuses", "hideStories", "hideTabBar", "contacts", "calls", "wideTabBar"], toggle: { key, value in
         switch key { case "premiumStatuses": s.hidePremiumStatuses = value; case "customBackgrounds": s.disableCustomBackgrounds = value; case "hideStories": s.hideStories = value; case "snow": s.forceSnow = value; case "hideTabBar": s.hideTabBar = value; case "contacts": s.showContactsTab = value; case "calls": s.showCallsTab = value; case "wideTabBar": s.wideTabBar = value; case "profileId": s.showProfileId = value; case "dc": s.showDc = value; case "regDate": s.showRegistrationDate = value; case "chatDate": s.showChatCreationDate = value; case "mutualContact": s.showMutualContact = value; case "relativeOnlineTime": s.relativeOnlineTime = value; case "hidePhoneNumber": s.hidePhoneNumber = value; case "confirmCalls": s.confirmCalls = value; case "disableAds": s.disableAds = value; default: break }
+    }, open: { key in
+        switch key {
+        case "dialogIdFormat": return dgDialogIdFormatController(context: context)
+        case "iconAndIsland": return dgIconAndIslandController(context: context)
+        default: return nil
+        }
+    })
+}
+
+/// The row on «Оформление» that opens «Иконка и остров», the same row as in the stock appearance settings.
+private func dgIconAndIslandRow(context: AccountContext, id: Int32, section: Int32) -> DGListEntry {
+    let iconName = context.sharedContext.applicationBindings.getAlternateIconName()
+    return .iconAndIsland(id, section, DGSimpleSettings.appMarkIndex(iconName: iconName), DGSimpleSettings.shared.islandMarkIndex(iconName: iconName))
+}
+
+/// «Иконка и остров»: the app icon, the island under the notch or the Dynamic Island, and «Остров как у иконки».
+/// Devices without a notch or an island (iPad, iPhones with a Home button) get the icon picker alone.
+/// Also opened from the stock appearance settings and the «Иконка приложения» home screen quick action.
+public func dgIconAndIslandController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let s = DGSimpleSettings.shared
+    let bindings = context.sharedContext.applicationBindings
+    let hasIsland = DeviceMetrics.deviceHasAppBadge
+    return dgController(context: context, page: .iconAndIsland, title: donutgramIconAndIslandTitle(), focusKey: focusKey, entries: {
+        let iconName = bindings.getAlternateIconName()
+        var entries: [DGListEntry] = []
+        if hasIsland {
+            entries.append(contentsOf: [
+                .header(0, 0, "ПРЕДПРОСМОТР"),
+                .iconIslandPreview(1, 0, DGSimpleSettings.appMarkIndex(iconName: iconName), s.islandMarkIndex(iconName: iconName)),
+                .info(2, 0, "Остров прячется под вырезом камеры — его видно только на скриншотах и записи экрана."),
+                .toggle(10, 1, "islandFollowsIcon", "Остров как у иконки", s.islandFollowsIcon, true)
+            ])
+            if s.islandFollowsIcon {
+                entries.append(.info(12, 1, "Выбираешь иконку — остров меняется на такой же."))
+            } else {
+                // The islands join the switch's block: turning it off shows them right under the finger, next to the
+                // preview, instead of below the six rows of icons.
+                entries.append(contentsOf: [.islandStyles(11, 1, s.islandStyle), .info(12, 1, "Иконка и остров выбираются отдельно.")])
+            }
+        }
+        entries.append(contentsOf: [.header(20, 2, "ИКОНКА"), .appIcons(21, 2, DGSimpleSettings.appMarkIndex(iconName: iconName))])
+        return entries
+    }, toggle: { key, value in
+        guard key == "islandFollowsIcon" else {
+            return
+        }
+        if !value {
+            // The island on screen stays: it becomes the one picked by hand.
+            s.islandStyle = DGSimpleSettings.appMarkIndex(iconName: bindings.getAlternateIconName())
+        }
+        s.islandFollowsIcon = value
+        dgApplyIslandBadge(context: context)
     }, select: { key in
-        if key.hasPrefix("islandStyle:"), let value = Int(key.split(separator: ":").last ?? "") { s.islandStyle = value }
-    }, open: { key in key == "dialogIdFormat" ? dgDialogIdFormatController(context: context) : nil })
+        if key.hasPrefix("islandStyle:"), let value = Int(key.split(separator: ":").last ?? "") {
+            s.islandStyle = value
+            dgApplyIslandBadge(context: context)
+        }
+    })
 }
 
 private func dgDialogIdFormatController(context: AccountContext, focusKey: String? = nil) -> ViewController {
@@ -375,6 +430,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .ghostOptions: makeController = dgGhostOptionsController
     case .silent: makeController = dgSilentModeController
     case .appearance: makeController = dgAppearanceSettingsController
+    case .iconAndIsland: makeController = dgIconAndIslandController
     case .dialogId: makeController = dgDialogIdFormatController
     case .chats: makeController = dgChatsSettingsController
     case .chatListAppearance: makeController = dgChatListAppearanceController
