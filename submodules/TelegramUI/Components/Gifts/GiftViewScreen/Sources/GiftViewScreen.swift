@@ -1523,11 +1523,37 @@ private final class GiftViewSheetContent: CombinedComponent {
             }
             
             
+            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+            
+            if let deleteDisappearedGift = controller.deleteDisappearedGift {
+                let items: [ContextMenuItem] = [
+                    .action(ContextMenuActionItem(
+                        text: "Удалить",
+                        icon: { theme in
+                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.primaryColor)
+                        },
+                        action: { [weak controller] c, _ in
+                            c?.dismiss(completion: {
+                                deleteDisappearedGift()
+                                controller?.dismissAnimated()
+                            })
+                        }
+                    ))
+                ]
+                let contextController = makeContextController(
+                    presentationData: presentationData,
+                    source: .reference(GiftViewContextReferenceContentSource(controller: controller, sourceView: sourceView)),
+                    items: .single(ContextController.Items(content: .list(items))),
+                    gesture: nil
+                )
+                controller.presentInGlobalOverlay(contextController)
+                return
+            }
+            
             guard let arguments = self.subject.arguments, case let .unique(gift) = arguments.gift else {
                 return
             }
             
-            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             let link = "https://t.me/nft/\(gift.slug)"
             
             let _ = (self.context.engine.data.get(
@@ -5336,8 +5362,9 @@ private final class GiftViewSheetContent: CombinedComponent {
             ))
             
             var rightControlItems: [GlassControlGroupComponent.Item] = []
-            if uniqueGift != nil && !showWearPreview && !isDismantled {
-                if let _ = component.subject.arguments?.canCraftDate {
+            let hasCustomMoreAction = (controller() as? GiftViewScreen)?.deleteDisappearedGift != nil
+            if (uniqueGift != nil || hasCustomMoreAction) && !showWearPreview && !isDismantled {
+                if uniqueGift != nil, let _ = component.subject.arguments?.canCraftDate {
                     rightControlItems.append(GlassControlGroupComponent.Item(
                         id: AnyHashable("craft"),
                         content: .icon("Premium/Craft"),
@@ -5401,13 +5428,16 @@ final class GiftViewSheetComponent: CombinedComponent {
     
     let context: AccountContext
     let subject: GiftViewScreen.Subject
+    let headerText: String?
     
     init(
         context: AccountContext,
-        subject: GiftViewScreen.Subject
+        subject: GiftViewScreen.Subject,
+        headerText: String? = nil
     ) {
         self.context = context
         self.subject = subject
+        self.headerText = headerText
     }
     
     static func ==(lhs: GiftViewSheetComponent, rhs: GiftViewSheetComponent) -> Bool {
@@ -5415,6 +5445,9 @@ final class GiftViewSheetComponent: CombinedComponent {
             return false
         }
         if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.headerText != rhs.headerText {
             return false
         }
         return true
@@ -5431,7 +5464,17 @@ final class GiftViewSheetComponent: CombinedComponent {
             let controller = environment.controller
             
             var headerContent: AnyComponent<Empty>?
-            if let arguments = context.component.subject.arguments, case .unique = arguments.gift, let fromPeerId = arguments.fromPeerId, var fromPeerName = arguments.fromPeerName, arguments.fromPeerId != context.component.context.account.peerId && !(arguments.fromPeerId?.isTelegramNotifications ?? false) {
+            if let headerText = context.component.headerText {
+                headerContent = AnyComponent(
+                    HeaderContentComponent(
+                        attributedText: NSAttributedString(
+                            string: headerText,
+                            font: Font.semibold(13.0),
+                            textColor: .white
+                        )
+                    )
+                )
+            } else if let arguments = context.component.subject.arguments, case .unique = arguments.gift, let fromPeerId = arguments.fromPeerId, var fromPeerName = arguments.fromPeerName, arguments.fromPeerId != context.component.context.account.peerId && !(arguments.fromPeerId?.isTelegramNotifications ?? false) {
                 var showSenderInfo = false
                 if arguments.incoming {
                     showSenderInfo = true
@@ -5750,6 +5793,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
     fileprivate let shareStory: ((StarGift.UniqueGift) -> Void)?
     fileprivate let openChatTheme: (() -> Void)?
     fileprivate let customAction: CustomAction?
+    fileprivate let deleteDisappearedGift: (() -> Void)?
     
     public var disposed: () -> Void = {}
     
@@ -5759,6 +5803,8 @@ public class GiftViewScreen: ViewControllerComponentContainer {
         allSubjects: [GiftViewScreen.Subject]? = nil,
         index: Int? = nil,
         forceDark: Bool = false,
+        headerText: String? = nil,
+        deleteDisappearedGift: (() -> Void)? = nil,
         profileGiftsContext: ProfileGiftsContext? = nil,
         updateSavedToProfile: ((StarGiftReference, Bool) -> Void)? = nil,
         convertToStars: ((StarGiftReference) -> Void)? = nil,
@@ -5774,6 +5820,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
     ) {
         self.context = context
         self.subject = subject
+        self.deleteDisappearedGift = deleteDisappearedGift
         
         self.profileGiftsContext = profileGiftsContext
         self.updateSavedToProfile = updateSavedToProfile
@@ -5815,6 +5862,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
                 items: items,
                 index: index ?? 0,
                 itemSpacing: 10.0,
+                headerText: headerText,
                 updated: { _, _ in
                     dismissTooltipsImpl?()
                 }

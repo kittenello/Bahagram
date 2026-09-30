@@ -70,8 +70,8 @@ final class GiftsListView: UIView {
             
     private var starsProducts: [ProfileGiftsContext.State.StarGift]?
     private var starsItems: [AnyHashable: (StarGiftReference?, ComponentView<Empty>)] = [:]
-    private var disappearedDates: [StarGiftReference: Int32] = [:]
-    private var disappearedBadges: [AnyHashable: UILabel] = [:]
+    private var disappearedItemDates: [String: Int32] = [:]
+    private weak var disappearedGiftController: GiftViewScreen?
     private var settingsObserver: NSObjectProtocol?
     private var showingDisappearedGifts = DGSimpleSettings.shared.showDisappearedGifts
 
@@ -164,7 +164,7 @@ final class GiftsListView: UIView {
                 giftCountText = "\(visible) (\(total)) подарков"
             }
             self.statusPromise.set(.single(PeerInfoStatusData(text: giftCountText, isActivity: true, key: .gifts)))
-            self.disappearedDates = [:]
+            self.disappearedItemDates = [:]
             
             if self.isReordering {
                 var stateItems: [ProfileGiftsContext.State.StarGift] = state.gifts
@@ -284,44 +284,61 @@ final class GiftsListView: UIView {
         }
     }
 
+    private func giftItemStableId(_ gift: ProfileGiftsContext.State.StarGift, index: Int32) -> String {
+        let info: String
+        switch gift.gift {
+        case let .generic(value):
+            info = "g_\(value.id)"
+        case let .unique(value):
+            info = "u_\(value.id)"
+        }
+        let stableId = gift.reference?.stringValue ?? "\(index)"
+        return "\(stableId)_\(info)"
+    }
+
     private func giftsWithDisappeared(current: [ProfileGiftsContext.State.StarGift], history: [ProfileGiftsContext.State.DisappearedGift]) -> [ProfileGiftsContext.State.StarGift] {
-        var result = current
-        let visible = Set(current.compactMap { $0.reference })
-        for entry in history.sorted(by: { $0.position < $1.position }) {
-            guard let reference = entry.gift.reference, !visible.contains(reference) else { continue }
-            var insertionIndex = min(max(0, Int(entry.position)), result.count)
-            if let next = entry.nextReference, let index = result.firstIndex(where: { $0.reference == next }) {
-                insertionIndex = index
-            } else if let previous = entry.previousReference, let index = result.firstIndex(where: { $0.reference == previous }) {
-                insertionIndex = index + 1
+        let result = ProfileGiftsContext.State.giftsWithDisappeared(current: current, history: history)
+
+        self.disappearedItemDates = [:]
+        for (index, value) in result.enumerated() {
+            if value.isMissing {
+                self.disappearedItemDates[self.giftItemStableId(value.gift, index: Int32(index))] = value.lastSeen
             }
-            result.insert(entry.gift, at: insertionIndex)
-            self.disappearedDates[reference] = entry.lastSeen
         }
-        return result
+        return result.map { $0.gift }
     }
 
-    private func disappearedDateText(_ timestamp: Int32) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamp)))
-    }
-
-    private func showDisappearedGiftInfo(_ gift: ProfileGiftsContext.State.StarGift, lastSeen: Int32, presentationData: PresentationData) {
-        var details = ["Последний раз видели: \(self.disappearedDateText(lastSeen))"]
-        if let sender = gift.fromPeer {
-            details.append("Отправитель: \(sender.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder))")
+    private func openDisappearedGift(_ gift: ProfileGiftsContext.State.StarGift) {
+        if let previousController = self.disappearedGiftController {
+            previousController.dismiss(animated: false, completion: nil)
+            self.disappearedGiftController = nil
         }
-        if let text = gift.text, !text.isEmpty {
-            details.append("Комментарий: \(text)")
-        }
-        details.append("Причина исчезновения неизвестна.")
-        let alert = UIAlertController(title: "Подарок пропал", message: details.joined(separator: "\n"), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        self.parentController?.view.window?.rootViewController?.present(alert, animated: true)
-    }
         
+        let subject = GiftViewScreen.Subject.profileGift(self.peerId, gift)
+        let controller = GiftViewScreen(
+            context: self.context,
+            subject: subject,
+            allSubjects: [subject],
+            index: 0,
+            headerText: "Подарок был скрыт или был продан.",
+            deleteDisappearedGift: { [weak self] in
+                self?.profileGifts.removeDisappearedGift(gift)
+            },
+            profileGiftsContext: self.profileGifts
+        )
+        self.disappearedGiftController = controller
+        controller.disposed = { [weak self, weak controller] in
+            guard let self else {
+                return
+            }
+            if self.disappearedGiftController === controller {
+                self.disappearedGiftController = nil
+            }
+        }
+        self.parentController?.push(controller)
+    }
+
+
     func item(at point: CGPoint) -> (AnyHashable, ComponentView<Empty>)? {
         for (id, visibleItem) in self.starsItems {
             if let view = visibleItem.1.view, view.frame.contains(point), let reference = visibleItem.0, self.isCollection || self.pinnedReferences.contains(reference) {
@@ -496,8 +513,7 @@ final class GiftsListView: UIView {
         }
         
         let optionSpacing: CGFloat = 10.0
-        let verticalSpacing: CGFloat = self.disappearedDates.isEmpty ? optionSpacing : 30.0
-        let badgeTopPadding: CGFloat = self.disappearedDates.isEmpty ? 0.0 : 27.0
+        let verticalSpacing: CGFloat = optionSpacing
         let itemsSideInset = params.sideInset + 16.0
         
         let defaultItemsInRow: Int
@@ -517,7 +533,7 @@ final class GiftsListView: UIView {
         let starsOptionSize = CGSize(width: optionWidth, height: defaultOptionWidth)
                     
         var validIds: [AnyHashable] = []
-        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset + badgeTopPadding), size: starsOptionSize)
+        var itemFrame = CGRect(origin: CGPoint(x: itemsSideInset, y: topInset), size: starsOptionSize)
         
         var index: Int32 = 0
         for product in starsProducts {
@@ -527,18 +543,10 @@ final class GiftsListView: UIView {
             }
             
             if isVisible {
-                let info: String
-                switch product.gift {
-                case let .generic(gift):
-                    info = "g_\(gift.id)"
-                case let .unique(gift):
-                    info = "u_\(gift.id)"
-                }
-                let stableId = product.reference?.stringValue ?? "\(index)"
-                let id = "\(stableId)_\(info)"
+                let id = self.giftItemStableId(product, index: index)
                 let itemId = AnyHashable(id)
                 validIds.append(itemId)
-                let disappearedDate = product.reference.flatMap { self.disappearedDates[$0] }
+                let disappearedDate = self.disappearedItemDates[id]
                 
                 var itemTransition = transition
                 let visibleItem: ComponentView<Empty>
@@ -627,8 +635,8 @@ final class GiftsListView: UIView {
                                 guard let self, !isAdded, let presentationData = self.currentParams?.presentationData else {
                                     return
                                 }
-                                if let disappearedDate {
-                                    self.showDisappearedGiftInfo(product, lastSeen: disappearedDate, presentationData: presentationData)
+                                if disappearedDate != nil {
+                                    self.openDisappearedGift(product)
                                     return
                                 }
                                 if self.canSelect {
@@ -802,29 +810,6 @@ final class GiftsListView: UIView {
                         itemView.layer.allowsGroupOpacity = true
                     }
 
-                    if let disappearedDate {
-                        let badge: UILabel
-                        if let current = self.disappearedBadges[itemId] {
-                            badge = current
-                        } else {
-                            badge = UILabel()
-                            badge.isUserInteractionEnabled = false
-                            badge.numberOfLines = 2
-                            badge.textAlignment = .center
-                            badge.font = .systemFont(ofSize: 10.0, weight: .semibold)
-                            badge.textColor = .white
-                            badge.backgroundColor = UIColor(white: 0.18, alpha: 0.94)
-                            badge.layer.cornerRadius = 11.0
-                            badge.clipsToBounds = true
-                            self.disappearedBadges[itemId] = badge
-                            self.addSubview(badge)
-                        }
-                        badge.text = "Подарок пропал\n\(self.disappearedDateText(disappearedDate))"
-                        itemTransition.setFrame(view: badge, frame: CGRect(x: itemFrame.minX + 4.0, y: itemFrame.minY - 26.0, width: itemFrame.width - 8.0, height: 24.0))
-                        self.bringSubviewToFront(badge)
-                    } else if let badge = self.disappearedBadges.removeValue(forKey: itemId) {
-                        badge.removeFromSuperview()
-                    }
                     
                     if self.isReordering && (product.pinnedToTop || self.isCollection) {
                         if itemView.layer.animation(forKey: "shaking_position") == nil {
@@ -864,10 +849,9 @@ final class GiftsListView: UIView {
         }
         for id in removeIds {
             self.starsItems.removeValue(forKey: id)
-            self.disappearedBadges.removeValue(forKey: id)?.removeFromSuperview()
         }
         
-        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + verticalSpacing) - verticalSpacing + topInset + badgeTopPadding + 16.0
+        var contentHeight = ceil(CGFloat(starsProducts.count) / CGFloat(defaultItemsInRow)) * (starsOptionSize.height + verticalSpacing) - verticalSpacing + topInset + 16.0
         
         let size = params.size
         let sideInset = params.sideInset

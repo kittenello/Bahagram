@@ -1,0 +1,23 @@
+name: Gift history regression tests
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'submodules/TelegramCore/Sources/TelegramEngine/Payments/StarGifts.swift'
+      - 'submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift'
+      - 'Tests/profile_gift_history/**'
+      - '.github/workflows/gift-history-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gift-history:
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check production Swift ordering and deletion helpers
+        run: python3 Tests/profile_gift_history/run.py

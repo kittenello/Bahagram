@@ -35,6 +35,7 @@ final class GiftPagerComponent: Component {
     let items: [Item]
     let index: Int
     let itemSpacing: CGFloat
+    let headerText: String?
     let isSwitching: Bool
     let updated: (CGFloat, Int) -> Void
     
@@ -43,6 +44,7 @@ final class GiftPagerComponent: Component {
         items: [Item],
         index: Int = 0,
         itemSpacing: CGFloat = 0.0,
+        headerText: String? = nil,
         isSwitching: Bool = false,
         updated: @escaping (CGFloat, Int) -> Void
     ) {
@@ -50,6 +52,7 @@ final class GiftPagerComponent: Component {
         self.items = items
         self.index = index
         self.itemSpacing = itemSpacing
+        self.headerText = headerText
         self.isSwitching = isSwitching
         self.updated = updated
     }
@@ -62,6 +65,9 @@ final class GiftPagerComponent: Component {
             return false
         }
         if lhs.itemSpacing != rhs.itemSpacing {
+            return false
+        }
+        if lhs.headerText != rhs.headerText {
             return false
         }
         if lhs.isSwitching != rhs.isSwitching {
@@ -239,7 +245,8 @@ final class GiftPagerComponent: Component {
                     transition: itemTransition,
                     component: AnyComponent(GiftViewSheetComponent(
                         context: component.context,
-                        subject: item.subject
+                        subject: item.subject,
+                        headerText: component.headerText
                     )),
                     environment: { environment },
                     containerSize: availableSize
