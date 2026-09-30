@@ -127,6 +127,7 @@ public final class DGSimpleSettings {
         static let downloadTikTok = "donutgram.chats.downloadTikTok"
         static let downloadYouTubeShorts = "donutgram.chats.downloadYouTubeShorts"
         static let signDownloadedMedia = "donutgram.chats.signDownloadedMedia"
+        static let forceBuiltInMicrophone = "donutgram.chats.forceBuiltInMicrophone"
         static let startRoundVideoWithRearCamera = "donutgram.chats.startRoundVideoWithRearCamera"
         static let roundVideoCamera = "donutgram.chats.roundVideoCamera"
         static let musicPlaybackExceptions = "donutgram.chats.musicPlaybackExceptions"
@@ -471,6 +472,12 @@ public final class DGSimpleSettings {
     public var downloadTikTok: Bool { get { bool(Key.downloadTikTok) } set { setBool(newValue, Key.downloadTikTok) } }
     public var downloadYouTubeShorts: Bool { get { bool(Key.downloadYouTubeShorts) } set { setBool(newValue, Key.downloadYouTubeShorts) } }
     public var signDownloadedMedia: Bool { get { bool(Key.signDownloadedMedia) } set { setBool(newValue, Key.signDownloadedMedia) } }
+    /// Use the device microphone for voice and video recording, even with external inputs connected.
+    /// Disabled by default; the switch is «Встроенный микрофон» in «Чаты» ▸ «Запись».
+    public var forceBuiltInMicrophone: Bool {
+        get { bool(Key.forceBuiltInMicrophone) }
+        set { setBool(newValue, Key.forceBuiltInMicrophone) }
+    }
     public var startRoundVideoWithRearCamera: Bool { get { bool(Key.startRoundVideoWithRearCamera) } set { setBool(newValue, Key.startRoundVideoWithRearCamera) } }
     public var roundVideoCamera: RoundVideoCamera {
         get {

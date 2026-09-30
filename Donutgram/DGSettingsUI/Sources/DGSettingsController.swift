@@ -59,6 +59,8 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "seconds": return "clock"
     case "transcription": return "waveform"
     case "camera", "rearCamera", "rememberCamera", "zoomSlider", "staticZoom": return "camera.rotate"
+    case "pauseMusicOnRecording": return "music.note"
+    case "builtInMic": return "mic"
     case "autoPause", "autoPauseMedia": return "pause.circle"
     case "editedIcon": return "pencil.line"
     case "onlineIndicator": return "circle.fill"
