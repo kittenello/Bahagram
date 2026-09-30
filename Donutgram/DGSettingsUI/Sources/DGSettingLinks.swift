@@ -34,6 +34,7 @@ enum DGSettingsPage: String {
     case doubleTapSeek = "double-tap-seek"
     case camera
     case autoPause = "auto-pause"
+    case musicPlaybackExceptions = "music-playback-exceptions"
     case downloads
     case transcription
     case reactions

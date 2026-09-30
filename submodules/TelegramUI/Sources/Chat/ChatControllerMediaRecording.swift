@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import SwiftSignalKit
 import Display
@@ -480,7 +481,9 @@ extension ChatControllerImpl {
     func resumeMediaRecorder() {
         self.recorderDataDisposable.set(nil)
         
-        self.context.sharedContext.mediaManager.playlistControl(.playback(.pause), type: nil)
+        let recordingException: DGSimpleSettings.MusicPlaybackExceptions = self.videoRecorderValue != nil ? .roundVideos : .voiceRecording
+        let keepMusicPlaying = DGSimpleSettings.shared.musicPlaybackExceptions.contains(recordingException)
+        self.context.sharedContext.mediaManager.playlistControl(.playback(.pause), type: keepMusicPlaying ? .voice : nil)
         
         if let videoRecorderValue = self.videoRecorderValue {
             self.updateChatPresentationInterfaceState(animated: true, interactive: true, {

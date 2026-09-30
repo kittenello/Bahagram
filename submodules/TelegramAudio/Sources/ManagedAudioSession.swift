@@ -19,13 +19,14 @@ public enum ManagedAudioSessionType: Equatable {
     case ambient
     case play(mixWithOthers: Bool)
     case playWithPossiblePortOverride
+    case playWithPossiblePortOverrideAndMixWithOthers
     case record(speaker: Bool, video: Bool, withOthers: Bool)
     case voiceCall
     case videoCall
     
     var isPlay: Bool {
         switch self {
-        case .play, .ambient, .playWithPossiblePortOverride:
+        case .play, .ambient, .playWithPossiblePortOverride, .playWithPossiblePortOverrideAndMixWithOthers:
             return true
         default:
             return false
@@ -41,7 +42,7 @@ private func nativeCategoryForType(_ type: ManagedAudioSessionType, headphones: 
         return .playback
     case .record, .voiceCall, .videoCall:
         return .playAndRecord
-    case .playWithPossiblePortOverride:
+    case .playWithPossiblePortOverride, .playWithPossiblePortOverrideAndMixWithOthers:
         if headphones {
             return .playback
         } else {
@@ -783,10 +784,15 @@ public final class ManagedAudioSessionImpl: NSObject, ManagedAudioSession {
                 index += 1
             }
             
-            var lastIsRecordWithOthers = false
+            var lastMixesWithOthers = false
             if let lastHolder = self.holders.last {
-                if case let .record(_, _, withOthers) = lastHolder.audioSessionType {
-                    lastIsRecordWithOthers = withOthers
+                switch lastHolder.audioSessionType {
+                case let .record(_, _, withOthers), let .play(withOthers):
+                    lastMixesWithOthers = withOthers
+                case .playWithPossiblePortOverrideAndMixWithOthers:
+                    lastMixesWithOthers = true
+                default:
+                    break
                 }
             }
             if !deactivating {
@@ -800,7 +806,7 @@ public final class ManagedAudioSessionImpl: NSObject, ManagedAudioSession {
                         }
                     } else {
                         if activeIndex != self.holders.count - 1 {
-                            if lastIsRecordWithOthers {
+                            if lastMixesWithOthers {
                                 deactivate = true
                                 temporary = true
                             } else if self.holders[activeIndex].audioSessionType == .voiceCall {
@@ -956,9 +962,12 @@ public final class ManagedAudioSessionImpl: NSObject, ManagedAudioSession {
                     }
                 case .ambient:
                     options.insert(.mixWithOthers)
-                case .playWithPossiblePortOverride:
+                case .playWithPossiblePortOverride, .playWithPossiblePortOverrideAndMixWithOthers:
                     if case .playAndRecord = nativeCategory {
                         options.insert(.allowBluetoothA2DP)
+                    }
+                    if type == .playWithPossiblePortOverrideAndMixWithOthers {
+                        options.insert(.mixWithOthers)
                     }
                 case .voiceCall, .videoCall:
                     #if canImport(AlarmKit) //Xcode 26
@@ -1159,7 +1168,7 @@ public final class ManagedAudioSessionImpl: NSObject, ManagedAudioSession {
             switch updatedType {
                 case .record(false, _, _):
                     try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
-                case .voiceCall, .playWithPossiblePortOverride, .record(true, _, _):
+                case .voiceCall, .playWithPossiblePortOverride, .playWithPossiblePortOverrideAndMixWithOthers, .record(true, _, _):
                     try AVAudioSession.sharedInstance().overrideOutputAudioPort(.none)
                     if let routes = AVAudioSession.sharedInstance().availableInputs {
                         var alreadySet = false
