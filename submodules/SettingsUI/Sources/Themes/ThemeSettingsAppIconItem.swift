@@ -9,6 +9,7 @@ import ItemListUI
 import PresentationDataUtils
 import AppBundle
 import AccountContext
+import DGSimpleSettings
 
 private func generateBorderImage(theme: PresentationTheme, bordered: Bool, selected: Bool) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
@@ -97,7 +98,8 @@ public func donutgramAppIconItem(context: AccountContext, sectionId: ItemListSec
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
     let icons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
     let currentName: String?
-    if let alternateName = context.sharedContext.applicationBindings.getAlternateIconName() {
+    // An icon this build no longer has (one picked in an older build) shows as the default one.
+    if let alternateName = context.sharedContext.applicationBindings.getAlternateIconName(), icons.contains(where: { $0.name == alternateName }) {
         currentName = alternateName
     } else {
         currentName = icons.first(where: { $0.isDefault })?.name
@@ -107,6 +109,41 @@ public func donutgramAppIconItem(context: AccountContext, sectionId: ItemListSec
             updated()
         })
     })
+}
+
+/// The app icon as the icon pickers show it (the alternate icon's own image, BlueIcon for the default icon),
+/// rounded like a home-screen icon.
+public func donutgramAppIconThumbnail(iconName: String?, size: CGFloat) -> UIImage? {
+    guard let image = UIImage(named: iconName ?? "BlueIcon", in: getAppBundle(), compatibleWith: nil) else {
+        return nil
+    }
+    let bounds = CGRect(origin: CGPoint(), size: CGSize(width: size, height: size))
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = false
+    return UIGraphicsImageRenderer(size: bounds.size, format: format).image { _ in
+        UIBezierPath(roundedRect: bounds, cornerRadius: size * 0.2237).addClip()
+        image.draw(in: bounds)
+    }
+}
+
+/// The name of the «Иконка и остров» row and page. Phones without a notch or a Dynamic Island have no island.
+public func donutgramIconAndIslandTitle() -> String {
+    return DeviceMetrics.deviceHasAppBadge ? "Иконка и остров" : "Иконка приложения"
+}
+
+/// The «Иконка и остров» row of both appearance pages, the stock one and Donutgram's: the current icon and its caption,
+/// and the island that goes with it (`islandMark` indexes `DGSimpleSettings.appMarks`) on phones that show one.
+public func donutgramIconAndIslandItem(presentationData: ItemListPresentationData, sectionId: ItemListSectionId, iconName: String?, islandMark: Int, action: @escaping () -> Void, tag: ItemListItemTag?) -> ListViewItem {
+    // An icon this build no longer has (one picked in an older build) counts as the default one, as for the island.
+    let iconMark = DGSimpleSettings.appMarks[DGSimpleSettings.appMarkIndex(iconName: iconName)]
+    let icon = donutgramAppIconThumbnail(iconName: iconMark.iconName, size: 30.0)
+    let iconTitle = iconMark.title
+    if DeviceMetrics.deviceHasAppBadge, let island = UIImage(bundleImageName: DGSimpleSettings.appMarks[islandMark].islandAssetName) {
+        // Two thirds of the island's 93x22 pt; the caption goes under the title, clear of the island.
+        return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon, title: donutgramIconAndIslandTitle(), label: "", labelStyle: .image(image: island, size: CGSize(width: 62.0, height: 44.0 / 3.0)), additionalDetailLabel: iconTitle, sectionId: sectionId, style: .blocks, disclosureStyle: .arrow, action: action, tag: tag)
+    } else {
+        return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon, title: donutgramIconAndIslandTitle(), label: iconTitle, sectionId: sectionId, style: .blocks, disclosureStyle: .arrow, action: action, tag: tag)
+    }
 }
 
 private let badgeSize = CGSize(width: 24.0, height: 24.0)
@@ -394,7 +431,8 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                             var bordered = true
                             switch icon.name {
                                 case "BlueIcon":
-                                    name = item.strings.Appearance_AppIconDefault
+                                    // Donutgram: the default icon is called as in the island picker and the «Иконка и остров» row.
+                                    name = DGSimpleSettings.appMarks[DGSimpleSettings.appMarkIndex(iconName: nil)].title
                                 case "BlackIcon":
                                     name = item.strings.Appearance_AppIconDefaultX
                                 case "BlueClassicIcon":
@@ -419,39 +457,9 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = item.strings.Appearance_AppIconBlack
                                 case "PremiumTurbo":
                                     name = item.strings.Appearance_AppIconTurbo
-                                case "DgSnout":
-                                    name = "Пятачок"
-                                    bordered = false
-                                case "DgSnoutHead":
-                                    name = "Пятачок 2"
-                                    bordered = false
-                                case "DgPigPlane":
-                                    name = "Свинолёт"
-                                case "DgPigPlaneEars":
-                                    name = "Свинолёт 2"
-                                case "DgPilot":
-                                    name = "Пилот"
-                                    bordered = false
-                                case "DgPilotLens":
-                                    name = "Пилот 2"
-                                    bordered = false
-                                case "Dg3D":
-                                    name = "3D"
-                                    bordered = false
-                                case "Dg3DCircle":
-                                    name = "3D Круг"
-                                case "DgGlass":
-                                    name = "Стекло"
-                                case "DgGlassEyes":
-                                    name = "Стекло 2"
-                                case "DgKisser":
-                                    name = "Бойкиссер"
-                                case "DgKisserRed":
-                                    name = "Бойкиссер 2"
-                                case "DgCat":
-                                    name = "Котик"
                                 default:
-                                    name = icon.name
+                                    // Donutgram's icons take their captions from the same table as their islands.
+                                    name = DGSimpleSettings.appMarks.first(where: { $0.iconName == icon.name })?.title ?? icon.name
                             }
                         
                             imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {

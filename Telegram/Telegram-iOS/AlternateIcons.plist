@@ -5,26 +5,44 @@
         <array><string>BlueIcon</string><string>BlueNotificationIcon</string></array>
         <key>UIPrerenderedIcon</key><true/>
     </dict>
-    <key>DgSnout</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgSnout</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgSnoutHead</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgSnoutHead</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPigPlane</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlane</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPigPlaneEars</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlaneEars</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPilot</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPilot</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPilotLens</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPilotLens</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Dg3D</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Dg3D</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Dg3DCircle</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Dg3DCircle</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgGlass</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgGlass</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgGlassEyes</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgGlassEyes</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgRing</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgRing</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgBitten</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgBitten</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgChat</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgChat</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgHeart</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgHeart</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgKawaii</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgKawaii</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPigDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPigDonut</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPixel</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPixel</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgDonut3D</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgDonut3D</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPlanet</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPlanet</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPlane</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPlane</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgDrip</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgDrip</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPerspective</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPerspective</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgSticker</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgSticker</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgCatDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgCatDonut</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgChrome</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgChrome</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGlassDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGlassDonut</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGhost</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGhost</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgCoffee</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgCoffee</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgWatercolor</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgWatercolor</string></array><key>UIPrerenderedIcon</key><true/></dict>
     <key>DgKisser</key>
     <dict><key>CFBundleIconFiles</key><array><string>DgKisser</string></array><key>UIPrerenderedIcon</key><true/></dict>
     <key>DgKisserRed</key>

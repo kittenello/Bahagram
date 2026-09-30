@@ -5,26 +5,44 @@
         <array><string>BlueIconIpad</string><string>BlueIconLargeIpad</string><string>BlueNotificationIcon</string></array>
         <key>UIPrerenderedIcon</key><true/>
     </dict>
-    <key>DgSnout</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgSnoutIpad</string><string>DgSnoutLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgSnoutHead</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgSnoutHeadIpad</string><string>DgSnoutHeadLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPigPlane</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlaneIpad</string><string>DgPigPlaneLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPigPlaneEars</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPigPlaneEarsIpad</string><string>DgPigPlaneEarsLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPilot</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPilotIpad</string><string>DgPilotLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgPilotLens</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgPilotLensIpad</string><string>DgPilotLensLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Dg3D</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Dg3DIpad</string><string>Dg3DLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>Dg3DCircle</key>
-    <dict><key>CFBundleIconFiles</key><array><string>Dg3DCircleIpad</string><string>Dg3DCircleLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgGlass</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgGlassIpad</string><string>DgGlassLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
-    <key>DgGlassEyes</key>
-    <dict><key>CFBundleIconFiles</key><array><string>DgGlassEyesIpad</string><string>DgGlassEyesLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgRing</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgRingIpad</string><string>DgRingLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgBitten</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgBittenIpad</string><string>DgBittenLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgChat</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgChatIpad</string><string>DgChatLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgHeart</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgHeartIpad</string><string>DgHeartLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgKawaii</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgKawaiiIpad</string><string>DgKawaiiLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPigDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPigDonutIpad</string><string>DgPigDonutLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPixel</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPixelIpad</string><string>DgPixelLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgDonut3D</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgDonut3DIpad</string><string>DgDonut3DLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPlanet</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPlanetIpad</string><string>DgPlanetLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPlane</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPlaneIpad</string><string>DgPlaneLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgDrip</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgDripIpad</string><string>DgDripLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgPerspective</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgPerspectiveIpad</string><string>DgPerspectiveLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgSticker</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgStickerIpad</string><string>DgStickerLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgCatDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgCatDonutIpad</string><string>DgCatDonutLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgChrome</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgChromeIpad</string><string>DgChromeLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGlassDonut</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGlassDonutIpad</string><string>DgGlassDonutLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgGhost</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgGhostIpad</string><string>DgGhostLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgCoffee</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgCoffeeIpad</string><string>DgCoffeeLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
+    <key>DgWatercolor</key>
+    <dict><key>CFBundleIconFiles</key><array><string>DgWatercolorIpad</string><string>DgWatercolorLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
     <key>DgKisser</key>
     <dict><key>CFBundleIconFiles</key><array><string>DgKisserIpad</string><string>DgKisserLargeIpad</string></array><key>UIPrerenderedIcon</key><true/></dict>
     <key>DgKisserRed</key>

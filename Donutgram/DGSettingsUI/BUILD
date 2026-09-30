@@ -11,6 +11,7 @@ swift_library(
     ],
     deps = [
         "//Donutgram/DGSimpleSettings:DGSimpleSettings",
+        "//submodules/AppBundle:AppBundle",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

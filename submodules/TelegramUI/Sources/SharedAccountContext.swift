@@ -16,6 +16,7 @@ import LegacyUI
 import ChatListUI
 import PeerInfoUI
 import SettingsUI
+import DGSettingsUI
 import UrlHandling
 import LegacyMediaPickerUI
 import LocalMediaResources
@@ -2847,6 +2848,10 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     
     public func makeArchiveSettingsController(context: AccountContext) -> ViewController {
         return archiveSettingsController(context: context)
+    }
+    
+    public func makeDonutgramIconAndIslandController(context: AccountContext) -> ViewController {
+        return dgIconAndIslandController(context: context)
     }
     
     public func makeFilterSettingsController(context: AccountContext, modal: Bool, scrollToTags: Bool, dismissed: (() -> Void)?) -> ViewController {

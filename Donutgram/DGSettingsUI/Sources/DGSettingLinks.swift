@@ -26,6 +26,7 @@ enum DGSettingsPage: String {
     case ghostOptions = "ghost-options"
     case silent
     case appearance
+    case iconAndIsland = "icon-and-island"
     case dialogId = "dialog-id"
     case chats
     case chatListAppearance = "chat-list-appearance"

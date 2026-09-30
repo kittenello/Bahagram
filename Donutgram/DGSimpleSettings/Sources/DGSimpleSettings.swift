@@ -100,6 +100,7 @@ public final class DGSimpleSettings {
         static let chatListSenderAvatars = "donutgram.chats.appearance.senderAvatars"
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
+        static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
         static let localPremiumPeerIds = "donutgram.other.localPremiumPeerIds"
 
         static let onlyAddedStickers = "donutgram.chats.onlyAddedStickers"
@@ -366,8 +367,61 @@ public final class DGSimpleSettings {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
     }
-    /// 0 is the standard island, 1 is a Donutgram badge, and 2 is a compact donut badge.
-    public var islandStyle: Int { get { min(max(integer(Key.islandStyle), 0), 2) } set { setInteger(min(max(newValue, 0), 2), Key.islandStyle) } }
+    /// An app icon and the island that goes with it: the badge under the notch or the Dynamic Island,
+    /// seen on screenshots and screen recordings.
+    public struct AppMark {
+        /// The caption in both pickers.
+        public let title: String
+        /// The alternate icon's name (Telegram/Telegram-iOS/<name>.alticon); nil is the default icon.
+        public let iconName: String?
+        /// The island image in TelegramUI's asset catalog.
+        public let islandAssetName: String
+    }
+    /// Every icon with its island, in picker order, the default icon first. An alternate icon must also be listed
+    /// in Telegram/BUILD (alternate_icon_folders) and in both Telegram/Telegram-iOS/AlternateIcons*.plist.
+    public static let appMarks: [AppMark] = [
+        AppMark(title: "Основной", iconName: nil, islandAssetName: "Components/AppBadge"),
+        AppMark(title: "Кольцо", iconName: "DgRing", islandAssetName: "Components/IslandRing"),
+        AppMark(title: "Надкушенный", iconName: "DgBitten", islandAssetName: "Components/IslandBitten"),
+        AppMark(title: "Пончик-чат", iconName: "DgChat", islandAssetName: "Components/IslandChat"),
+        AppMark(title: "Сердечко", iconName: "DgHeart", islandAssetName: "Components/IslandHeart"),
+        AppMark(title: "Мордочка", iconName: "DgKawaii", islandAssetName: "Components/IslandKawaii"),
+        AppMark(title: "Свинопончик", iconName: "DgPigDonut", islandAssetName: "Components/IslandPigDonut"),
+        AppMark(title: "Пиксель", iconName: "DgPixel", islandAssetName: "Components/IslandPixel"),
+        AppMark(title: "3D", iconName: "DgDonut3D", islandAssetName: "Components/IslandDonut3D"),
+        AppMark(title: "Планета", iconName: "DgPlanet", islandAssetName: "Components/IslandPlanet"),
+        AppMark(title: "Самолётик", iconName: "DgPlane", islandAssetName: "Components/IslandPlane"),
+        AppMark(title: "Глазурь", iconName: "DgDrip", islandAssetName: "Components/IslandDrip"),
+        AppMark(title: "Перспектива", iconName: "DgPerspective", islandAssetName: "Components/IslandPerspective"),
+        AppMark(title: "Стикер", iconName: "DgSticker", islandAssetName: "Components/IslandSticker"),
+        AppMark(title: "Котопончик", iconName: "DgCatDonut", islandAssetName: "Components/IslandCatDonut"),
+        AppMark(title: "Хром", iconName: "DgChrome", islandAssetName: "Components/IslandChrome"),
+        AppMark(title: "Стекло", iconName: "DgGlassDonut", islandAssetName: "Components/IslandGlassDonut"),
+        AppMark(title: "Призрак", iconName: "DgGhost", islandAssetName: "Components/IslandGhost"),
+        AppMark(title: "Кофе", iconName: "DgCoffee", islandAssetName: "Components/IslandCoffee"),
+        AppMark(title: "Акварель", iconName: "DgWatercolor", islandAssetName: "Components/IslandWatercolor"),
+        AppMark(title: "Бойкиссер", iconName: "DgKisser", islandAssetName: "Components/IslandKisser"),
+        AppMark(title: "Бойкиссер 2", iconName: "DgKisserRed", islandAssetName: "Components/IslandKisserRed"),
+        AppMark(title: "Котик", iconName: "DgCat", islandAssetName: "Components/IslandCat")
+    ]
+    /// The mark of an app icon (`UIApplication.alternateIconName`, nil for the default icon); an unknown name gets the default.
+    public static func appMarkIndex(iconName: String?) -> Int {
+        return DGSimpleSettings.appMarks.firstIndex(where: { $0.iconName == iconName }) ?? 0
+    }
+    /// Index into `appMarks` of the island picked by hand, shown while `islandFollowsIcon` is off; 0 is the standard badge.
+    public var islandStyle: Int {
+        get { min(max(integer(Key.islandStyle), 0), DGSimpleSettings.appMarks.count - 1) }
+        set { setInteger(min(max(newValue, 0), DGSimpleSettings.appMarks.count - 1), Key.islandStyle) }
+    }
+    /// «Остров как у иконки»: the island is the current app icon's pair. On by default.
+    public var islandFollowsIcon: Bool {
+        get { self.defaults.object(forKey: Key.islandFollowsIcon) == nil ? true : bool(Key.islandFollowsIcon) }
+        set { setBool(newValue, Key.islandFollowsIcon) }
+    }
+    /// Index into `appMarks` of the island shown with the given app icon.
+    public func islandMarkIndex(iconName: String?) -> Int {
+        return self.islandFollowsIcon ? DGSimpleSettings.appMarkIndex(iconName: iconName) : self.islandStyle
+    }
 
     public func localPremium(accountId: Int64) -> Bool {
         return self.defaults.stringArray(forKey: Key.localPremiumPeerIds)?.contains(String(accountId)) ?? false

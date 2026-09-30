@@ -9,6 +9,7 @@ import ItemListUI
 import PresentationDataUtils
 import SettingsUI
 import UndoUI
+import DGSimpleSettings
 
 struct DGListState: Equatable { var revision: Int = 0 }
 
@@ -64,6 +65,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "greetingSticker": return "hand.wave"
     case "mentionComma": return "at"
     case "snow": return "snowflake"
+    case "islandFollowsIcon": return "link"
     case "pollResultsBeforeVoting": return "chart.bar"
     case "doubleTapSeek": return "goforward.15"
     case "hideArchive", "openArchiveOnPull": return "archivebox"
@@ -94,18 +96,23 @@ enum DGListEntry: ItemListNodeEntry {
     // The flags are diff keys: the bubbles read DGSimpleSettings at layout time.
     case messagePreview(Int32, Int32, Bool, Bool, Bool, Bool)
     case chatListPreview(Int32, Int32, Bool, Bool, Bool, Bool, Bool, Int)
-    case appIcons(Int32, Int32)
+    // The Int is the current icon's DGSimpleSettings.appMarks index: a diff key, so the grid moves its selection.
+    case appIcons(Int32, Int32, Int)
     case islandStyles(Int32, Int32, Int)
     case speedSlider(Int32, Int32, Int)
+    // The «Иконка и остров» row: DGSimpleSettings.appMarks indices of the icon and of the island, as diff keys.
+    case iconAndIsland(Int32, Int32, Int, Int)
+    // «Предпросмотр» on «Иконка и остров»: DGSimpleSettings.appMarks indices of the icon and of the island.
+    case iconIslandPreview(Int32, Int32, Int, Int)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _, _, _), let .appIcons(_, section), let .islandStyles(_, section, _), let .speedSlider(_, section, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _, _, _), let .appIcons(_, section, _), let .islandStyles(_, section, _), let .speedSlider(_, section, _), let .iconAndIsland(_, section, _, _), let .iconIslandPreview(_, section, _, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _, _), let .appIcons(id, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _, _), let .appIcons(id, _, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _), let .iconAndIsland(id, _, _, _), let .iconIslandPreview(id, _, _, _): return id
         }
     }
     // The tag the row's node reports: the one item(presentationData:arguments:) gives the item,
@@ -113,6 +120,7 @@ enum DGListEntry: ItemListNodeEntry {
     var tag: ItemListItemTag? {
         switch self {
         case let .toggle(_, _, key, _, _, _), let .disclosure(_, _, key, _, _), let .checkbox(_, _, key, _, _), let .input(_, _, key, _, _): return DGSettingItemTag(key: key)
+        case .iconAndIsland: return DGSettingItemTag(key: "iconAndIsland")
         case .speedSlider: return DGSettingItemTag(key: "downloadAcceleration")
         case .chatListPreview: return DGSettingItemTag(key: "chatListPreview")
         default: return nil
@@ -149,6 +157,10 @@ enum DGListEntry: ItemListNodeEntry {
             return DGIslandStyleItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("islandStyle:\($0)") })
         case let .speedSlider(_, _, value):
             return DGSpeedSliderItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("downloadAcceleration:\($0)") })
+        case let .iconAndIsland(_, _, iconMark, islandMark):
+            return donutgramIconAndIslandItem(presentationData: presentationData, sectionId: self.section, iconName: DGSimpleSettings.appMarks[iconMark].iconName, islandMark: islandMark, action: { arguments.open("iconAndIsland") }, tag: DGSettingItemTag(key: "iconAndIsland"))
+        case let .iconIslandPreview(_, _, iconMark, islandMark):
+            return DGIconIslandPreviewItem(theme: presentationData.theme, sectionId: self.section, icon: DGSimpleSettings.appMarks[iconMark], island: DGSimpleSettings.appMarks[islandMark])
         }
     }
 }

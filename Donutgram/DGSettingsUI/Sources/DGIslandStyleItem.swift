@@ -1,9 +1,11 @@
 import UIKit
 import AsyncDisplayKit
 import Display
+import AppBundle
 import ItemListUI
 import SwiftSignalKit
 import TelegramPresentationData
+import DGSimpleSettings
 
 final class DGIslandStyleItem: ListViewItem, ItemListItem {
     let theme: PresentationTheme
@@ -42,9 +44,22 @@ final class DGIslandStyleItem: ListViewItem, ItemListItem {
 }
 
 private final class DGIslandStyleItemNode: ListViewItemNode {
+    // A grid of three cards per row, one per DGSimpleSettings.appMarks island: a 52 pt card, its caption below,
+    // 14 pt between rows.
+    private static let columns = 3
+    private static let topInset: CGFloat = 14.0
+    private static let rowHeight: CGFloat = 90.0
+    private static var contentHeight: CGFloat {
+        let rows = (DGSimpleSettings.appMarks.count + DGIslandStyleItemNode.columns - 1) / DGIslandStyleItemNode.columns
+        return DGIslandStyleItemNode.topInset + CGFloat(rows) * DGIslandStyleItemNode.rowHeight
+    }
+
     private var item: DGIslandStyleItem?
-    private var layoutWidth: CGFloat = 0
+    private var params: ListViewItemLayoutParams?
+    private var neighbors: ItemListNeighbors?
+    private let cornersView = UIImageView()
     private var buttons: [UIButton] = []
+    private var imageViews: [UIImageView] = []
     private var captions: [UILabel] = []
 
     init() {
@@ -53,22 +68,32 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
 
     override func didLoad() {
         super.didLoad()
-        for index in 0 ..< 3 {
+        self.cornersView.isUserInteractionEnabled = false
+        self.view.addSubview(self.cornersView)
+        // One card per island, drawn as the island itself.
+        for (index, mark) in DGSimpleSettings.appMarks.enumerated() {
+            let title = mark.title
             let button = UIButton(type: .custom)
             button.tag = index
-            button.layer.cornerRadius = 18
-            button.layer.borderWidth = 2
-            button.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
-            button.titleLabel?.adjustsFontSizeToFitWidth = true
-            button.titleLabel?.minimumScaleFactor = 0.65
+            button.layer.cornerRadius = 14.0
+            button.layer.borderWidth = 2.0
+            button.accessibilityLabel = title
             button.addTarget(self, action: #selector(selected(_:)), for: .touchUpInside)
             self.view.addSubview(button)
             self.buttons.append(button)
 
+            let imageView = UIImageView(image: UIImage(bundleImageName: mark.islandAssetName))
+            imageView.contentMode = .scaleAspectFit
+            imageView.isUserInteractionEnabled = false
+            button.addSubview(imageView)
+            self.imageViews.append(imageView)
+
             let caption = UILabel()
-            caption.font = .systemFont(ofSize: 12)
+            caption.font = .systemFont(ofSize: 12.0)
             caption.textAlignment = .center
-            caption.text = ["Основной", "Пончик", "Мини"][index]
+            caption.text = title
+            // The card already reads its title to VoiceOver.
+            caption.isAccessibilityElement = false
             self.view.addSubview(caption)
             self.captions.append(caption)
         }
@@ -77,32 +102,53 @@ private final class DGIslandStyleItemNode: ListViewItemNode {
 
     func asyncLayout() -> (_ item: DGIslandStyleItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
-            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 116), insets: itemListNeighborsGroupedInsets(neighbors, params))
+            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: DGIslandStyleItemNode.contentHeight), insets: itemListNeighborsGroupedInsets(neighbors, params))
             return (layout, { [weak self] in
                 self?.item = item
-                self?.layoutWidth = params.width
+                self?.params = params
+                self?.neighbors = neighbors
                 self?.updateControls()
             })
         }
     }
 
     private func updateControls() {
-        guard let item else { return }
-        self.backgroundColor = item.theme.list.itemBlocksBackgroundColor
-        let spacing: CGFloat = 9
-        let cardWidth = max(65, (self.layoutWidth - 32 - spacing * 2) / 3)
-        for index in 0 ..< self.buttons.count {
-            let button = self.buttons[index]
-            let x = 16 + CGFloat(index) * (cardWidth + spacing)
-            button.frame = CGRect(x: x, y: 13, width: cardWidth, height: 69)
-            button.setTitle(["◉ DONUTGRAM", "🍩 DONUT", "🍩"][index], for: .normal)
-            button.backgroundColor = index == 1 ? UIColor(red: 0.32, green: 0.12, blue: 0.24, alpha: 1) : .black
-            button.setTitleColor(index == 1 ? UIColor(red: 1, green: 0.77, blue: 0.85, alpha: 1) : .white, for: .normal)
-            button.layer.borderColor = (index == item.value ? item.theme.list.itemAccentColor : UIColor.clear).cgColor
-            button.accessibilityLabel = self.captions[index].text
-            button.accessibilityTraits = index == item.value ? [.button, .selected] : [.button]
-            self.captions[index].frame = CGRect(x: x, y: 85, width: cardWidth, height: 20)
-            self.captions[index].textColor = index == item.value ? item.theme.list.itemAccentColor : item.theme.list.itemSecondaryTextColor
+        guard let item, let params, let neighbors else { return }
+        let theme = item.theme
+        self.backgroundColor = theme.list.itemBlocksBackgroundColor
+
+        // The block spans the list insets like the other rows; the corner image rounds it like the
+        // neighbouring glass rows by painting the page background over its corners.
+        let blockX = params.leftInset
+        let blockWidth = params.width - params.leftInset - params.rightInset
+        var hasTopCorners = true
+        var hasBottomCorners = true
+        if case .sameSection(false) = neighbors.top {
+            hasTopCorners = false
+        }
+        if case .sameSection(false) = neighbors.bottom {
+            hasBottomCorners = false
+        }
+        self.cornersView.image = itemListHasRoundedBlockLayout(params) ? PresentationResourcesItemList.cornersImage(theme, top: hasTopCorners, bottom: hasBottomCorners, glass: true) : nil
+        self.cornersView.frame = CGRect(x: blockX, y: 0.0, width: blockWidth, height: DGIslandStyleItemNode.contentHeight)
+
+        let sidePadding: CGFloat = 16.0
+        let spacing: CGFloat = 10.0
+        let columns = CGFloat(DGIslandStyleItemNode.columns)
+        let cardWidth = floor((blockWidth - sidePadding * 2.0 - spacing * (columns - 1.0)) / columns)
+        for (index, button) in self.buttons.enumerated() {
+            let isSelected = index == item.value
+            let x = blockX + sidePadding + CGFloat(index % DGIslandStyleItemNode.columns) * (cardWidth + spacing)
+            let y = DGIslandStyleItemNode.topInset + CGFloat(index / DGIslandStyleItemNode.columns) * DGIslandStyleItemNode.rowHeight
+            button.frame = CGRect(x: x, y: y, width: cardWidth, height: 52.0)
+            button.backgroundColor = theme.list.blocksBackgroundColor
+            button.layer.borderColor = (isSelected ? theme.list.itemAccentColor : UIColor.clear).cgColor
+            button.accessibilityTraits = isSelected ? [.button, .selected] : [.button]
+            self.imageViews[index].frame = button.bounds.insetBy(dx: 6.0, dy: 8.0)
+
+            let caption = self.captions[index]
+            caption.frame = CGRect(x: x, y: y + 58.0, width: cardWidth, height: 18.0)
+            caption.textColor = isSelected ? theme.list.itemAccentColor : theme.list.itemSecondaryTextColor
         }
     }
 
