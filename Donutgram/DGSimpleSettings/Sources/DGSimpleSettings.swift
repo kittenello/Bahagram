@@ -101,6 +101,7 @@ public final class DGSimpleSettings {
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
+        static let pickedAppIconName = "donutgram.appearance.pickedAppIconName"
         static let localPremiumPeerIds = "donutgram.other.localPremiumPeerIds"
 
         static let onlyAddedStickers = "donutgram.chats.onlyAddedStickers"
@@ -407,6 +408,16 @@ public final class DGSimpleSettings {
     /// The mark of an app icon (`UIApplication.alternateIconName`, nil for the default icon); an unknown name gets the default.
     public static func appMarkIndex(iconName: String?) -> Int {
         return DGSimpleSettings.appMarks.firstIndex(where: { $0.iconName == iconName }) ?? 0
+    }
+    /// The app icon last set from the app, as `UIApplication.alternateIconName` names it (nil for the default icon).
+    /// On the phone iOS doesn't report the icon back after a change, so the app keeps it here.
+    public var pickedAppIconName: String? {
+        get { self.defaults.string(forKey: Key.pickedAppIconName).flatMap { $0.isEmpty ? nil : $0 } }
+        set { self.defaults.set(newValue ?? "", forKey: Key.pickedAppIconName) }
+    }
+    /// False until the icon is first changed from the app in this install.
+    public var hasPickedAppIcon: Bool {
+        return self.defaults.object(forKey: Key.pickedAppIconName) != nil
     }
     /// Index into `appMarks` of the island picked by hand, shown while `islandFollowsIcon` is off; 0 is the standard badge.
     public var islandStyle: Int {

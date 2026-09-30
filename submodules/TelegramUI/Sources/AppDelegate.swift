@@ -976,11 +976,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 return []
             }
         }, getAlternateIconName: {
-            if #available(iOS 10.3, *) {
-                return application.alternateIconName
-            } else {
-                return nil
-            }
+            return self.currentAlternateIconName()
         }, requestSetAlternateIconName: { name, completion in
             application.setAlternateIconName(name, completionHandler: { error in
                 if let error = error {
@@ -989,6 +985,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 // UIKit calls this off the main queue. Every icon picker ends up here, so «Остров как у иконки»
                 // follows the icon whichever one was used.
                 Queue.mainQueue().async {
+                    if error == nil {
+                        DGSimpleSettings.shared.pickedAppIconName = name
+                    }
                     self.updateDonutgramBadge()
                     completion(error == nil)
                 }
@@ -1909,10 +1908,19 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     /// The Donutgram island badge under the notch or the Dynamic Island: the current app icon's pair, or the one
     /// picked by hand when «Остров как у иконки» is off. Set here so that Display does not depend on DGSimpleSettings.
     func updateDonutgramBadge() {
-        let mark = DGSimpleSettings.appMarks[DGSimpleSettings.shared.islandMarkIndex(iconName: UIApplication.shared.alternateIconName)]
+        let mark = DGSimpleSettings.appMarks[DGSimpleSettings.shared.islandMarkIndex(iconName: self.currentAlternateIconName())]
         if let image = UIImage(bundleImageName: mark.islandAssetName) {
             self.mainWindow?.badgeView.image = image
         }
+    }
+
+    /// The current app icon's name, nil for the default icon: the one last set from the app. On the phone
+    /// `UIApplication.alternateIconName` kept returning the default icon after a successful change, also when asked
+    /// again later, so the icon pickers' selection, the preview and the island stayed on it. iOS is asked only
+    /// until the first change.
+    private func currentAlternateIconName() -> String? {
+        let settings = DGSimpleSettings.shared
+        return settings.hasPickedAppIcon ? settings.pickedAppIconName : UIApplication.shared.alternateIconName
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
