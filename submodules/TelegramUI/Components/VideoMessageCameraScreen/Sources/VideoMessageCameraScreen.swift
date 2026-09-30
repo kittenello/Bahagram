@@ -889,9 +889,10 @@ public class VideoMessageCameraScreen: ViewController {
         private let zoomSlider = UISlider()
         private let zoomLabel = UILabel()
         private var displayedZoom: CGFloat = 1.0
+        private var minZoom: CGFloat = 1.0
         private var maxZoom: CGFloat = 1.0
         private var zoomPosition: Camera.Position?
-        private let maxZoomDisposable = MetaDisposable()
+        private let zoomRangeDisposable = MetaDisposable()
         
         private var resultPreviewView: ResultPreviewView?
         
@@ -1012,10 +1013,10 @@ public class VideoMessageCameraScreen: ViewController {
             self.zoomButtonsView.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
             self.zoomButtonsView.layer.cornerRadius = 22.0
             self.zoomButtonsView.clipsToBounds = true
-            for zoom in [1, 2, 5] {
+            for zoom in [CGFloat(0.5), 1.0, 2.0, 5.0] {
                 let button = UIButton(type: .system)
-                button.tag = zoom
-                button.setTitle(zoom == 1 ? "1×" : "\(zoom)", for: .normal)
+                button.tag = Int(zoom * 10.0)
+                button.setTitle(String(format: "%g×", Double(zoom)), for: .normal)
                 button.setTitleColor(.white, for: .normal)
                 button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
                 self.zoomButtonsView.addArrangedSubview(button)
@@ -1069,7 +1070,7 @@ public class VideoMessageCameraScreen: ViewController {
         deinit {
             self.cameraStateDisposable?.dispose()
             self.idleTimerExtensionDisposable.dispose()
-            self.maxZoomDisposable.dispose()
+            self.zoomRangeDisposable.dispose()
             self.backgroundView.removeFromSuperview()
         }
         
@@ -1182,7 +1183,7 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         @objc private func zoomButtonPressed(_ sender: UIButton) {
-            self.setDisplayedZoom(CGFloat(sender.tag))
+            self.setDisplayedZoom(CGFloat(sender.tag) / 10.0)
         }
 
         @objc private func zoomSliderChanged(_ sender: UISlider) {
@@ -1190,7 +1191,7 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         private func setDisplayedZoom(_ value: CGFloat, rampRate: CGFloat? = nil) {
-            self.displayedZoom = min(max(value, 1.0), self.maxZoom)
+            self.displayedZoom = min(max(value, self.minZoom), self.maxZoom)
             self.camera?.setZoomFactor(self.displayedZoom, rampRate: rampRate)
             self.updateZoomControls()
         }
@@ -1202,31 +1203,38 @@ public class VideoMessageCameraScreen: ViewController {
             guard let camera = self.camera else {
                 return
             }
+            self.minZoom = 1.0
+            self.maxZoom = 1.0
             self.setDisplayedZoom(1.0)
-            self.maxZoomDisposable.set((camera.maxZoomFactor
-            |> deliverOnMainQueue).startStrict(next: { [weak self] maxZoomFactor in
+            self.zoomRangeDisposable.set((camera.zoomFactorRange
+            |> deliverOnMainQueue).startStrict(next: { [weak self] zoomRange in
                 guard let self else {
                     return
                 }
-                self.maxZoom = max(1.0, min(maxZoomFactor, maxRoundVideoZoom))
+                self.minZoom = max(0.5, zoomRange.lowerBound)
+                self.maxZoom = max(self.minZoom, min(zoomRange.upperBound, maxRoundVideoZoom))
                 // Re-clamps a value set while the previous camera's limit still applied.
                 self.setDisplayedZoom(self.displayedZoom)
             }))
         }
 
         private func updateZoomControls() {
-            let enabled = DGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > 1.0
-            let expanded = self.displayedZoom > 1.05
+            let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
+            let enabled = self.previewState == nil && (self.minZoom < 1.0 || (extendedZoomEnabled && self.maxZoom > 1.0))
+            let expanded = extendedZoomEnabled && self.displayedZoom > 1.05
             self.zoomButtonsView.isHidden = !enabled || expanded
             self.zoomSlider.isHidden = !enabled || !expanded
             self.zoomLabel.isHidden = !enabled || !expanded
+            self.zoomSlider.minimumValue = Float(self.minZoom)
             self.zoomSlider.maximumValue = Float(self.maxZoom)
             self.zoomSlider.value = Float(self.displayedZoom)
             self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
             for button in self.zoomButtons {
-                button.isHidden = CGFloat(button.tag) > self.maxZoom
-                button.backgroundColor = abs(self.displayedZoom - CGFloat(button.tag)) < 0.05 ? .systemBlue : .clear
+                let zoom = CGFloat(button.tag) / 10.0
+                button.isHidden = zoom < self.minZoom || zoom > self.maxZoom || (!extendedZoomEnabled && zoom > 1.0)
+                button.backgroundColor = abs(self.displayedZoom - zoom) < 0.05 ? .systemBlue : .clear
             }
+            self.zoomButtonsView.bounds.size.width = CGFloat(self.zoomButtons.filter { !$0.isHidden }.count) * 44.0
         }
                 
         private var animatingIn = false

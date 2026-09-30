@@ -36,9 +36,9 @@ final class CameraDevice {
         if #available(iOS 13.0, *), position != .front && !dual {
             if let device = AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: position) {
                 selectedDevice = device
-            } else if let device = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: position) {
-                selectedDevice = device
             } else if let device = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: position) {
+                selectedDevice = device
+            } else if let device = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: position) {
                 selectedDevice = device
             } else if let device = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInTelephotoCamera], mediaType: .video, position: position).devices.first {
                 selectedDevice = device
@@ -347,6 +347,15 @@ final class CameraDevice {
         }
     }
     
+    // Displayed zoom is relative to the wide lens, whereas AVFoundation's raw
+    // minimum is >= 1.0. On a virtual ultra-wide camera, raw 1.0 is displayed 0.5×.
+    var minZoomFactor: CGFloat {
+        guard let device = self.videoDevice else {
+            return 1.0
+        }
+        return max(1.0, device.minAvailableVideoZoomFactor) / device.neutralZoomFactor
+    }
+
     // Donutgram: the largest `setZoomFactor` value the active format allows.
     var maxZoomFactor: CGFloat {
         guard let device = self.videoDevice else {
