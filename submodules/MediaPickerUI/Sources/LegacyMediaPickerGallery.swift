@@ -12,6 +12,45 @@ import LegacyMediaPickerUI
 import Photos
 import MediaAssetsContext
 
+private func roundVideoAdjustments(for item: TGMediaEditableItem, editingContext: TGMediaEditingContext) -> TGVideoEditAdjustments? {
+    guard item.isVideo, let originalSize = item.originalSize, let duration = item.originalDuration,
+          originalSize.width.isFinite, originalSize.height.isFinite,
+          originalSize.width >= 16.0, originalSize.height >= 16.0,
+          duration.isFinite, duration > 0.0 else {
+        return nil
+    }
+
+    let current = editingContext.adjustments(for: item) as? TGVideoEditAdjustments
+    let bounds = CGRect(origin: .zero, size: originalSize)
+    var cropRect = current?.cropRect ?? bounds
+    if cropRect.isEmpty {
+        cropRect = bounds
+    }
+    cropRect = cropRect.intersection(bounds)
+    let side = min(cropRect.width, cropRect.height)
+    guard side.isFinite, side >= 16.0 else {
+        return nil
+    }
+    cropRect = CGRect(x: cropRect.midX - side / 2.0, y: cropRect.midY - side / 2.0, width: side, height: side)
+
+    let trimStart = max(0.0, current?.trimStartValue ?? 0.0)
+    let currentTrimEnd = current?.trimEndValue ?? 0.0
+    let trimEnd = min(duration, currentTrimEnd > 0.0 ? currentTrimEnd : duration, trimStart + 60.0)
+    guard trimStart.isFinite, trimEnd.isFinite, trimEnd > trimStart else {
+        return nil
+    }
+
+    var values = current?.dictionary() ?? [:]
+    values["originalSize"] = NSValue(cgSize: originalSize)
+    values["cropRect"] = NSValue(cgRect: cropRect)
+    values["trimStart"] = trimStart
+    values["trimEnd"] = trimEnd
+    values["sendAsGif"] = false
+    values["bounce"] = false
+    values["preset"] = NSNumber(value: TGMediaVideoConversionPresetVideoMessage.rawValue)
+    return TGVideoEditAdjustments(dictionary: values)
+}
+
 private func galleryFetchResultItems(
     fetchResult: PHFetchResult<PHAsset>,
     index: Int,
@@ -399,7 +438,25 @@ func presentLegacyMediaPickerGallery(
                         }
                     }
 
-                    if let sourceView, let paintStickersContext, paintStickersContext.presentMediaPickerSendActionMenu?(sourceView, hasSilentPosting, sendWhenOnlineAvailable && effectiveHasSchedule, effectiveHasSchedule, reminder, hasTimer, sendSilently, sendWhenOnline, schedule, sendWithTimer) == true {
+                    var sendAsRoundVideo: (() -> Void)?
+                    let selectedItems = selectionContext.selectedItems() ?? []
+                    let onlyCurrentItemSelected = selectedItems.isEmpty || (selectedItems.count == 1 && (selectedItems.first as? TGMediaSelectableItem)?.uniqueIdentifier == item.asset.uniqueIdentifier)
+                    var canSendRoundVideo = true
+                    if case let .channel(channel) = peer {
+                        canSendRoundVideo = channel.hasBannedPermission(.banSendInstantVideos) == nil
+                    } else if case let .legacyGroup(group) = peer {
+                        canSendRoundVideo = !group.hasBannedPermission(.banSendInstantVideos)
+                    }
+                    if !asFile, onlyCurrentItemSelected, canSendRoundVideo, let editingContext,
+                       editingContext.price(for: item.asset) == nil,
+                       let adjustments = roundVideoAdjustments(for: item.asset, editingContext: editingContext) {
+                        sendAsRoundVideo = {
+                            editingContext.setAdjustments(adjustments, for: item.asset)
+                            send()
+                        }
+                    }
+
+                    if let sourceView, let paintStickersContext, paintStickersContext.presentMediaPickerSendActionMenu?(sourceView, hasSilentPosting, sendWhenOnlineAvailable && effectiveHasSchedule, effectiveHasSchedule, reminder, hasTimer, sendSilently, sendWhenOnline, schedule, sendWithTimer, sendAsRoundVideo) == true {
                         let hapticFeedback = HapticFeedback()
                         hapticFeedback.impact()
                         return
