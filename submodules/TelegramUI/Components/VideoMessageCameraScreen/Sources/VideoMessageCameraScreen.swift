@@ -2241,7 +2241,7 @@ public class VideoMessageCameraScreen: ViewController {
     
     private func requestAudioSession() {
         let audioSessionType: ManagedAudioSessionType
-        if self.context.sharedContext.currentMediaInputSettings.with({ $0 }).pauseMusicOnRecording { 
+        if !DGSimpleSettings.shared.musicPlaybackExceptions.contains(.roundVideos) {
             audioSessionType = .record(speaker: false, video: false, withOthers: false)
         } else {
             audioSessionType = .record(speaker: false, video: false, withOthers: true)
