@@ -565,6 +565,14 @@ private final class CameraContext {
     var maxZoomFactor: CGFloat {
         return self.visibleZoomDevice?.maxZoomFactor ?? 1.0
     }
+
+    var zoomFactorRange: ClosedRange<CGFloat> {
+        guard let device = self.visibleZoomDevice else {
+            return 1.0 ... 1.0
+        }
+        let minimum = device.minZoomFactor
+        return minimum ... max(minimum, device.maxZoomFactor)
+    }
     
     func takePhoto() -> Signal<PhotoCaptureResult, NoError> {
         guard let mainDeviceContext = self.mainDeviceContext else {
@@ -1021,6 +1029,20 @@ public final class Camera {
         }
     }
     
+    /// Zoom relative to the wide-angle lens, including 0.5× on supported rear cameras.
+    /// Emits once; query again after changing camera position.
+    public var zoomFactorRange: Signal<ClosedRange<CGFloat>, NoError> {
+        return Signal { subscriber in
+            self.queue.async {
+                if let context = self.contextRef?.takeUnretainedValue() {
+                    subscriber.putNext(context.zoomFactorRange)
+                }
+                subscriber.putCompletion()
+            }
+            return EmptyDisposable
+        }
+    }
+
     public func setTorchActive(_ active: Bool) {
         self.queue.async {
             if let context = self.contextRef?.takeUnretainedValue() {
@@ -1190,6 +1212,13 @@ public final class Camera {
     
     public static func isDualCameraSupported(forRoundVideo: Bool = false) -> Bool {
         if #available(iOS 13.0, *), AVCaptureMultiCamSession.isMultiCamSupported && !DeviceModel.current.isIpad {
+            // The round-video MultiCam path uses separate physical front/back cameras.
+            // An exclusive session enables the rear virtual camera to switch lenses
+            // down to 0.5×, independently of Low Power Mode. Position flips still use
+            // the existing single-camera recording path.
+            if forRoundVideo, AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) != nil {
+                return false
+            }
             if forRoundVideo && (ProcessInfo.processInfo.isLowPowerModeEnabled || DeviceModel.current == .iPhoneXR) {
                 return false
             }
