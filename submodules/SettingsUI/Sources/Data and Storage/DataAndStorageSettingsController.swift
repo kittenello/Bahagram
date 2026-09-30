@@ -29,7 +29,6 @@ private final class DataAndStorageControllerArguments {
     let toggleVoiceUseLessData: (Bool) -> Void
     let openSaveIncoming: (AutomaticSaveIncomingPeerType) -> Void
     let toggleSaveEditedPhotos: (Bool) -> Void
-    let togglePauseMusicOnRecording: (Bool) -> Void
     let toggleRaiseToListen: (Bool) -> Void
     let toggleDownloadInBackground: (Bool) -> Void
     let openIntents: () -> Void
@@ -44,7 +43,6 @@ private final class DataAndStorageControllerArguments {
         toggleVoiceUseLessData: @escaping (Bool) -> Void,
         openSaveIncoming: @escaping (AutomaticSaveIncomingPeerType) -> Void,
         toggleSaveEditedPhotos: @escaping (Bool) -> Void,
-        togglePauseMusicOnRecording: @escaping (Bool) -> Void,
         toggleRaiseToListen: @escaping (Bool) -> Void,
         toggleDownloadInBackground: @escaping (Bool) -> Void,
         openIntents: @escaping () -> Void,
@@ -58,7 +56,6 @@ private final class DataAndStorageControllerArguments {
         self.toggleVoiceUseLessData = toggleVoiceUseLessData
         self.openSaveIncoming = openSaveIncoming
         self.toggleSaveEditedPhotos = toggleSaveEditedPhotos
-        self.togglePauseMusicOnRecording = togglePauseMusicOnRecording
         self.toggleRaiseToListen = toggleRaiseToListen
         self.toggleDownloadInBackground = toggleDownloadInBackground
         self.openIntents = openIntents
@@ -81,7 +78,6 @@ public enum DataAndStorageEntryTag: ItemListItemTag, Equatable {
     case automaticDownloadReset
     case saveEditedPhotos
     case downloadInBackground
-    case pauseMusicOnRecording
     case raiseToListen
     case autoSave(AutomaticSaveIncomingPeerType)
     case sensitiveContent
@@ -116,7 +112,6 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
     case otherHeader(PresentationTheme, String)
     case shareSheet(PresentationTheme, String)
     case saveEditedPhotos(PresentationTheme, String, Bool)
-    case pauseMusicOnRecording(PresentationTheme, String, Bool)
     case raiseToListen(PresentationTheme, String, Bool)
     case raiseToListenInfo(PresentationTheme, String)
     
@@ -138,7 +133,7 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 return DataAndStorageSection.backgroundDownload.rawValue
             case .useLessVoiceData, .useLessVoiceDataInfo:
                 return DataAndStorageSection.voiceCalls.rawValue
-            case .otherHeader, .shareSheet, .saveEditedPhotos, .pauseMusicOnRecording, .raiseToListen, .raiseToListenInfo:
+            case .otherHeader, .shareSheet, .saveEditedPhotos, .raiseToListen, .raiseToListenInfo:
                 return DataAndStorageSection.other.rawValue
             case .sensitiveContent, .sensitiveContentInfo:
                 return DataAndStorageSection.sensitiveContent.rawValue
@@ -181,8 +176,6 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 return 31
             case .saveEditedPhotos:
                 return 32
-            case .pauseMusicOnRecording:
-                return 33
             case .raiseToListen:
                 return 34
             case .raiseToListenInfo:
@@ -280,12 +273,6 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 }
             case let .saveEditedPhotos(lhsTheme, lhsText, lhsValue):
                 if case let .saveEditedPhotos(rhsTheme, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsValue == rhsValue {
-                    return true
-                } else {
-                    return false
-                }
-            case let .pauseMusicOnRecording(lhsTheme, lhsText, lhsValue):
-                if case let .pauseMusicOnRecording(rhsTheme, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsValue == rhsValue {
                     return true
                 } else {
                     return false
@@ -409,10 +396,6 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.toggleSaveEditedPhotos(value)
                 }, tag: DataAndStorageEntryTag.saveEditedPhotos)
-            case let .pauseMusicOnRecording(_, text, value):
-                return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
-                    arguments.togglePauseMusicOnRecording(value)
-                }, tag: DataAndStorageEntryTag.pauseMusicOnRecording)
             case let .raiseToListen(_, text, value):
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.toggleRaiseToListen(value)
@@ -637,7 +620,6 @@ private func dataAndStorageControllerEntries(context: AccountContext, state: Dat
         entries.append(.shareSheet(presentationData.theme, presentationData.strings.ChatSettings_IntentsSettings))
     }
     entries.append(.saveEditedPhotos(presentationData.theme, presentationData.strings.Settings_SaveEditedPhotos, data.generatedMediaStoreSettings.storeEditedPhotos))
-    entries.append(.pauseMusicOnRecording(presentationData.theme, presentationData.strings.Settings_PauseMusicOnRecording, data.mediaInputSettings.pauseMusicOnRecording))
     entries.append(.raiseToListen(presentationData.theme, presentationData.strings.Settings_RaiseToListen, data.mediaInputSettings.enableRaiseToSpeak))
     entries.append(.raiseToListenInfo(presentationData.theme, presentationData.strings.Settings_RaiseToListenInfo))
 
@@ -865,10 +847,6 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
     }, toggleSaveEditedPhotos: { value in
         let _ = updateGeneratedMediaStoreSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
             return current.withUpdatedStoreEditedPhotos(value)
-        }).start()
-    }, togglePauseMusicOnRecording: { value in
-        let _ = updateMediaInputSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
-            return current.withUpdatedPauseMusicOnRecording(value)
         }).start()
     }, toggleRaiseToListen: { value in
         let _ = updateMediaInputSettingsInteractively(accountManager: context.sharedContext.accountManager, {

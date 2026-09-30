@@ -42,6 +42,18 @@ public final class DGSimpleSettings {
         case ask = 2
     }
 
+    public struct MusicPlaybackExceptions: OptionSet {
+        public let rawValue: Int
+
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
+
+        public static let roundVideos = MusicPlaybackExceptions(rawValue: 1 << 0)
+        public static let voiceRecording = MusicPlaybackExceptions(rawValue: 1 << 1)
+        public static let voicePlayback = MusicPlaybackExceptions(rawValue: 1 << 2)
+    }
+
     public enum DialogIdFormat: Int {
         case telegramApi = 0
         case botApi = 1
@@ -117,6 +129,7 @@ public final class DGSimpleSettings {
         static let signDownloadedMedia = "donutgram.chats.signDownloadedMedia"
         static let startRoundVideoWithRearCamera = "donutgram.chats.startRoundVideoWithRearCamera"
         static let roundVideoCamera = "donutgram.chats.roundVideoCamera"
+        static let musicPlaybackExceptions = "donutgram.chats.musicPlaybackExceptions"
         static let rememberRoundVideoCamera = "donutgram.chats.rememberRoundVideoCamera"
         static let lastRoundVideoCamera = "donutgram.chats.lastRoundVideoCamera"
         static let roundVideoZoomSlider = "donutgram.chats.roundVideoZoomSlider"
@@ -447,6 +460,10 @@ public final class DGSimpleSettings {
     public var onlyAddedStickers: Bool { get { bool(Key.onlyAddedStickers) } set { setBool(newValue, Key.onlyAddedStickers) } }
     public var infiniteRecentStickers: Bool { get { bool(Key.infiniteRecentStickers) } set { setBool(newValue, Key.infiniteRecentStickers) } }
     public var hiddenReactions: Int { get { integer(Key.hiddenReactions) } set { setInteger(newValue, Key.hiddenReactions) } }
+    public var musicPlaybackExceptions: MusicPlaybackExceptions {
+        get { MusicPlaybackExceptions(rawValue: integer(Key.musicPlaybackExceptions) & 7) }
+        set { setInteger(newValue.rawValue & 7, Key.musicPlaybackExceptions) }
+    }
     public var removeMessageTails: Bool { get { bool(Key.removeMessageTails) } set { setBool(newValue, Key.removeMessageTails) } }
     public var hideShareButton: Bool { get { false } set { } }
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }

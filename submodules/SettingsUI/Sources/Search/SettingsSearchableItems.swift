@@ -3652,16 +3652,6 @@ private func dataSearchableItems(context: AccountContext) -> [SettingsSearchable
             }
         ),
         SettingsSearchableItem(
-            id: "data/pause-music",
-            title: strings.Settings_PauseMusicOnRecording,
-            alternate: [],
-            icon: icon,
-            breadcrumbs: [strings.Settings_ChatSettings],
-            present: { context, _, present in
-                presentDataSettings(context, present, .pauseMusicOnRecording)
-            }
-        ),
-        SettingsSearchableItem(
             id: "data/raise-to-listen",
             title: strings.Settings_RaiseToListen,
             alternate: [],

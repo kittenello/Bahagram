@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import TelegramCore
 import SSignalKit
@@ -183,7 +184,7 @@ private final class LegacyComponentsGlobalsProviderImpl: NSObject, LegacyCompone
             let convertedType: ManagedAudioSessionType
             switch type {
                 case TGAudioSessionTypePlayAndRecord, TGAudioSessionTypePlayAndRecordHeadphones:
-                    if legacyContext.sharedContext.currentMediaInputSettings.with({ $0 }).pauseMusicOnRecording {
+                    if !DGSimpleSettings.shared.musicPlaybackExceptions.contains(.roundVideos) {
                         convertedType = .record(speaker: false, video: true, withOthers: false)
                     } else {
                         convertedType = .record(speaker: false, video: true, withOthers: true)

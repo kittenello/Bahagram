@@ -245,6 +245,8 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         if s.hideArchive {
             result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
+        let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
+        result.append(.disclosure(53, 5, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"))
         result.append(contentsOf: [.header(60, 6, "СПИСОК ЧАТОВ"), .disclosure(61, 6, "chatListAppearance", "Внешний вид", "")])
         return result
     }, toggle: { key, value in
@@ -281,6 +283,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
         case "doubleTapSeek": return dgDoubleTapSeekController(context: context)
         case "chatListAppearance": return dgChatListAppearanceController(context: context)
+        case "pauseMusicOnRecording": return dgMusicPlaybackExceptionsController(context: context)
         default: return nil
         }
     })
@@ -310,6 +313,23 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
         }
     }, open: { key in
         key == "titleMode" ? dgChatListTitleModeController(context: context) : nil
+    })
+}
+
+private func dgMusicPlaybackExceptionsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let s = DGSimpleSettings.shared
+    let options: [(String, DGSimpleSettings.MusicPlaybackExceptions)] = [
+        ("Кружки", .roundVideos),
+        ("Голосовые сообщения", .voiceRecording),
+        ("Прослушивание голосовые сообщения", .voicePlayback)
+    ]
+    return dgController(context: context, page: .musicPlaybackExceptions, title: "Пауза музыки при записи", focusKey: focusKey, entries: {
+        options.enumerated().map { index, option in
+            .checkbox(Int32(index), 0, String(option.1.rawValue), option.0, s.musicPlaybackExceptions.contains(option.1))
+        }
+    }, select: { key in
+        guard let option = options.first(where: { String($0.1.rawValue) == key })?.1 else { return }
+        s.musicPlaybackExceptions.formSymmetricDifference(option)
     })
 }
 
@@ -438,6 +458,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .doubleTapSeek: makeController = dgDoubleTapSeekController
     case .camera: makeController = dgRoundVideoCameraController
     case .autoPause: makeController = dgAutoPauseMediaController
+    case .musicPlaybackExceptions: makeController = dgMusicPlaybackExceptionsController
     case .downloads: makeController = dgDownloadsSettingsController
     case .transcription: makeController = dgTranscriptionController
     case .reactions: makeController = dgHiddenReactionsController
