@@ -425,9 +425,10 @@ public final class ManagedAudioSessionImpl: NSObject, ManagedAudioSession {
 
         // setPreferredInput itself emits route changes. Do not retry the same
         // unresolved route indefinitely if the system cannot honor this request.
-        let route = audioSession.currentRoute.inputs.map { $0.uid }.joined(separator: "|")
-            + ":" + (audioSession.preferredInput?.uid ?? "")
-            + ":" + (audioSession.availableInputs ?? []).map { $0.uid }.joined(separator: "|")
+        let currentInputIds: String = audioSession.currentRoute.inputs.map { $0.uid }.joined(separator: "|")
+        let preferredInputId: String = audioSession.preferredInput?.uid ?? ""
+        let availableInputIds: String = (audioSession.availableInputs ?? []).map { $0.uid }.joined(separator: "|")
+        let route = "\(currentInputIds):\(preferredInputId):\(availableInputIds)"
         guard self.lastDeviceMicrophoneRequestRoute != route else {
             return
         }
