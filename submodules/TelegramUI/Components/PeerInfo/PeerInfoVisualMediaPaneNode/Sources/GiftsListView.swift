@@ -297,27 +297,12 @@ final class GiftsListView: UIView {
     }
 
     private func giftsWithDisappeared(current: [ProfileGiftsContext.State.StarGift], history: [ProfileGiftsContext.State.DisappearedGift]) -> [ProfileGiftsContext.State.StarGift] {
-        var result: [(gift: ProfileGiftsContext.State.StarGift, disappearedDate: Int32?)] = current.map { ($0, nil) }
-        let visibleReferences = Set(current.compactMap { $0.reference })
-
-        for entry in history.sorted(by: { $0.position < $1.position }) {
-            if let reference = entry.gift.reference, visibleReferences.contains(reference) {
-                continue
-            }
-
-            var insertionIndex = min(max(0, Int(entry.position)), result.count)
-            if let next = entry.nextReference, let index = result.firstIndex(where: { $0.gift.reference == next }) {
-                insertionIndex = index
-            } else if let previous = entry.previousReference, let index = result.firstIndex(where: { $0.gift.reference == previous }) {
-                insertionIndex = index + 1
-            }
-            result.insert((entry.gift, entry.lastSeen), at: insertionIndex)
-        }
+        let result = ProfileGiftsContext.State.giftsWithDisappeared(current: current, history: history)
 
         self.disappearedItemDates = [:]
         for (index, value) in result.enumerated() {
-            if let disappearedDate = value.disappearedDate {
-                self.disappearedItemDates[self.giftItemStableId(value.gift, index: Int32(index))] = disappearedDate
+            if value.isMissing {
+                self.disappearedItemDates[self.giftItemStableId(value.gift, index: Int32(index))] = value.lastSeen
             }
         }
         return result.map { $0.gift }
