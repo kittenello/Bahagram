@@ -95,7 +95,7 @@ enum DGListEntry: ItemListNodeEntry {
     case input(Int32, Int32, String, String, String)
     // The flags are diff keys: the bubbles read DGSimpleSettings at layout time.
     case messagePreview(Int32, Int32, Bool, Bool, Bool, Bool)
-    case chatListPreview(Int32, Int32, Bool, Bool, Bool, Bool, Bool, Int)
+    case chatListPreview(Int32, Int32, Bool, Bool, Bool, Int)
     // The Int is the current icon's DGSimpleSettings.appMarks index: a diff key, so the grid moves its selection.
     case appIcons(Int32, Int32, Int)
     case islandStyles(Int32, Int32, Int)
@@ -107,12 +107,12 @@ enum DGListEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _, _, _), let .appIcons(_, section, _), let .islandStyles(_, section, _), let .speedSlider(_, section, _), let .iconAndIsland(_, section, _, _), let .iconIslandPreview(_, section, _, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _), let .appIcons(_, section, _), let .islandStyles(_, section, _), let .speedSlider(_, section, _), let .iconAndIsland(_, section, _, _), let .iconIslandPreview(_, section, _, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _, _), let .appIcons(id, _, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _), let .iconAndIsland(id, _, _, _), let .iconIslandPreview(id, _, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _), let .appIcons(id, _, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _), let .iconAndIsland(id, _, _, _), let .iconIslandPreview(id, _, _, _): return id
         }
     }
     // The tag the row's node reports: the one item(presentationData:arguments:) gives the item,
@@ -149,8 +149,8 @@ enum DGListEntry: ItemListNodeEntry {
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: key == "level" ? .number : .regular(capitalization: false, autocorrection: false), clearType: .always, tag: DGSettingItemTag(key: key), sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
         case .messagePreview:
             return donutgramMessagePreviewItem(context: arguments.context, sectionId: self.section)
-        case let .chatListPreview(_, _, snow, hideStatus, centerTitle, hideSearch, senderAvatars, titleMode):
-            return DGChatListPreviewItem(theme: presentationData.theme, sectionId: self.section, snow: snow, hideStatus: hideStatus, centerTitle: centerTitle, hideSearch: hideSearch, senderAvatars: senderAvatars, titleMode: titleMode)
+        case let .chatListPreview(_, _, snow, hideStatus, centerTitle, titleMode):
+            return DGChatListPreviewItem(context: arguments.context, theme: presentationData.theme, sectionId: self.section, snow: snow, hideStatus: hideStatus, centerTitle: centerTitle, titleMode: titleMode)
         case .appIcons:
             return donutgramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
         case let .islandStyles(_, _, value):

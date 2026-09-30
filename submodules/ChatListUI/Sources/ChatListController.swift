@@ -7410,8 +7410,7 @@ private final class ChatListLocationContext {
             }
             
             if isRoot && DGSimpleSettings.shared.chatListHideStatus {
-                titleContent.text = defaultTitle
-                titleContent.activity = false
+                titleContent.peerStatus = nil
             }
             self.chatListTitle = titleContent
             

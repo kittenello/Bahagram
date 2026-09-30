@@ -48,6 +48,7 @@ public final class StoryPeerListComponent: Component {
     public let titleHasLock: Bool
     public let titleHasActivity: Bool
     public let titlePeerStatus: PeerStatus?
+    public let centeredTitle: Bool
     public let minTitleX: CGFloat
     public let maxTitleX: CGFloat
     public let useHiddenList: Bool
@@ -71,6 +72,7 @@ public final class StoryPeerListComponent: Component {
         titleHasLock: Bool,
         titleHasActivity: Bool,
         titlePeerStatus: PeerStatus?,
+        centeredTitle: Bool = false,
         minTitleX: CGFloat,
         maxTitleX: CGFloat,
         useHiddenList: Bool,
@@ -93,6 +95,7 @@ public final class StoryPeerListComponent: Component {
         self.titleHasLock = titleHasLock
         self.titleHasActivity = titleHasActivity
         self.titlePeerStatus = titlePeerStatus
+        self.centeredTitle = centeredTitle
         self.minTitleX = minTitleX
         self.maxTitleX = maxTitleX
         self.useHiddenList = useHiddenList
@@ -130,6 +133,9 @@ public final class StoryPeerListComponent: Component {
             return false
         }
         if lhs.titlePeerStatus != rhs.titlePeerStatus {
+            return false
+        }
+        if lhs.centeredTitle != rhs.centeredTitle {
             return false
         }
         if lhs.minTitleX != rhs.minTitleX {
@@ -892,6 +898,9 @@ public final class StoryPeerListComponent: Component {
             collapsedContentOrigin = (itemLayout.containerSize.width - centralContentWidth) * 0.5
             
             collapsedContentOrigin = min(collapsedContentOrigin, component.maxTitleX - centralContentWidth - 4.0)
+            if component.centeredTitle {
+                collapsedContentOrigin = (itemLayout.containerSize.width - collapsedState.titleWidth) * 0.5 - collapsedContentWidth - titleContentSpacing
+            }
             
             let collapsedContentOriginOffset: CGFloat = 0.0
             collapsedContentOrigin -= collapsedContentOriginOffset
@@ -1388,6 +1397,11 @@ public final class StoryPeerListComponent: Component {
                 titleContentOffset += -expandBoundsFraction * 4.0
             }
             
+            if component.centeredTitle {
+                // Keep the title and its status at the screen center even with unequal side controls.
+                titleContentOffset = (itemLayout.containerSize.width - collapsedState.titleWidth) * 0.5
+            }
+
             var titleIndicatorSize: CGSize?
             if collapsedState.activityFraction != 0.0 {
                 let collapsedItemMinX = collapsedContentOrigin - collapsedItemWidth * 0.5
@@ -1678,11 +1692,12 @@ public final class StoryPeerListComponent: Component {
                 animator.invalidate()
             }
             
+            let previousComponent = self.component
             self.component = component
             self.state = state
             
             let updatedTitleState = TitleState(text: component.title, color: component.theme.rootController.navigationBar.primaryTextColor)
-            if self.titleState != updatedTitleState {
+            if self.titleState != updatedTitleState || previousComponent?.centeredTitle != component.centeredTitle || previousComponent?.minTitleX != component.minTitleX || previousComponent?.maxTitleX != component.maxTitleX || previousComponent?.titlePeerStatus != component.titlePeerStatus {
                 self.titleState = updatedTitleState
                 
                 let attributedText = NSAttributedString(string: updatedTitleState.text, attributes: [
@@ -1690,7 +1705,9 @@ public final class StoryPeerListComponent: Component {
                     NSAttributedString.Key.foregroundColor: component.theme.rootController.navigationBar.primaryTextColor
                 ])
                 
-                let cachedLayout = TextNode.calculateLayout(attributedString: attributedText, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, backgroundColor: nil, constrainedSize: CGSize(width: max(0.0, component.maxTitleX - component.minTitleX - 46.0), height: 100.0), alignment: .left, verticalAlignment: .middle, lineSpacingFactor: 0.0, cutout: nil, insets: UIEdgeInsets(), lineColor: nil, textShadowColor: nil, textShadowBlur: nil, textStroke: nil, displaySpoilers: false, displayEmbeddedItemsUnderSpoilers: false, customTruncationToken: nil)
+                let titleSideInset = max(component.minTitleX, availableSize.width - component.maxTitleX)
+                let titleAvailableWidth = component.centeredTitle ? availableSize.width - titleSideInset * 2.0 : component.maxTitleX - component.minTitleX
+                let cachedLayout = TextNode.calculateLayout(attributedString: attributedText, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, backgroundColor: nil, constrainedSize: CGSize(width: max(0.0, titleAvailableWidth - 46.0), height: 100.0), alignment: .left, verticalAlignment: .middle, lineSpacingFactor: 0.0, cutout: nil, insets: UIEdgeInsets(), lineColor: nil, textShadowColor: nil, textShadowBlur: nil, textStroke: nil, displaySpoilers: false, displayEmbeddedItemsUnderSpoilers: false, customTruncationToken: nil)
 
                 let renderer = UIGraphicsImageRenderer(bounds: CGRect(origin: CGPoint(), size: cachedLayout.size))
                 let image = renderer.image { context in

@@ -32,8 +32,56 @@ import DGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
-// Donutgram: upper bound of the round-video zoom when the camera allows more. The camera's own digital limit
-// can be far higher, and on a linear slider that would squeeze the useful 1–5× into its first few percent.
+// A logarithmic ruler with a blue position marker and the same lens labels as the recording preview.
+private final class RoundVideoZoomScaleView: UIView {
+    var minimumValue: CGFloat = 1.0
+    var maximumValue: CGFloat = 10.0
+    var value: CGFloat = 1.0 {
+        didSet { self.setNeedsDisplay() }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.isOpaque = false
+        self.isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext(), self.maximumValue > self.minimumValue else { return }
+        let trackWidth = max(1.0, self.bounds.width - 24.0)
+        let logRange = log(self.maximumValue / self.minimumValue)
+        let ticks: [CGFloat] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+        for zoom in ticks {
+            guard zoom >= self.minimumValue && zoom <= self.maximumValue else { continue }
+            let x = 12.0 + log(zoom / self.minimumValue) / logRange * trackWidth
+            let major = [CGFloat(0.5), 1.0, 2.0, 5.0, 8.0, 10.0].contains(zoom)
+            context.setStrokeColor((major ? UIColor.systemBlue : UIColor.white.withAlphaComponent(0.5)).cgColor)
+            context.setLineWidth(1.0)
+            context.move(to: CGPoint(x: x, y: major ? 8.0 : 13.0))
+            context.addLine(to: CGPoint(x: x, y: 23.0))
+            context.strokePath()
+            if major {
+                let text = String(format: "%g", Double(zoom)) as NSString
+                let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 9.0), .foregroundColor: UIColor.systemBlue]
+                let size = text.size(withAttributes: attributes)
+                text.draw(at: CGPoint(x: x - size.width / 2.0, y: 27.0), withAttributes: attributes)
+            }
+        }
+        let markerX = 12.0 + log(max(self.minimumValue, min(self.value, self.maximumValue)) / self.minimumValue) / logRange * trackWidth
+        context.setStrokeColor(UIColor.systemBlue.cgColor)
+        context.setLineWidth(3.0)
+        context.setLineCap(.round)
+        context.move(to: CGPoint(x: markerX, y: 7.0))
+        context.addLine(to: CGPoint(x: markerX, y: 24.0))
+        context.strokePath()
+    }
+}
+
+// Keep useful zoom reachable on cameras whose raw digital limit is much larger.
 private let maxRoundVideoZoom: CGFloat = 10.0
 
 struct CameraState: Equatable {
@@ -886,7 +934,10 @@ public class VideoMessageCameraScreen: ViewController {
         private let loadingView: LoadingEffectView
         private let zoomButtonsView = UIStackView()
         private var zoomButtons: [UIButton] = []
-        private let zoomSlider = UISlider()
+        private let zoomControlsView = UIView()
+        private let zoomSlider = RoundVideoZoomScaleView()
+        private var zoomControlsExpanded = false
+        private var zoomGestureStart: CGFloat = 1.0
         private let zoomLabel = UILabel()
         private var displayedZoom: CGFloat = 1.0
         private var minZoom: CGFloat = 1.0
@@ -1016,23 +1067,27 @@ public class VideoMessageCameraScreen: ViewController {
             for zoom in [CGFloat(0.5), 1.0, 2.0, 5.0] {
                 let button = UIButton(type: .system)
                 button.tag = Int(zoom * 10.0)
+                button.titleLabel?.font = .systemFont(ofSize: 12.0, weight: .medium)
+                button.layer.cornerRadius = 22.0
                 button.setTitle(String(format: "%g×", Double(zoom)), for: .normal)
                 button.setTitleColor(.white, for: .normal)
                 button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
                 self.zoomButtonsView.addArrangedSubview(button)
                 self.zoomButtons.append(button)
             }
-            self.containerView.addSubview(self.zoomButtonsView)
+            self.containerView.addSubview(self.zoomControlsView)
+            self.zoomControlsView.addSubview(self.zoomButtonsView)
+            self.zoomControlsView.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(self.handleZoomPan(_:))))
             self.zoomSlider.minimumValue = 1.0
             self.zoomSlider.value = 1.0
-            self.zoomSlider.addTarget(self, action: #selector(self.zoomSliderChanged(_:)), for: .valueChanged)
             self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
             self.zoomSlider.layer.cornerRadius = 22.0
-            self.containerView.addSubview(self.zoomSlider)
+            self.zoomControlsView.addSubview(self.zoomSlider)
             self.zoomLabel.textAlignment = .center
             self.zoomLabel.textColor = .white
             self.zoomLabel.backgroundColor = .systemBlue
-            self.zoomLabel.layer.cornerRadius = 17.0
+            self.zoomLabel.font = .systemFont(ofSize: 13.0, weight: .medium)
+            self.zoomLabel.layer.cornerRadius = 13.0
             self.zoomLabel.clipsToBounds = true
             self.containerView.addSubview(self.zoomLabel)
             self.updateZoomControls()
@@ -1166,17 +1221,22 @@ public class VideoMessageCameraScreen: ViewController {
         
         // Pinch, buttons and slider all go through `setDisplayedZoom`, so the camera is always at the value shown.
         @objc private func handlePinch(_ gestureRecognizer: UIPinchGestureRecognizer) {
-            guard self.camera != nil else {
+            guard self.camera != nil, self.previewState == nil else {
                 return
             }
             switch gestureRecognizer.state {
+            case .began:
+                self.zoomControlsExpanded = true
+                self.updateZoomControls()
             case .changed:
                 self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
+                self.zoomControlsExpanded = false
                 if !DGSimpleSettings.shared.staticRoundVideoZoom {
                     self.setDisplayedZoom(1.0, rampRate: 8.0)
                 }
+                self.updateZoomControls()
             default:
                 break
             }
@@ -1186,8 +1246,22 @@ public class VideoMessageCameraScreen: ViewController {
             self.setDisplayedZoom(CGFloat(sender.tag) / 10.0)
         }
 
-        @objc private func zoomSliderChanged(_ sender: UISlider) {
-            self.setDisplayedZoom(CGFloat(sender.value))
+        @objc private func handleZoomPan(_ gesture: UIPanGestureRecognizer) {
+            guard DGSimpleSettings.shared.roundVideoZoomSlider, self.previewState == nil, self.maxZoom > self.minZoom else { return }
+            switch gesture.state {
+            case .began:
+                self.zoomGestureStart = self.displayedZoom
+                self.zoomControlsExpanded = true
+                self.updateZoomControls()
+            case .changed:
+                let fraction = gesture.translation(in: self.zoomControlsView).x / max(1.0, self.zoomControlsView.bounds.width)
+                self.setDisplayedZoom(self.zoomGestureStart * exp(fraction * log(self.maxZoom / self.minZoom)))
+            case .ended, .cancelled, .failed:
+                self.zoomControlsExpanded = false
+                self.updateZoomControls()
+            default:
+                break
+            }
         }
 
         private func setDisplayedZoom(_ value: CGFloat, rampRate: CGFloat? = nil) {
@@ -1203,6 +1277,7 @@ public class VideoMessageCameraScreen: ViewController {
             guard let camera = self.camera else {
                 return
             }
+            self.zoomControlsExpanded = false
             self.minZoom = 1.0
             self.maxZoom = 1.0
             self.setDisplayedZoom(1.0)
@@ -1220,21 +1295,31 @@ public class VideoMessageCameraScreen: ViewController {
 
         private func updateZoomControls() {
             let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
-            let enabled = self.previewState == nil && (self.minZoom < 1.0 || (extendedZoomEnabled && self.maxZoom > 1.0))
-            let expanded = extendedZoomEnabled && self.displayedZoom > 1.05
+            let enabled = self.previewState == nil && self.maxZoom > self.minZoom
+            let expanded = extendedZoomEnabled && self.zoomControlsExpanded
             self.zoomButtonsView.isHidden = !enabled || expanded
             self.zoomSlider.isHidden = !enabled || !expanded
             self.zoomLabel.isHidden = !enabled || !expanded
-            self.zoomSlider.minimumValue = Float(self.minZoom)
-            self.zoomSlider.maximumValue = Float(self.maxZoom)
-            self.zoomSlider.value = Float(self.displayedZoom)
+            self.zoomSlider.minimumValue = self.minZoom
+            self.zoomSlider.maximumValue = self.maxZoom
+            self.zoomSlider.value = self.displayedZoom
             self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
+            let activeButton = self.zoomButtons.filter {
+                let zoom = CGFloat($0.tag) / 10.0
+                return zoom >= self.minZoom && zoom <= self.maxZoom
+            }.min { abs(log(self.displayedZoom / (CGFloat($0.tag) / 10.0))) < abs(log(self.displayedZoom / (CGFloat($1.tag) / 10.0))) }
             for button in self.zoomButtons {
                 let zoom = CGFloat(button.tag) / 10.0
-                button.isHidden = zoom < self.minZoom || zoom > self.maxZoom || (!extendedZoomEnabled && zoom > 1.0)
-                button.backgroundColor = abs(self.displayedZoom - zoom) < 0.05 ? .systemBlue : .clear
+                button.isHidden = zoom < self.minZoom || zoom > self.maxZoom
+                let active = button === activeButton
+                button.setTitle(active ? self.zoomLabel.text : String(format: "%g", Double(zoom)), for: .normal)
+                button.backgroundColor = active ? .systemBlue : .clear
             }
-            self.zoomButtonsView.bounds.size.width = CGFloat(self.zoomButtons.filter { !$0.isHidden }.count) * 44.0
+            let buttonsWidth = CGFloat(self.zoomButtons.filter { !$0.isHidden }.count) * 44.0
+            self.zoomButtonsView.frame = CGRect(x: (self.zoomControlsView.bounds.width - buttonsWidth) / 2.0, y: 0.0, width: buttonsWidth, height: 44.0)
+            self.zoomSlider.frame = self.zoomControlsView.bounds
+            self.zoomControlsView.isHidden = !enabled
+            self.zoomControlsView.accessibilityValue = self.zoomLabel.text
         }
                 
         private var animatingIn = false
@@ -1630,9 +1715,9 @@ public class VideoMessageCameraScreen: ViewController {
                 transition.setFrame(view: self.previewContainerContentView, frame: CGRect(origin: CGPoint(), size: previewFrame.size))
             }
             let zoomY = min(previewFrame.maxY + 18.0, backgroundFrame.height - 55.0)
-            self.zoomButtonsView.frame = CGRect(x: (backgroundFrame.width - 132.0) / 2.0, y: zoomY, width: 132.0, height: 44.0)
-            self.zoomSlider.frame = CGRect(x: 36.0, y: zoomY, width: backgroundFrame.width - 72.0, height: 44.0)
-            self.zoomLabel.frame = CGRect(x: (backgroundFrame.width - 72.0) / 2.0, y: zoomY - 44.0, width: 72.0, height: 34.0)
+            let zoomWidth = min(240.0, backgroundFrame.width - 72.0)
+            self.zoomControlsView.frame = CGRect(x: (backgroundFrame.width - zoomWidth) / 2.0, y: zoomY, width: zoomWidth, height: 44.0)
+            self.zoomLabel.frame = CGRect(x: (backgroundFrame.width - 54.0) / 2.0, y: zoomY - 32.0, width: 54.0, height: 26.0)
             self.updateZoomControls()
             transition.setCornerRadius(layer: self.previewContainerContentView.layer, cornerRadius: previewSide / 2.0)
                         

@@ -109,7 +109,6 @@ public final class DGSimpleSettings {
         static let chatListHideStatus = "donutgram.chats.appearance.hideStatus"
         static let chatListCenteredTitle = "donutgram.chats.appearance.centeredTitle"
         static let chatListHideSearch = "donutgram.chats.appearance.hideSearch"
-        static let chatListSenderAvatars = "donutgram.chats.appearance.senderAvatars"
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
@@ -376,7 +375,6 @@ public final class DGSimpleSettings {
     public var chatListHideStatus: Bool { get { bool(Key.chatListHideStatus) } set { setBool(newValue, Key.chatListHideStatus) } }
     public var chatListCenteredTitle: Bool { get { bool(Key.chatListCenteredTitle) } set { setBool(newValue, Key.chatListCenteredTitle) } }
     public var chatListHideSearch: Bool { get { bool(Key.chatListHideSearch) } set { setBool(newValue, Key.chatListHideSearch) } }
-    public var chatListSenderAvatars: Bool { get { bool(Key.chatListSenderAvatars) } set { setBool(newValue, Key.chatListSenderAvatars) } }
     public var chatListTitleMode: ChatListTitleMode {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
@@ -489,7 +487,7 @@ public final class DGSimpleSettings {
         }
         set { setInteger(newValue == .rear ? 1 : 0, Key.lastRoundVideoCamera) }
     }
-    public var roundVideoZoomSlider: Bool { get { bool(Key.roundVideoZoomSlider) } set { setBool(newValue, Key.roundVideoZoomSlider) } }
+    public var roundVideoZoomSlider: Bool { get { (self.defaults.object(forKey: Key.roundVideoZoomSlider) as? Bool) ?? true } set { setBool(newValue, Key.roundVideoZoomSlider) } }
     public var staticRoundVideoZoom: Bool { get { bool(Key.staticRoundVideoZoom) } set { setBool(newValue, Key.staticRoundVideoZoom) } }
     public var autoPause: Bool { get { bool(Key.autoPause) } set { setBool(newValue, Key.autoPause) } }
     /// Zero disables seeking; an unset value preserves Telegram's 15-second behavior.

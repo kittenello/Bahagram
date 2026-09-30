@@ -671,12 +671,13 @@ public final class ChatListHeaderComponent: Component {
                     self.titleScaleContainer.addSubview(chatListTitleView)
                 }
                 
-                let chatListTitleContentSize = size
+                let centeredTitle = DGSimpleSettings.shared.chatListCenteredTitle
+                let chatListTitleContentSize = centeredTitle ? CGSize(width: max(1.0, remainingWidth), height: size.height) : size
                 chatListTitleView.theme = theme
                 chatListTitleView.strings = strings
                 chatListTitleView.setTitle(chatListTitle, animated: false)
-                let titleContentRect = chatListTitleView.updateLayoutInternal(size: chatListTitleContentSize, transition: transition.containedViewLayoutTransition)
-                centerContentWidth = floor((chatListTitleContentSize.width * 0.5 - titleContentRect.minX) * 2.0)
+                let titleContentRect = chatListTitleView.updateLayoutInternal(size: chatListTitleContentSize, transition: transition.containedViewLayoutTransition, centerTitle: centeredTitle)
+                centerContentWidth = centeredTitle ? titleContentRect.width : floor((chatListTitleContentSize.width * 0.5 - titleContentRect.minX) * 2.0)
                 
                 let centerOffset = sideContentWidth * 0.5
                 centerContentOffsetX = -max(0.0, centerOffset + titleContentRect.maxX - 2.0 - (size.width - sideInset - nextRightButtonX))
@@ -937,6 +938,7 @@ public final class ChatListHeaderComponent: Component {
                         titleHasLock: primaryTitleHasLock,
                         titleHasActivity: primaryTitleHasActivity,
                         titlePeerStatus: primaryTitlePeerStatus,
+                        centeredTitle: DGSimpleSettings.shared.chatListCenteredTitle,
                         minTitleX: self.primaryContentView?.centerContentLeftInset ?? 0.0,
                         maxTitleX: availableSize.width - (self.primaryContentView?.centerContentRightInset ?? 0.0),
                         useHiddenList: component.storiesIncludeHidden,
