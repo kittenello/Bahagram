@@ -938,6 +938,7 @@ public class VideoMessageCameraScreen: ViewController {
         private let zoomSlider = RoundVideoZoomScaleView()
         private var zoomControlsExpanded = false
         private var zoomGestureStart: CGFloat = 1.0
+        private var isPinchZooming = false
         private let zoomLabel = UILabel()
         private var displayedZoom: CGFloat = 1.0
         private var minZoom: CGFloat = 1.0
@@ -1222,21 +1223,34 @@ public class VideoMessageCameraScreen: ViewController {
         }
         
         // Pinch, buttons and slider all go through `setDisplayedZoom`, so the camera is always at the value shown.
+        // Only a pinch that starts on the live camera zooms, and its end is handled even if the recording was paused
+        // under the fingers; otherwise the next segment would start with the ruler open and the zoom still held.
         @objc private func handlePinch(_ gestureRecognizer: UIPinchGestureRecognizer) {
-            guard self.camera != nil, self.previewState == nil else {
+            guard self.camera != nil else {
                 return
             }
             switch gestureRecognizer.state {
             case .began:
-                self.zoomControlsExpanded = true
-                self.updateZoomControls()
+                self.isPinchZooming = self.previewState == nil
+                if self.isPinchZooming {
+                    self.zoomControlsExpanded = true
+                    self.updateZoomControls()
+                }
             case .changed:
-                self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
+                // The camera is stopped during the preview; the scale is consumed anyway, so resuming mid-pinch doesn't jump.
+                if self.isPinchZooming && self.previewState == nil {
+                    self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
+                }
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
+                guard self.isPinchZooming else {
+                    return
+                }
+                self.isPinchZooming = false
                 self.zoomControlsExpanded = false
                 if !DGSimpleSettings.shared.staticRoundVideoZoom {
-                    self.setDisplayedZoom(1.0, rampRate: 8.0)
+                    // A paused camera has nothing to animate, so it gets the value at once.
+                    self.setDisplayedZoom(1.0, rampRate: self.previewState == nil ? 8.0 : nil)
                 }
                 self.updateZoomControls()
             default:
@@ -1249,13 +1263,20 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         @objc private func handleZoomPan(_ gesture: UIPanGestureRecognizer) {
-            guard DGSimpleSettings.shared.roundVideoZoomSlider, self.previewState == nil, self.maxZoom > self.minZoom else { return }
+            // Only the start and the moves are gated: a swipe that outlives a pause must still close the ruler.
+            let canZoom = DGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > self.minZoom
             switch gesture.state {
             case .began:
+                guard canZoom else {
+                    return
+                }
                 self.zoomGestureStart = self.displayedZoom
                 self.zoomControlsExpanded = true
                 self.updateZoomControls()
             case .changed:
+                guard canZoom else {
+                    return
+                }
                 let fraction = gesture.translation(in: self.zoomControlsView).x / max(1.0, self.zoomControlsView.bounds.width)
                 self.setDisplayedZoom(self.zoomGestureStart * exp(fraction * log(self.maxZoom / self.minZoom)))
             case .ended, .cancelled, .failed:
