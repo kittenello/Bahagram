@@ -935,6 +935,7 @@ public class VideoMessageCameraScreen: ViewController {
         private let zoomButtonsView = UIStackView()
         private var zoomButtons: [UIButton] = []
         private let zoomControlsView = UIView()
+        private var zoomPanGestureRecognizer: UIPanGestureRecognizer?
         private let zoomSlider = RoundVideoZoomScaleView()
         private var zoomControlsExpanded = false
         private var zoomGestureStart: CGFloat = 1.0
@@ -1078,7 +1079,9 @@ public class VideoMessageCameraScreen: ViewController {
             }
             self.containerView.addSubview(self.zoomControlsView)
             self.zoomControlsView.addSubview(self.zoomButtonsView)
-            self.zoomControlsView.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(self.handleZoomPan(_:))))
+            let zoomPanGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.handleZoomPan(_:)))
+            self.zoomControlsView.addGestureRecognizer(zoomPanGestureRecognizer)
+            self.zoomPanGestureRecognizer = zoomPanGestureRecognizer
             self.zoomSlider.minimumValue = 1.0
             self.zoomSlider.value = 1.0
             self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
@@ -1354,6 +1357,9 @@ public class VideoMessageCameraScreen: ViewController {
             }
             self.zoomControlsView.isHidden = !enabled
             self.zoomControlsView.accessibilityValue = self.zoomLabel.text
+            // The swipe only drives the slider, so with the slider turned off it must not begin at all: once begun, it
+            // cancels the touch of the zoom button under the finger, and a tap that slides a little would be lost.
+            self.zoomPanGestureRecognizer?.isEnabled = extendedZoomEnabled
         }
                 
         private var animatingIn = false
