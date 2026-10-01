@@ -672,7 +672,10 @@ public final class ChatListHeaderComponent: Component {
                 }
                 
                 let centeredTitle = DGSimpleSettings.shared.chatListCenteredTitle
-                let chatListTitleContentSize = centeredTitle ? CGSize(width: max(1.0, remainingWidth), height: size.height) : size
+                // Centered: the title gets the free space between the buttons rather than a box mirrored from the wider side,
+                // and is moved to the screen center below as far as the room around it allows.
+                let titleAreaMinX = sideInset + nextLeftButtonX + 8.0
+                let chatListTitleContentSize = centeredTitle ? CGSize(width: max(1.0, size.width - sideInset - nextRightButtonX - 8.0 - titleAreaMinX), height: size.height) : size
                 chatListTitleView.theme = theme
                 chatListTitleView.strings = strings
                 chatListTitleView.setTitle(chatListTitle, animated: false)
@@ -696,7 +699,14 @@ public final class ChatListHeaderComponent: Component {
                 }
                 
                 let chatListTitleOffset: CGFloat
-                if DGSimpleSettings.shared.chatListCenteredTitle || chatListTitle.activity {
+                if centeredTitle {
+                    // 0 puts the title at the screen center; keep the offset where the title stays inside the free space. The activity
+                    // indicator is outside the rect but centered with the title, so the room on its left is at most the room on its right.
+                    let titleRightSpace = max(0.0, chatListTitleContentSize.width - titleContentRect.maxX)
+                    let titleLeftSpace = max(0.0, min(titleContentRect.minX, titleRightSpace))
+                    let titleAreaOffset = titleAreaMinX - floor((size.width - chatListTitleContentSize.width) / 2.0)
+                    chatListTitleOffset = max(titleAreaOffset - titleLeftSpace, min(titleAreaOffset + titleRightSpace, 0.0))
+                } else if chatListTitle.activity {
                     chatListTitleOffset = 0.0
                 } else {
                     chatListTitleOffset = (centerOffset + centerContentOffsetX) * sideContentFraction

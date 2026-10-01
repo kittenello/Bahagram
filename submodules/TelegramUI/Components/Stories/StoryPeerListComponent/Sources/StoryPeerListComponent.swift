@@ -898,8 +898,11 @@ public final class StoryPeerListComponent: Component {
             collapsedContentOrigin = (itemLayout.containerSize.width - centralContentWidth) * 0.5
             
             collapsedContentOrigin = min(collapsedContentOrigin, component.maxTitleX - centralContentWidth - 4.0)
+            // Centered: the title is at the screen center when there is room for it, otherwise it moves aside just enough to keep
+            // clear of the right buttons and, together with the collapsed avatars on its left, of the left button.
+            let centeredTitleOffset = min(max((itemLayout.containerSize.width - collapsedState.titleWidth) * 0.5, component.minTitleX + collapsedContentWidth + titleContentSpacing), component.maxTitleX - collapsedState.titleWidth - 4.0)
             if component.centeredTitle {
-                collapsedContentOrigin = (itemLayout.containerSize.width - collapsedState.titleWidth) * 0.5 - collapsedContentWidth - titleContentSpacing
+                collapsedContentOrigin = centeredTitleOffset - collapsedContentWidth - titleContentSpacing
             }
             
             let collapsedContentOriginOffset: CGFloat = 0.0
@@ -1399,7 +1402,7 @@ public final class StoryPeerListComponent: Component {
             
             if component.centeredTitle {
                 // Keep the title and its status at the screen center even with unequal side controls.
-                titleContentOffset = (itemLayout.containerSize.width - collapsedState.titleWidth) * 0.5
+                titleContentOffset = centeredTitleOffset
             }
 
             var titleIndicatorSize: CGSize?
@@ -1705,9 +1708,8 @@ public final class StoryPeerListComponent: Component {
                     NSAttributedString.Key.foregroundColor: component.theme.rootController.navigationBar.primaryTextColor
                 ])
                 
-                let titleSideInset = max(component.minTitleX, availableSize.width - component.maxTitleX)
-                let titleAvailableWidth = component.centeredTitle ? availableSize.width - titleSideInset * 2.0 : component.maxTitleX - component.minTitleX
-                let cachedLayout = TextNode.calculateLayout(attributedString: attributedText, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, backgroundColor: nil, constrainedSize: CGSize(width: max(0.0, titleAvailableWidth - 46.0), height: 100.0), alignment: .left, verticalAlignment: .middle, lineSpacingFactor: 0.0, cutout: nil, insets: UIEdgeInsets(), lineColor: nil, textShadowColor: nil, textShadowBlur: nil, textStroke: nil, displaySpoilers: false, displayEmbeddedItemsUnderSpoilers: false, customTruncationToken: nil)
+                // A centered title gets the regular width too: when it doesn't fit at the center, it is moved aside rather than cut.
+                let cachedLayout = TextNode.calculateLayout(attributedString: attributedText, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, backgroundColor: nil, constrainedSize: CGSize(width: max(0.0, component.maxTitleX - component.minTitleX - 46.0), height: 100.0), alignment: .left, verticalAlignment: .middle, lineSpacingFactor: 0.0, cutout: nil, insets: UIEdgeInsets(), lineColor: nil, textShadowColor: nil, textShadowBlur: nil, textStroke: nil, displaySpoilers: false, displayEmbeddedItemsUnderSpoilers: false, customTruncationToken: nil)
 
                 let renderer = UIGraphicsImageRenderer(bounds: CGRect(origin: CGPoint(), size: cachedLayout.size))
                 let image = renderer.image { context in
