@@ -1317,6 +1317,10 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         private func updateZoomControls() {
+            // While the screen animates out the strip only fades: a zoom range arriving late must not show it again.
+            guard !self.animatingOut else {
+                return
+            }
             let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
             // With the zoom slider turned off only the 0.5× lens switch is offered, as before the ruler existed,
             // so a camera without an ultra-wide lens shows no zoom strip at all.
@@ -1344,11 +1348,16 @@ public class VideoMessageCameraScreen: ViewController {
             let buttonsWidth = CGFloat(self.zoomButtons.filter { !$0.isHidden }.count) * 44.0
             self.zoomButtonsView.frame = CGRect(x: (self.zoomControlsView.bounds.width - buttonsWidth) / 2.0, y: 0.0, width: buttonsWidth, height: 44.0)
             self.zoomSlider.frame = self.zoomControlsView.bounds
+            // The zoom range comes in after the screen is already up, so the strip fades in instead of popping up.
+            if enabled && self.zoomControlsView.isHidden {
+                self.zoomControlsView.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+            }
             self.zoomControlsView.isHidden = !enabled
             self.zoomControlsView.accessibilityValue = self.zoomLabel.text
         }
                 
         private var animatingIn = false
+        private var animatingOut = false
         func animateIn() {
             self.animatingIn = true
             
@@ -1372,6 +1381,7 @@ public class VideoMessageCameraScreen: ViewController {
         }
 
         func animateOut(completion: @escaping () -> Void) {
+            self.animatingOut = true
             self.camera?.stopCapture(invalidate: true)
                                     
             UIView.animate(withDuration: 0.25, animations: {
@@ -1382,6 +1392,11 @@ public class VideoMessageCameraScreen: ViewController {
             })
             
             self.componentHost.view?.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
+            // The zoom strip and its label sit in `containerView`, outside the component, so they fade on their own,
+            // in step with the component. The strip may still be fading in, so it starts from what is on screen.
+            let zoomControlsAlpha = CGFloat(self.zoomControlsView.layer.presentation()?.opacity ?? 1.0)
+            self.zoomControlsView.layer.animateAlpha(from: zoomControlsAlpha, to: 0.0, duration: 0.15, removeOnCompletion: false)
+            self.zoomLabel.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
             self.previewContainerView.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.25, removeOnCompletion: false)
         }
         
