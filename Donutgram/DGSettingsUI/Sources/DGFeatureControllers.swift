@@ -294,17 +294,19 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
     return dgController(context: context, page: .chatListAppearance, title: "Внешний вид", focusKey: focusKey, entries: {
         [
             .header(0, 0, "СПИСОК ЧАТОВ"),
-            .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideStatus, settings.chatListCenteredTitle, settings.chatListTitleMode.rawValue),
+            .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideEmojiStatus, settings.chatListCenteredTitle, settings.chatListTitleMode.rawValue),
             .toggle(2, 0, "snow", "Снег", settings.forceSnow, true),
-            .toggle(3, 0, "hideStatus", "Скрыть статус", settings.chatListHideStatus, true),
-            .toggle(4, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
-            .toggle(5, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
+            .toggle(3, 0, "hideStatus", "Скрыть статус соединения", settings.chatListHideStatus, true),
+            .toggle(4, 0, "hideEmojiStatus", "Скрыть эмодзи-статус", settings.chatListHideEmojiStatus, true),
+            .toggle(5, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
+            .toggle(6, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
             .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode))
         ]
     }, toggle: { key, value in
         switch key {
         case "snow": settings.forceSnow = value
         case "hideStatus": settings.chatListHideStatus = value
+        case "hideEmojiStatus": settings.chatListHideEmojiStatus = value
         case "centerTitle": settings.chatListCenteredTitle = value
         case "hideSearch": settings.chatListHideSearch = value
         default: break

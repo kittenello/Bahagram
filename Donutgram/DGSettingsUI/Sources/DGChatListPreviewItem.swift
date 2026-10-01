@@ -15,16 +15,16 @@ final class DGChatListPreviewItem: ListViewItem, ItemListItem {
     let theme: PresentationTheme
     let sectionId: ItemListSectionId
     let snow: Bool
-    let hideStatus: Bool
+    let hideEmojiStatus: Bool
     let centerTitle: Bool
     let titleMode: Int
 
-    init(context: AccountContext, theme: PresentationTheme, sectionId: ItemListSectionId, snow: Bool, hideStatus: Bool, centerTitle: Bool, titleMode: Int) {
+    init(context: AccountContext, theme: PresentationTheme, sectionId: ItemListSectionId, snow: Bool, hideEmojiStatus: Bool, centerTitle: Bool, titleMode: Int) {
         self.context = context
         self.theme = theme
         self.sectionId = sectionId
         self.snow = snow
-        self.hideStatus = hideStatus
+        self.hideEmojiStatus = hideEmojiStatus
         self.centerTitle = centerTitle
         self.titleMode = titleMode
     }
@@ -159,7 +159,7 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
         default: title = presentationData.strings.DialogList_Title
         }
         var peerStatus: NetworkStatusTitle.Status?
-        if !item.hideStatus, case let .user(user) = self.accountPeer {
+        if !item.hideEmojiStatus, case let .user(user) = self.accountPeer {
             if let emojiStatus = user.emojiStatus {
                 peerStatus = .emoji(emojiStatus)
             } else if user.isPremium {

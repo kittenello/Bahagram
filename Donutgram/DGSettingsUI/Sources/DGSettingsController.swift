@@ -149,8 +149,8 @@ enum DGListEntry: ItemListNodeEntry {
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: value, placeholder: placeholder, type: key == "level" ? .number : .regular(capitalization: false, autocorrection: false), clearType: .always, tag: DGSettingItemTag(key: key), sectionId: self.section, textUpdated: { arguments.textUpdated(key, $0) }, action: {})
         case .messagePreview:
             return donutgramMessagePreviewItem(context: arguments.context, sectionId: self.section)
-        case let .chatListPreview(_, _, snow, hideStatus, centerTitle, titleMode):
-            return DGChatListPreviewItem(context: arguments.context, theme: presentationData.theme, sectionId: self.section, snow: snow, hideStatus: hideStatus, centerTitle: centerTitle, titleMode: titleMode)
+        case let .chatListPreview(_, _, snow, hideEmojiStatus, centerTitle, titleMode):
+            return DGChatListPreviewItem(context: arguments.context, theme: presentationData.theme, sectionId: self.section, snow: snow, hideEmojiStatus: hideEmojiStatus, centerTitle: centerTitle, titleMode: titleMode)
         case .appIcons:
             return donutgramAppIconItem(context: arguments.context, sectionId: self.section, updated: { arguments.select("refreshAppIcon") })
         case let .islandStyles(_, _, value):
