@@ -110,6 +110,7 @@ public final class DGSimpleSettings {
         static let chatListHideEmojiStatus = "donutgram.chats.appearance.hideEmojiStatus"
         static let chatListCenteredTitle = "donutgram.chats.appearance.centeredTitle"
         static let chatListHideSearch = "donutgram.chats.appearance.hideSearch"
+        static let chatListFoldersAtBottom = "donutgram.chats.appearance.foldersAtBottom"
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
@@ -380,6 +381,7 @@ public final class DGSimpleSettings {
     public var chatListHideEmojiStatus: Bool { get { bool(Key.chatListHideEmojiStatus) } set { setBool(newValue, Key.chatListHideEmojiStatus) } }
     public var chatListCenteredTitle: Bool { get { bool(Key.chatListCenteredTitle) } set { setBool(newValue, Key.chatListCenteredTitle) } }
     public var chatListHideSearch: Bool { get { bool(Key.chatListHideSearch) } set { setBool(newValue, Key.chatListHideSearch) } }
+    public var chatListFoldersAtBottom: Bool { get { bool(Key.chatListFoldersAtBottom) } set { setBool(newValue, Key.chatListFoldersAtBottom) } }
     public var chatListTitleMode: ChatListTitleMode {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }

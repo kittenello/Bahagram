@@ -303,7 +303,9 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
             .toggle(4, 0, "hideEmojiStatus", "Скрыть эмодзи-статус", settings.chatListHideEmojiStatus, true),
             .toggle(5, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
             .toggle(6, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
-            .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode))
+            .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode)),
+            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true),
+            .info(9, 0, "Панель папок отображается над нижней навигацией. Если нижняя панель скрыта, папки остаются у нижнего края экрана.")
         ]
     }, toggle: { key, value in
         switch key {
@@ -312,6 +314,7 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
         case "hideEmojiStatus": settings.chatListHideEmojiStatus = value
         case "centerTitle": settings.chatListCenteredTitle = value
         case "hideSearch": settings.chatListHideSearch = value
+        case "foldersAtBottom": settings.chatListFoldersAtBottom = value
         default: break
         }
     }, open: { key in
