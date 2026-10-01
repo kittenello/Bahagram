@@ -1297,7 +1297,9 @@ public class VideoMessageCameraScreen: ViewController {
 
         private func updateZoomControls() {
             let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
-            let enabled = self.previewState == nil && self.maxZoom > self.minZoom
+            // With the zoom slider turned off only the 0.5× lens switch is offered, as before the ruler existed,
+            // so a camera without an ultra-wide lens shows no zoom strip at all.
+            let enabled = self.previewState == nil && self.maxZoom > self.minZoom && (extendedZoomEnabled || self.minZoom < 1.0)
             let expanded = extendedZoomEnabled && self.zoomControlsExpanded
             self.zoomButtonsView.isHidden = !enabled || expanded
             self.zoomSlider.isHidden = !enabled || !expanded
@@ -1306,13 +1308,14 @@ public class VideoMessageCameraScreen: ViewController {
             self.zoomSlider.maximumValue = self.maxZoom
             self.zoomSlider.value = self.displayedZoom
             self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
-            let activeButton = self.zoomButtons.filter {
+            let shownButtons = self.zoomButtons.filter {
                 let zoom = CGFloat($0.tag) / 10.0
-                return zoom >= self.minZoom && zoom <= self.maxZoom
-            }.min { abs(log(self.displayedZoom / (CGFloat($0.tag) / 10.0))) < abs(log(self.displayedZoom / (CGFloat($1.tag) / 10.0))) }
+                return zoom >= self.minZoom && zoom <= self.maxZoom && (extendedZoomEnabled || zoom <= 1.0)
+            }
+            let activeButton = shownButtons.min { abs(log(self.displayedZoom / (CGFloat($0.tag) / 10.0))) < abs(log(self.displayedZoom / (CGFloat($1.tag) / 10.0))) }
             for button in self.zoomButtons {
                 let zoom = CGFloat(button.tag) / 10.0
-                button.isHidden = zoom < self.minZoom || zoom > self.maxZoom
+                button.isHidden = !shownButtons.contains(where: { $0 === button })
                 let active = button === activeButton
                 button.setTitle(active ? self.zoomLabel.text : String(format: "%g", Double(zoom)), for: .normal)
                 button.backgroundColor = active ? .systemBlue : .clear
