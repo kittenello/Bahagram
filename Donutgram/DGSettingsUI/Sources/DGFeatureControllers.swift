@@ -234,7 +234,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .disclosure(31, 3, "camera", "Камера в кружках", cameraTitle),
             .toggle(32, 3, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
             .toggle(33, 3, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
-            .toggle(34, 3, "staticZoom", "Статичный зум", s.staticRoundVideoZoom, true),
+            .toggle(34, 3, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
             .header(40, 4, "ВИДЕО"),
             .disclosure(41, 4, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
             .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),

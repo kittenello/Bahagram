@@ -32,57 +32,288 @@ import DGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
-// A logarithmic ruler with a blue position marker and the same lens labels as the zoom buttons.
-private final class RoundVideoZoomScaleView: UIView {
-    var minimumValue: CGFloat = 1.0
-    var maximumValue: CGFloat = 10.0
-    var value: CGFloat = 1.0 {
-        didSet { self.setNeedsDisplay() }
+// Donutgram: the round-video zoom control. Collapsed, it is a glass capsule like the camera buttons next to it, with one
+// button per lens; the button of the lens in use shows the live zoom, as in the Camera app. A swipe on it or a pinch turns
+// the same capsule into a dial: the ticks move under a fixed center mark and the value sits above the mark, inside the
+// capsule, so nothing covers the video.
+
+// A finger move of this many points doubles or halves the zoom on the dial.
+private let roundVideoZoomPointsPerOctave: CGFloat = 60.0
+
+// The zoom as the titles show it, to one decimal. The highlighted button is picked by the same value, so a zoom that reads
+// «1×» never shows up on the «0,5» button next to «1».
+private func roundVideoZoomShownValue(_ value: CGFloat) -> CGFloat {
+    return (value * 10.0).rounded() / 10.0
+}
+
+// «1×», «1,4×», «0,5»: one decimal at most, with the decimal separator of the app's number format.
+private func roundVideoZoomTitle(_ value: CGFloat, decimalSeparator: String, suffix: Bool = true) -> String {
+    var text = String(format: "%.1f", Double(roundVideoZoomShownValue(value)))
+    if text.hasSuffix(".0") {
+        text.removeLast(2)
     }
-    // The lenses and sensor crops of the camera on screen; only these get a blue tick and a label.
-    var labeledValues: [CGFloat] = [] {
-        didSet { self.setNeedsDisplay() }
+    text = text.replacingOccurrences(of: ".", with: decimalSeparator)
+    return suffix ? text + "×" : text
+}
+
+// A swipe or a pinch passes a short dead zone at every lens, so it rests on 0.5×, 1×, 2×… and leaves it without a jump.
+// A position is log2 of the zoom plus `2 × halfWidth` of extra travel for every lens below it; the zone spans the
+// travel of ±4 % of zoom around the lens.
+private struct RoundVideoZoomDetents {
+    private let lenses: [(log: CGFloat, value: CGFloat)]
+    private let halfWidth: CGFloat = log2(1.04)
+
+    init(lensValues: [CGFloat]) {
+        self.lenses = lensValues.map { (log: log2($0), value: $0) }.sorted(by: { $0.log < $1.log })
     }
+
+    func position(for value: CGFloat) -> CGFloat {
+        let logValue = log2(value)
+        var position = logValue
+        for lens in self.lenses {
+            if lens.log < logValue - 0.0001 {
+                position += 2.0 * self.halfWidth
+            } else if abs(lens.log - logValue) <= 0.0001 {
+                position += self.halfWidth
+            }
+        }
+        return position
+    }
+
+    // The zoom at a position, and the lens it rests on when the position is inside a dead zone.
+    func value(at position: CGFloat) -> (value: CGFloat, lens: CGFloat?) {
+        var offset: CGFloat = 0.0
+        for lens in self.lenses {
+            let start = lens.log + offset
+            if position < start {
+                return (pow(2.0, position - offset), nil)
+            }
+            if position <= start + 2.0 * self.halfWidth {
+                return (lens.value, lens.value)
+            }
+            offset += 2.0 * self.halfWidth
+        }
+        return (pow(2.0, position - offset), nil)
+    }
+}
+
+// The expanded state: ticks every eighth of an octave, a longer labeled tick per lens, and a fixed mark in the middle.
+private final class RoundVideoZoomDialView: UIView {
+    private let valueLabel = UILabel()
+    private let fadeMaskLayer = CAGradientLayer()
+    private let lensLabelFont = Font.with(size: 11.0, design: .round, weight: .medium)
+
+    private var lensValues: [CGFloat] = []
+    private var minimumValue: CGFloat = 1.0
+    private var maximumValue: CGFloat = 1.0
+    private var value: CGFloat = 1.0
+    private var decimalSeparator: String = "."
+    private var controlColor: UIColor = .white
+    private var accentColor: UIColor = .white
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+
         self.isOpaque = false
         self.isUserInteractionEnabled = false
+        self.contentMode = .redraw
+
+        // Monospaced digits, so the centered value doesn't wobble sideways as it changes.
+        self.valueLabel.font = Font.with(size: 13.0, design: .round, weight: .semibold, traits: .monospacedNumbers)
+        self.valueLabel.textAlignment = .center
+        self.addSubview(self.valueLabel)
+
+        // The ticks fade out towards the ends of the capsule, like a wheel turning away.
+        self.fadeMaskLayer.startPoint = CGPoint(x: 0.0, y: 0.5)
+        self.fadeMaskLayer.endPoint = CGPoint(x: 1.0, y: 0.5)
+        self.fadeMaskLayer.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+        self.fadeMaskLayer.locations = [0.0, 0.22, 0.78, 1.0]
+        self.layer.mask = self.fadeMaskLayer
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
+    func update(lensValues: [CGFloat], minimumValue: CGFloat, maximumValue: CGFloat, value: CGFloat, decimalSeparator: String, controlColor: UIColor, accentColor: UIColor) {
+        var changed = self.lensValues != lensValues || self.minimumValue != minimumValue || self.maximumValue != maximumValue
+        changed = changed || self.value != value || self.decimalSeparator != decimalSeparator
+        changed = changed || !self.controlColor.isEqual(controlColor) || !self.accentColor.isEqual(accentColor)
+        self.lensValues = lensValues
+        self.minimumValue = minimumValue
+        self.maximumValue = maximumValue
+        self.value = value
+        self.decimalSeparator = decimalSeparator
+        self.controlColor = controlColor
+        self.accentColor = accentColor
+        self.valueLabel.text = roundVideoZoomTitle(value, decimalSeparator: decimalSeparator)
+        self.valueLabel.textColor = accentColor
+        if changed {
+            self.setNeedsDisplay()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        self.fadeMaskLayer.frame = self.bounds
+        CATransaction.commit()
+        self.valueLabel.frame = CGRect(x: 0.0, y: 6.0, width: self.bounds.width, height: 16.0)
+    }
+
     override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext(), self.maximumValue > self.minimumValue else { return }
-        let trackWidth = max(1.0, self.bounds.width - 24.0)
-        let logRange = log(self.maximumValue / self.minimumValue)
-        let ticks: [CGFloat] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
-        // A lens between these steps, such as a 2.2× one, still gets its own tick.
-        for zoom in ticks + self.labeledValues.filter({ !ticks.contains($0) }) {
-            guard zoom >= self.minimumValue && zoom <= self.maximumValue else { continue }
-            let x = 12.0 + log(zoom / self.minimumValue) / logRange * trackWidth
-            let major = self.labeledValues.contains(zoom)
-            context.setStrokeColor((major ? UIColor.systemBlue : UIColor.white.withAlphaComponent(0.5)).cgColor)
-            context.setLineWidth(1.0)
-            context.move(to: CGPoint(x: x, y: major ? 8.0 : 13.0))
-            context.addLine(to: CGPoint(x: x, y: 23.0))
+        guard let context = UIGraphicsGetCurrentContext(), self.maximumValue > self.minimumValue else {
+            return
+        }
+        let width = self.bounds.width
+        let centerX = width / 2.0
+        let logValue = log2(min(max(self.value, self.minimumValue), self.maximumValue))
+        let shownLenses = self.lensValues.filter { $0 >= self.minimumValue && $0 <= self.maximumValue }
+        let lensLogs = shownLenses.map { log2($0) }
+
+        // Short ticks every eighth of an octave, none right next to a lens tick, and nothing past the ends of the range.
+        context.setStrokeColor(self.controlColor.withAlphaComponent(0.4).cgColor)
+        context.setLineWidth(1.0)
+        var step = Int(ceil(log2(self.minimumValue) * 8.0 - 0.001))
+        let lastStep = Int(floor(log2(self.maximumValue) * 8.0 + 0.001))
+        while step <= lastStep {
+            let logZoom = CGFloat(step) / 8.0
+            step += 1
+            let x = centerX + (logZoom - logValue) * roundVideoZoomPointsPerOctave
+            if x < 0.0 || x > width || lensLogs.contains(where: { abs($0 - logZoom) < 0.06 }) {
+                continue
+            }
+            context.move(to: CGPoint(x: x, y: 28.0))
+            context.addLine(to: CGPoint(x: x, y: 36.0))
+        }
+        context.strokePath()
+
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: self.lensLabelFont,
+            .foregroundColor: self.controlColor
+        ]
+        context.setStrokeColor(self.controlColor.cgColor)
+        context.setLineWidth(1.5)
+        for (lens, logLens) in zip(shownLenses, lensLogs) {
+            let x = centerX + (logLens - logValue) * roundVideoZoomPointsPerOctave
+            if x < -20.0 || x > width + 20.0 {
+                continue
+            }
+            context.move(to: CGPoint(x: x, y: 25.0))
+            context.addLine(to: CGPoint(x: x, y: 36.0))
             context.strokePath()
-            if major {
-                let text = String(format: "%g", Double(zoom)) as NSString
-                let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 9.0), .foregroundColor: UIColor.systemBlue]
-                let size = text.size(withAttributes: attributes)
-                text.draw(at: CGPoint(x: x - size.width / 2.0, y: 27.0), withAttributes: attributes)
+            let text = roundVideoZoomTitle(lens, decimalSeparator: self.decimalSeparator, suffix: false) as NSString
+            let textSize = text.size(withAttributes: labelAttributes)
+            text.draw(at: CGPoint(x: x - textSize.width / 2.0, y: 38.0), withAttributes: labelAttributes)
+        }
+
+        context.setStrokeColor(self.accentColor.cgColor)
+        context.setLineWidth(2.5)
+        context.setLineCap(.round)
+        context.move(to: CGPoint(x: centerX, y: 23.0))
+        context.addLine(to: CGPoint(x: centerX, y: 37.0))
+        context.strokePath()
+    }
+}
+
+// The parent sets the frame: the whole 56 pt high area the dial may take. The collapsed capsule (40 pt high) is centered
+// in it, and the expanded one fills it.
+private final class RoundVideoZoomControl: UIView {
+    var presetPressed: ((CGFloat) -> Void)?
+
+    private let backgroundView = GlassBackgroundView()
+    private let clipView = UIView()
+    private let presetsView = UIView()
+    private let dialView = RoundVideoZoomDialView()
+    private var presetButtons: [UIButton] = []
+    private var buttonValues: [CGFloat] = []
+    // The other lenses get a smaller font rather than a scaled-down button, which would shrink their touch area too.
+    // Monospaced digits keep the live value from wobbling sideways.
+    private let activeButtonFont = Font.with(size: 13.0, design: .round, weight: .semibold, traits: .monospacedNumbers)
+    private let inactiveButtonFont = Font.with(size: 12.0, design: .round, weight: .semibold)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        self.clipView.clipsToBounds = true
+        self.addSubview(self.backgroundView)
+        self.addSubview(self.clipView)
+        self.clipView.addSubview(self.presetsView)
+        self.clipView.addSubview(self.dialView)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func presetButtonPressed(_ sender: UIButton) {
+        if let index = self.presetButtons.firstIndex(where: { $0 === sender }), index < self.buttonValues.count {
+            self.presetPressed?(self.buttonValues[index])
+        }
+    }
+
+    func update(buttonValues: [CGFloat], lensValues: [CGFloat], minimumValue: CGFloat, maximumValue: CGFloat, value: CGFloat, isExpanded: Bool, theme: PresentationTheme, decimalSeparator: String, transition: ComponentTransition) {
+        let controlColor = theme.chat.inputPanel.panelControlColor
+        let accentColor = theme.chat.inputPanel.panelControlAccentColor
+        let buttonSize: CGFloat = 34.0
+        let buttonSpacing: CGFloat = 2.0
+        let buttonInset: CGFloat = 3.0
+        let collapsedHeight: CGFloat = 40.0
+
+        if self.buttonValues != buttonValues {
+            self.buttonValues = buttonValues
+            for button in self.presetButtons {
+                button.removeFromSuperview()
+            }
+            self.presetButtons = buttonValues.map { _ in
+                // Not `.system`: a system button fades every title change, and the active title follows the zoom.
+                let button = UIButton(type: .custom)
+                button.layer.cornerRadius = buttonSize / 2.0
+                button.addTarget(self, action: #selector(self.presetButtonPressed(_:)), for: .touchUpInside)
+                self.presetsView.addSubview(button)
+                return button
             }
         }
-        let markerX = 12.0 + log(max(self.minimumValue, min(self.value, self.maximumValue)) / self.minimumValue) / logRange * trackWidth
-        context.setStrokeColor(UIColor.systemBlue.cgColor)
-        context.setLineWidth(3.0)
-        context.setLineCap(.round)
-        context.move(to: CGPoint(x: markerX, y: 7.0))
-        context.addLine(to: CGPoint(x: markerX, y: 24.0))
-        context.strokePath()
+
+        let size = self.bounds.size
+        let count = CGFloat(buttonValues.count)
+        let collapsedWidth = count * buttonSize + max(0.0, count - 1.0) * buttonSpacing + buttonInset * 2.0
+        let collapsedFrame = CGRect(x: floorToScreenPixels((size.width - collapsedWidth) / 2.0), y: floorToScreenPixels((size.height - collapsedHeight) / 2.0), width: collapsedWidth, height: collapsedHeight)
+        let capsuleFrame = isExpanded ? CGRect(origin: CGPoint(), size: size) : collapsedFrame
+
+        transition.setFrame(view: self.backgroundView, frame: capsuleFrame)
+        self.backgroundView.update(size: capsuleFrame.size, cornerRadius: capsuleFrame.height / 2.0, isDark: theme.overallDarkAppearance, tintColor: .init(kind: .panel), transition: transition)
+
+        // The clip follows the capsule, while the buttons and the dial inside it keep their place in the control.
+        transition.setFrame(view: self.clipView, frame: capsuleFrame)
+        transition.setCornerRadius(layer: self.clipView.layer, cornerRadius: capsuleFrame.height / 2.0)
+        let contentFrame = CGRect(origin: CGPoint(x: -capsuleFrame.minX, y: -capsuleFrame.minY), size: size)
+        transition.setFrame(view: self.presetsView, frame: contentFrame)
+        transition.setFrame(view: self.dialView, frame: contentFrame)
+        transition.setAlpha(view: self.presetsView, alpha: isExpanded ? 0.0 : 1.0)
+        transition.setAlpha(view: self.dialView, alpha: isExpanded ? 1.0 : 0.0)
+
+        // Up to the next lens the camera still films through the previous one, so that button shows the live zoom.
+        let shownValue = roundVideoZoomShownValue(value)
+        var activeIndex = 0
+        for (index, buttonValue) in buttonValues.enumerated() where buttonValue <= shownValue + 0.001 {
+            activeIndex = index
+        }
+        for (index, button) in self.presetButtons.enumerated() {
+            let isActive = index == activeIndex
+            let titleColor = isActive ? accentColor : controlColor
+            let title = isActive ? roundVideoZoomTitle(value, decimalSeparator: decimalSeparator) : roundVideoZoomTitle(buttonValues[index], decimalSeparator: decimalSeparator, suffix: false)
+            button.titleLabel?.font = isActive ? self.activeButtonFont : self.inactiveButtonFont
+            button.setTitle(title, for: .normal)
+            button.setTitleColor(titleColor, for: .normal)
+            button.setTitleColor(titleColor.withAlphaComponent(0.5), for: .highlighted)
+            transition.setFrame(view: button, frame: CGRect(x: collapsedFrame.minX + buttonInset + CGFloat(index) * (buttonSize + buttonSpacing), y: collapsedFrame.minY + buttonInset, width: buttonSize, height: buttonSize))
+            transition.setBackgroundColor(view: button, color: controlColor.withAlphaComponent(isActive ? 0.15 : 0.0))
+        }
+
+        self.dialView.update(lensValues: lensValues, minimumValue: minimumValue, maximumValue: maximumValue, value: value, decimalSeparator: decimalSeparator, controlColor: controlColor, accentColor: accentColor)
     }
 }
 
@@ -937,15 +1168,17 @@ public class VideoMessageCameraScreen: ViewController {
         fileprivate var additionalPreviewView: CameraSimplePreviewView
         private var progressView: RecordingProgressView
         private let loadingView: LoadingEffectView
-        private let zoomButtonsView = UIStackView()
-        private var zoomButtons: [UIButton] = []
-        private let zoomControlsView = UIView()
+        private let zoomControlsView = RoundVideoZoomControl()
         private var zoomPanGestureRecognizer: UIPanGestureRecognizer?
-        private let zoomSlider = RoundVideoZoomScaleView()
+        private var zoomPresets: [CGFloat] = []
         private var zoomControlsExpanded = false
-        private var zoomGestureStart: CGFloat = 1.0
+        private var zoomCollapseToken = 0
+        private var zoomGesturePosition: CGFloat = 0.0
+        private var zoomGestureLens: CGFloat?
+        private var zoomBeforePinch: CGFloat = 1.0
         private var isPinchZooming = false
-        private let zoomLabel = UILabel()
+        private var isPanZooming = false
+        private let zoomHapticFeedback = HapticFeedback()
         private var displayedZoom: CGFloat = 1.0
         private var minZoom: CGFloat = 1.0
         private var maxZoom: CGFloat = 1.0
@@ -1065,32 +1298,14 @@ public class VideoMessageCameraScreen: ViewController {
             
             self.containerView.addSubview(self.previewContainerView)
 
-            self.zoomButtonsView.axis = .horizontal
-            self.zoomButtonsView.spacing = 4.0
-            self.zoomButtonsView.distribution = .fillEqually
-            self.zoomButtonsView.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
-            self.zoomButtonsView.layer.cornerRadius = 22.0
-            self.zoomButtonsView.clipsToBounds = true
-            // The buttons are added with the camera's zoom range, in `setZoomPresets`.
+            // The buttons come with the camera's lenses, in `resetZoomForVisibleCamera`.
             self.containerView.addSubview(self.zoomControlsView)
-            self.zoomControlsView.addSubview(self.zoomButtonsView)
+            self.zoomControlsView.presetPressed = { [weak self] value in
+                self?.zoomPresetPressed(value)
+            }
             let zoomPanGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.handleZoomPan(_:)))
             self.zoomControlsView.addGestureRecognizer(zoomPanGestureRecognizer)
             self.zoomPanGestureRecognizer = zoomPanGestureRecognizer
-            self.zoomSlider.minimumValue = 1.0
-            self.zoomSlider.value = 1.0
-            self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
-            self.zoomSlider.layer.cornerRadius = 22.0
-            self.zoomSlider.layer.cornerCurve = .continuous
-            self.zoomSlider.clipsToBounds = true
-            self.zoomControlsView.addSubview(self.zoomSlider)
-            self.zoomLabel.textAlignment = .center
-            self.zoomLabel.textColor = .white
-            self.zoomLabel.backgroundColor = .systemBlue
-            self.zoomLabel.font = .systemFont(ofSize: 13.0, weight: .medium)
-            self.zoomLabel.layer.cornerRadius = 13.0
-            self.zoomLabel.clipsToBounds = true
-            self.containerView.addSubview(self.zoomLabel)
             self.updateZoomControls()
 
             self.previewContainerContentView.addSubview(self.mainPreviewView)
@@ -1220,9 +1435,9 @@ public class VideoMessageCameraScreen: ViewController {
             }
         }
         
-        // Pinch, buttons and slider all go through `setDisplayedZoom`, so the camera is always at the value shown.
+        // Pinch, buttons and dial all go through `setDisplayedZoom`, so the camera is always at the value shown.
         // Only a pinch that starts on the live camera zooms, and its end is handled even if the recording was paused
-        // under the fingers; otherwise the next segment would start with the ruler open and the zoom still held.
+        // under the fingers; otherwise the next segment would start with the dial open and the zoom still held.
         @objc private func handlePinch(_ gestureRecognizer: UIPinchGestureRecognizer) {
             guard self.camera != nil else {
                 return
@@ -1231,13 +1446,13 @@ public class VideoMessageCameraScreen: ViewController {
             case .began:
                 self.isPinchZooming = self.previewState == nil
                 if self.isPinchZooming {
-                    self.zoomControlsExpanded = true
-                    self.updateZoomControls()
+                    self.zoomBeforePinch = self.displayedZoom
+                    self.beginZoomGesture()
                 }
             case .changed:
                 // The camera is stopped during the preview; the scale is consumed anyway, so resuming mid-pinch doesn't jump.
                 if self.isPinchZooming && self.previewState == nil {
-                    self.setDisplayedZoom(self.displayedZoom * gestureRecognizer.scale)
+                    self.moveZoomGesture(by: log2(max(gestureRecognizer.scale, 0.01)))
                 }
                 gestureRecognizer.scale = 1.0
             case .ended, .cancelled:
@@ -1245,71 +1460,138 @@ public class VideoMessageCameraScreen: ViewController {
                     return
                 }
                 self.isPinchZooming = false
-                self.zoomControlsExpanded = false
                 if !DGSimpleSettings.shared.staticRoundVideoZoom {
+                    // Back to where the pinch started, such as a lens picked with a button, not always to 1×.
                     // A paused camera has nothing to animate, so it gets the value at once.
-                    self.setDisplayedZoom(1.0, rampRate: self.previewState == nil ? 8.0 : nil)
+                    self.setDisplayedZoom(self.zoomBeforePinch, rampRate: self.previewState == nil ? 8.0 : nil)
                 }
-                self.updateZoomControls()
+                self.endZoomGesture()
             default:
                 break
             }
         }
 
-        @objc private func zoomButtonPressed(_ sender: UIButton) {
-            self.setDisplayedZoom(CGFloat(sender.tag) / 10.0)
+        // A tap on another lens zooms over to it. The lone «1×» of a single-lens camera has nowhere to go, so its tap shows
+        // the dial for a moment instead; with several lenses a missed tap on the active one must not hide the others.
+        private func zoomPresetPressed(_ value: CGFloat) {
+            guard self.previewState == nil else {
+                return
+            }
+            if abs(self.displayedZoom - value) > 0.01 {
+                // A ramp, so the recorded video glides over to the lens instead of jumping.
+                self.setDisplayedZoom(value, rampRate: 6.0, transition: .spring(duration: 0.3))
+            } else if DGSimpleSettings.shared.roundVideoZoomSlider && self.maxZoom > self.minZoom && self.zoomButtonValues().count == 1 {
+                self.setZoomControlsExpanded(true)
+                self.scheduleZoomControlsCollapse(delay: 1.5)
+            }
         }
 
         @objc private func handleZoomPan(_ gesture: UIPanGestureRecognizer) {
-            // Only the start and the moves are gated: a swipe that outlives a pause must still close the ruler.
+            // Only the start and the moves are gated: a swipe that outlives a pause must still close the dial.
             let canZoom = DGSimpleSettings.shared.roundVideoZoomSlider && self.previewState == nil && self.maxZoom > self.minZoom
             switch gesture.state {
             case .began:
-                guard canZoom else {
-                    return
+                self.isPanZooming = canZoom
+                if self.isPanZooming {
+                    gesture.setTranslation(CGPoint(), in: self.zoomControlsView)
+                    self.beginZoomGesture()
                 }
-                self.zoomGestureStart = self.displayedZoom
-                self.zoomControlsExpanded = true
-                self.updateZoomControls()
             case .changed:
-                guard canZoom else {
+                // Consumed even while paused, so a swipe that outlives the pause doesn't jump on «record more».
+                let translation = gesture.translation(in: self.zoomControlsView)
+                gesture.setTranslation(CGPoint(), in: self.zoomControlsView)
+                guard self.isPanZooming && canZoom else {
                     return
                 }
-                let fraction = gesture.translation(in: self.zoomControlsView).x / max(1.0, self.zoomControlsView.bounds.width)
-                self.setDisplayedZoom(self.zoomGestureStart * exp(fraction * log(self.maxZoom / self.minZoom)))
+                // A dial: moving the finger to the left brings the higher values under the center mark.
+                self.moveZoomGesture(by: -translation.x / roundVideoZoomPointsPerOctave)
             case .ended, .cancelled, .failed:
-                self.zoomControlsExpanded = false
-                self.updateZoomControls()
+                if self.isPanZooming {
+                    self.isPanZooming = false
+                    self.endZoomGesture()
+                }
             default:
                 break
             }
         }
 
-        private func setDisplayedZoom(_ value: CGFloat, rampRate: CGFloat? = nil) {
-            self.displayedZoom = min(max(value, self.minZoom), self.maxZoom)
-            self.camera?.setZoomFactor(self.displayedZoom, rampRate: rampRate)
-            self.updateZoomControls()
+        // A swipe and a pinch both move through `RoundVideoZoomDetents` positions, so they rest on every lens for a moment
+        // and tick there.
+        private func beginZoomGesture() {
+            self.zoomCollapseToken += 1
+            self.zoomHapticFeedback.prepareTap()
+            let detents = self.zoomDetents()
+            self.zoomGesturePosition = detents.position(for: self.displayedZoom)
+            self.zoomGestureLens = detents.value(at: self.zoomGesturePosition).lens
+            self.setZoomControlsExpanded(true)
         }
 
-        // One button per lens or 48 MP crop of the camera on screen, so a digital step never looks like a lens;
-        // the ruler labels the same values. A camera with a single lens, like the front one, gets just «1×».
-        private func setZoomPresets(_ zoomPresets: [CGFloat]) {
-            self.zoomSlider.labeledValues = zoomPresets
-            for button in self.zoomButtons {
-                button.removeFromSuperview()
+        private func moveZoomGesture(by delta: CGFloat) {
+            let detents = self.zoomDetents()
+            let lowerPosition = detents.position(for: self.minZoom)
+            let upperPosition = detents.position(for: self.maxZoom)
+            // Clamped, so a finger that went past an end turns the zoom back as soon as it turns around.
+            self.zoomGesturePosition = min(max(self.zoomGesturePosition + delta, lowerPosition), upperPosition)
+            let resting = detents.value(at: self.zoomGesturePosition)
+            var value = resting.value
+            if self.zoomGesturePosition >= upperPosition {
+                value = self.maxZoom
+            } else if self.zoomGesturePosition <= lowerPosition {
+                value = self.minZoom
             }
-            self.zoomButtons.removeAll()
-            for zoom in zoomPresets {
-                let button = UIButton(type: .system)
-                button.tag = Int((zoom * 10.0).rounded())
-                button.titleLabel?.font = .systemFont(ofSize: 12.0, weight: .medium)
-                button.layer.cornerRadius = 22.0
-                button.setTitle(String(format: "%g", Double(zoom)), for: .normal)
-                button.setTitleColor(.white, for: .normal)
-                button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
-                self.zoomButtonsView.addArrangedSubview(button)
-                self.zoomButtons.append(button)
+            if let lens = resting.lens, lens != self.zoomGestureLens {
+                self.zoomHapticFeedback.tap()
+                // Kept warm for the next lens of a long swipe.
+                self.zoomHapticFeedback.prepareTap()
             }
+            self.zoomGestureLens = resting.lens
+            self.setDisplayedZoom(value)
+        }
+
+        // The dial stays for a moment after the fingers lift, so the value it stopped at can be read and adjusted.
+        private func endZoomGesture() {
+            self.zoomGestureLens = nil
+            self.scheduleZoomControlsCollapse(delay: 1.2)
+        }
+
+        private func zoomDetents() -> RoundVideoZoomDetents {
+            return RoundVideoZoomDetents(lensValues: self.zoomLensValues())
+        }
+
+        // The lenses within the camera's range: the dial labels and rests on all of them.
+        private func zoomLensValues() -> [CGFloat] {
+            return self.zoomPresets.filter { $0 >= self.minZoom && $0 <= self.maxZoom }
+        }
+
+        // With the zoom slider turned off only the lenses up to 1× get a button, as before the dial existed.
+        private func zoomButtonValues() -> [CGFloat] {
+            let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
+            return self.zoomLensValues().filter { extendedZoomEnabled || $0 <= 1.0 }
+        }
+
+        private func scheduleZoomControlsCollapse(delay: Double) {
+            self.zoomCollapseToken += 1
+            let token = self.zoomCollapseToken
+            Queue.mainQueue().after(delay, { [weak self] in
+                guard let self, self.zoomCollapseToken == token else {
+                    return
+                }
+                self.setZoomControlsExpanded(false)
+            })
+        }
+
+        private func setZoomControlsExpanded(_ expanded: Bool) {
+            guard self.zoomControlsExpanded != expanded else {
+                return
+            }
+            self.zoomControlsExpanded = expanded
+            self.updateZoomControls(transition: .spring(duration: 0.4))
+        }
+
+        private func setDisplayedZoom(_ value: CGFloat, rampRate: CGFloat? = nil, transition: ComponentTransition = .immediate) {
+            self.displayedZoom = min(max(value, self.minZoom), self.maxZoom)
+            self.camera?.setZoomFactor(self.displayedZoom, rampRate: rampRate)
+            self.updateZoomControls(transition: transition)
         }
 
         // Each camera has its own zoom, limit and lenses, so a flip starts over at 1×. The limit and the buttons come
@@ -1321,6 +1603,13 @@ public class VideoMessageCameraScreen: ViewController {
                 return
             }
             self.zoomControlsExpanded = false
+            self.zoomCollapseToken += 1
+            // A swipe or a pinch still under the fingers belonged to the other camera: the rest of it is ignored, and a
+            // pinch end doesn't carry that camera's zoom over.
+            self.isPinchZooming = false
+            self.isPanZooming = false
+            self.zoomGestureLens = nil
+            self.zoomBeforePinch = 1.0
             self.minZoom = 1.0
             self.maxZoom = 1.0
             self.setDisplayedZoom(1.0)
@@ -1331,51 +1620,46 @@ public class VideoMessageCameraScreen: ViewController {
                 }
                 self.minZoom = max(0.5, zoomRange.lowerBound)
                 self.maxZoom = max(self.minZoom, min(zoomRange.upperBound, maxRoundVideoZoom))
-                self.setZoomPresets(nativeZoomFactors)
+                // One button per lens or 48 MP crop of the camera on screen, so a digital step never looks like a lens;
+                // the dial labels the same values and rests on them. A single-lens camera, like the front one, gets «1×».
+                self.zoomPresets = nativeZoomFactors
                 // Re-clamps a value set while the previous camera's limit still applied.
                 self.setDisplayedZoom(self.displayedZoom)
             }))
         }
 
-        private func updateZoomControls() {
+        private func updateZoomControls(transition: ComponentTransition = .immediate) {
             // While the screen animates out the strip only fades: a zoom range arriving late must not show it again.
             guard !self.animatingOut else {
                 return
             }
             let extendedZoomEnabled = DGSimpleSettings.shared.roundVideoZoomSlider
-            // With the zoom slider turned off only the 0.5× lens switch is offered, as before the ruler existed,
+            // With the zoom slider turned off only the 0.5× lens switch is offered, as before the dial existed,
             // so a camera without an ultra-wide lens shows no zoom strip at all.
             let enabled = self.previewState == nil && self.maxZoom > self.minZoom && (extendedZoomEnabled || self.minZoom < 1.0)
-            let expanded = extendedZoomEnabled && self.zoomControlsExpanded
-            self.zoomButtonsView.isHidden = !enabled || expanded
-            self.zoomSlider.isHidden = !enabled || !expanded
-            self.zoomLabel.isHidden = !enabled || !expanded
-            self.zoomSlider.minimumValue = self.minZoom
-            self.zoomSlider.maximumValue = self.maxZoom
-            self.zoomSlider.value = self.displayedZoom
-            self.zoomLabel.text = String(format: "%.1f×", Double(self.displayedZoom)).replacingOccurrences(of: ".0×", with: "×")
-            let shownButtons = self.zoomButtons.filter {
-                let zoom = CGFloat($0.tag) / 10.0
-                return zoom >= self.minZoom && zoom <= self.maxZoom && (extendedZoomEnabled || zoom <= 1.0)
+            if !enabled {
+                // A hidden strip comes back collapsed, such as on «record more» right after a gesture.
+                self.zoomControlsExpanded = false
             }
-            let activeButton = shownButtons.min { abs(log(self.displayedZoom / (CGFloat($0.tag) / 10.0))) < abs(log(self.displayedZoom / (CGFloat($1.tag) / 10.0))) }
-            for button in self.zoomButtons {
-                let zoom = CGFloat(button.tag) / 10.0
-                button.isHidden = !shownButtons.contains(where: { $0 === button })
-                let active = button === activeButton
-                button.setTitle(active ? self.zoomLabel.text : String(format: "%g", Double(zoom)), for: .normal)
-                button.backgroundColor = active ? .systemBlue : .clear
-            }
-            let buttonsWidth = CGFloat(self.zoomButtons.filter { !$0.isHidden }.count) * 44.0
-            self.zoomButtonsView.frame = CGRect(x: (self.zoomControlsView.bounds.width - buttonsWidth) / 2.0, y: 0.0, width: buttonsWidth, height: 44.0)
-            self.zoomSlider.frame = self.zoomControlsView.bounds
+            let decimalSeparator = self.presentationData.dateTimeFormat.decimalSeparator
+            self.zoomControlsView.update(
+                buttonValues: self.zoomButtonValues(),
+                lensValues: self.zoomLensValues(),
+                minimumValue: self.minZoom,
+                maximumValue: self.maxZoom,
+                value: self.displayedZoom,
+                isExpanded: extendedZoomEnabled && self.zoomControlsExpanded,
+                theme: self.presentationData.theme,
+                decimalSeparator: decimalSeparator,
+                transition: transition
+            )
             // The zoom range comes in after the screen is already up, so the strip fades in instead of popping up.
             if enabled && self.zoomControlsView.isHidden {
                 self.zoomControlsView.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
             }
             self.zoomControlsView.isHidden = !enabled
-            self.zoomControlsView.accessibilityValue = self.zoomLabel.text
-            // The swipe only drives the slider, so with the slider turned off it must not begin at all: once begun, it
+            self.zoomControlsView.accessibilityValue = roundVideoZoomTitle(self.displayedZoom, decimalSeparator: decimalSeparator)
+            // The swipe only drives the dial, so with the slider turned off it must not begin at all: once begun, it
             // cancels the touch of the zoom button under the finger, and a tap that slides a little would be lost.
             self.zoomPanGestureRecognizer?.isEnabled = extendedZoomEnabled
         }
@@ -1416,11 +1700,10 @@ public class VideoMessageCameraScreen: ViewController {
             })
             
             self.componentHost.view?.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
-            // The zoom strip and its label sit in `containerView`, outside the component, so they fade on their own,
-            // in step with the component. The strip may still be fading in, so it starts from what is on screen.
+            // The zoom strip sits in `containerView`, outside the component, so it fades on its own, in step with the
+            // component. It may still be fading in, so it starts from what is on screen.
             let zoomControlsAlpha = CGFloat(self.zoomControlsView.layer.presentation()?.opacity ?? 1.0)
             self.zoomControlsView.layer.animateAlpha(from: zoomControlsAlpha, to: 0.0, duration: 0.15, removeOnCompletion: false)
-            self.zoomLabel.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
             self.previewContainerView.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.25, removeOnCompletion: false)
         }
         
@@ -1785,10 +2068,11 @@ public class VideoMessageCameraScreen: ViewController {
                 transition.setFrame(view: self.previewContainerView, frame: previewFrame)
                 transition.setFrame(view: self.previewContainerContentView, frame: CGRect(origin: CGPoint(), size: previewFrame.size))
             }
-            let zoomY = min(previewFrame.maxY + 18.0, backgroundFrame.height - 55.0)
+            // The collapsed capsule, centered in the 56 pt control, keeps 18 pt under the circle; the dial grows into the
+            // whole control and shows its value inside, so nothing lies over the video.
+            let zoomY = floorToScreenPixels(min(previewFrame.maxY + 10.0, backgroundFrame.height - 67.0))
             let zoomWidth = min(240.0, backgroundFrame.width - 72.0)
-            self.zoomControlsView.frame = CGRect(x: (backgroundFrame.width - zoomWidth) / 2.0, y: zoomY, width: zoomWidth, height: 44.0)
-            self.zoomLabel.frame = CGRect(x: (backgroundFrame.width - 54.0) / 2.0, y: zoomY - 32.0, width: 54.0, height: 26.0)
+            self.zoomControlsView.frame = CGRect(x: floorToScreenPixels((backgroundFrame.width - zoomWidth) / 2.0), y: zoomY, width: zoomWidth, height: 56.0)
             self.updateZoomControls()
             transition.setCornerRadius(layer: self.previewContainerContentView.layer, cornerRadius: previewSide / 2.0)
                         
@@ -2099,6 +2383,9 @@ public class VideoMessageCameraScreen: ViewController {
     
     deinit {
         self.audioSessionDisposable?.dispose()
+        if #available(iOS 13.0, *) {
+            try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(false)
+        }
     }
 
     override public func viewDidAppear(_ animated: Bool) {
@@ -2412,6 +2699,11 @@ public class VideoMessageCameraScreen: ViewController {
         }
       
         self.audioSessionDisposable = self.context.sharedContext.mediaManager.audioSession.push(audioSessionType: audioSessionType, activate: { [weak self] _ in
+            // iOS mutes haptics while audio is recorded unless asked, and the zoom dial ticks on every lens. Reset in deinit,
+            // as the story camera does.
+            if #available(iOS 13.0, *) {
+                try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
+            }
             if let self {
                 Queue.mainQueue().after(0.05) {
                     self.audioSessionReady = true
