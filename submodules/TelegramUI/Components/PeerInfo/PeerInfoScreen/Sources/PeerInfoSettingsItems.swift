@@ -3,6 +3,7 @@ import DGSimpleSettings
 import UIKit
 import Display
 import AccountContext
+import AccountUtils
 import TelegramPresentationData
 import TelegramCore
 import PhoneNumberFormat
@@ -144,10 +145,10 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
                 }))
             }
             
-            items[.accounts]!.append(PeerInfoScreenActionItem(id: 100, text: presentationData.strings.Settings_AddAccount, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), action: {
-                interaction.openSettings(.addAccount)
-            }))
         }
+        items[.accounts]!.append(PeerInfoScreenActionItem(id: 100, text: presentationData.strings.Settings_AddAccount, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), action: {
+            interaction.openSettings(.addAccount)
+        }))
         
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
@@ -517,22 +518,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
         interaction.openSettings(.addAccount)
     }))
     
-    var hasPremiumAccounts = false
-    if data.peer?.isPremium == true && !context.account.testingEnvironment {
-        hasPremiumAccounts = true
-    }
-    if let settings = data.globalSettings {
-        for (accountContext, peer, _) in settings.accountsAndPeers {
-            if !accountContext.account.testingEnvironment {
-                if peer.isPremium {
-                    hasPremiumAccounts = true
-                    break
-                }
-            }
-        }
-    }
-    
-    items[.account]!.append(PeerInfoScreenCommentItem(id: ItemAddAccountHelp, text: hasPremiumAccounts ? presentationData.strings.Settings_AddAnotherAccount_PremiumHelp : presentationData.strings.Settings_AddAnotherAccount_Help))
+    items[.account]!.append(PeerInfoScreenCommentItem(id: ItemAddAccountHelp, text: "В Donutgram можно добавить до \(maximumNumberOfAccounts) аккаунтов независимо от наличия Premium."))
     
     items[.logout]!.append(PeerInfoScreenActionItem(id: ItemLogout, text: presentationData.strings.Settings_Logout, color: .destructive, alignment: .center, action: {
         interaction.openSettings(.logout)
