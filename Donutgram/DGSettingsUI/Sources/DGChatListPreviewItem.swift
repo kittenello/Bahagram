@@ -10,6 +10,7 @@ import TelegramCore
 import ChatListTitleView
 import SearchBarNode
 import DGSnowEffect
+import DGSimpleSettings
 
 final class DGChatListPreviewItem: ListViewItem, ItemListItem {
     let context: AccountContext
@@ -194,8 +195,13 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
         transition.updateFrame(view: self.panel, frame: CGRect(x: 22.0, y: 22.0, width: max(0.0, blockWidth - 44.0), height: panelHeight))
         let width = self.panel.bounds.width
         let titleSize = CGSize(width: max(1.0, width - 80.0), height: 60.0)
-        let contentRect = titleView.updateLayoutInternal(size: titleSize, transition: .immediate, centerTitle: true)
-        titleView.frame = CGRect(origin: CGPoint(x: item.centerTitle ? (width - titleSize.width) / 2.0 : 18.0 - contentRect.minX, y: 0.0), size: titleSize)
+        // Mirrors the real header, which never left-aligns the title. Off, the stories header centers the story
+        // avatars and the title as one group, 4 pt right of the center without avatars; with «Скрыть сторис» only
+        // the text is centered and the status hangs to its right. In both the title stops short of the ⋮.
+        let storiesHeader = !DGSimpleSettings.shared.hideStories
+        let contentRect = titleView.updateLayoutInternal(size: titleSize, transition: .immediate, centerTitle: item.centerTitle || storiesHeader)
+        let titleShift: CGFloat = item.centerTitle || !storiesHeader ? 0.0 : 4.0
+        titleView.frame = CGRect(origin: CGPoint(x: (width - titleSize.width) / 2.0 + min(titleShift, titleSize.width - contentRect.maxX), y: 0.0), size: titleSize)
         self.menuLabel.frame = CGRect(x: width - 38.0, y: 15.0, width: 25.0, height: 30.0)
         // Drawn like the chat list's field (NavigationBarSearchContentNode). When hidden, it fades out while the panel
         // shrinks to the title row.
