@@ -7413,6 +7413,9 @@ private final class ChatListLocationContext {
                 titleContent.text = defaultTitle
                 titleContent.activity = false
             }
+            if isRoot && DGSimpleSettings.shared.chatListHideEmojiStatus {
+                titleContent.peerStatus = nil
+            }
             self.chatListTitle = titleContent
             
             if case .chatList(.root) = self.location, checkProxy {

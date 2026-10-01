@@ -230,7 +230,8 @@ public final class DGSnowView: UIView {
         flakeLayer.position = endPoint
         flakeLayer.opacity = Float(0.45 + 0.55 * depth)
 
-        let beginTime = self.layer.convertTime(now, from: nil) - age
+        self.layer.addSublayer(flakeLayer)
+        let beginTime = flakeLayer.convertTime(now, from: nil) - age
 
         // Catmull-Rom through the samples keeps the sway smooth and the fall itself linear.
         let fall = CAKeyframeAnimation(keyPath: "position")
@@ -252,7 +253,6 @@ public final class DGSnowView: UIView {
             flakeLayer.add(spin, forKey: "spin")
         }
 
-        self.layer.addSublayer(flakeLayer)
         self.flakes.append(Flake(layer: flakeLayer, isSnowflake: isSnowflake, deathTime: now - age + duration))
     }
 

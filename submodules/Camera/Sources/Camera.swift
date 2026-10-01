@@ -573,6 +573,10 @@ private final class CameraContext {
         let minimum = device.minZoomFactor
         return minimum ... max(minimum, device.maxZoomFactor)
     }
+
+    var nativeZoomFactors: [CGFloat] {
+        return self.visibleZoomDevice?.nativeZoomFactors ?? [1.0]
+    }
     
     func takePhoto() -> Signal<PhotoCaptureResult, NoError> {
         guard let mainDeviceContext = self.mainDeviceContext else {
@@ -1036,6 +1040,20 @@ public final class Camera {
             self.queue.async {
                 if let context = self.contextRef?.takeUnretainedValue() {
                     subscriber.putNext(context.zoomFactorRange)
+                }
+                subscriber.putCompletion()
+            }
+            return EmptyDisposable
+        }
+    }
+
+    /// Donutgram: the zoom factors of the camera on screen that need no upscaling, i.e. its lenses and 48 MP crops,
+    /// in `setZoomFactor` units and ascending. Emits once; query again after changing camera position.
+    public var nativeZoomFactors: Signal<[CGFloat], NoError> {
+        return Signal { subscriber in
+            self.queue.async {
+                if let context = self.contextRef?.takeUnretainedValue() {
+                    subscriber.putNext(context.nativeZoomFactors)
                 }
                 subscriber.putCompletion()
             }

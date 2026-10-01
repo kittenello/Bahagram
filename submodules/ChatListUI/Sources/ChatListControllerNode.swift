@@ -1329,9 +1329,6 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 self.mainContainerNode.currentItemNode.scrollHeightTopInset = (self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight) + ChatListNavigationBar.storiesScrollHeight
                 let _ = self.mainContainerNode.currentItemNode.scrollToOffsetFromTop(self.lastHideSearch ? 0.0 : ChatListNavigationBar.searchScrollHeight, animated: false)
             }
-            self.mainContainerNode.currentItemNode.forEachItemNode { node in
-                (node as? ChatListItemNode)?.updateMiniSenderAvatar()
-            }
             self.controller?.requestLayout(transition: .immediate)
         }
     }
