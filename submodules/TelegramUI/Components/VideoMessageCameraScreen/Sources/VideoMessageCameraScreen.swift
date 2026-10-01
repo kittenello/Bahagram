@@ -1500,6 +1500,12 @@ public class VideoMessageCameraScreen: ViewController {
                 }
             }
             
+            // The zoom row lies under the full-screen component root, a plain view that takes every touch its own
+            // buttons miss. Hand such touches to the row; the component's buttons still win where they overlap it.
+            if let componentView = self.componentHost.view, result === componentView, let zoomResult = self.zoomControlsView.hitTest(self.view.convert(point, to: self.zoomControlsView), with: event) {
+                return zoomResult
+            }
+
             return result
         }
         
