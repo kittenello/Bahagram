@@ -138,6 +138,7 @@ public final class DGSimpleSettings {
         static let autoPause = "donutgram.chats.autoPause"
         static let doubleTapSeekSeconds = "donutgram.chats.doubleTapSeekSeconds"
         static let showPollResultsBeforeVoting = "donutgram.chats.showPollResultsBeforeVoting"
+        static let showChannelForwardCount = "donutgram.chats.showChannelForwardCount"
         static let autoPauseMedia = "donutgram.chats.autoPauseMedia"
         static let editedIcon = "donutgram.chats.editedIcon"
         static let showOnlineIndicator = "donutgram.chats.showOnlineIndicator"
@@ -512,6 +513,7 @@ public final class DGSimpleSettings {
     }
 
     public var showPollResultsBeforeVoting: Bool { get { bool(Key.showPollResultsBeforeVoting) } set { setBool(newValue, Key.showPollResultsBeforeVoting) } }
+    public var showChannelForwardCount: Bool { get { bool(Key.showChannelForwardCount) } set { setBool(newValue, Key.showChannelForwardCount) } }
     /// Bitmask: video = 1, voice = 2, round video = 4.
     public var autoPauseMedia: Int {
         get { self.defaults.object(forKey: Key.autoPauseMedia) == nil ? 7 : integer(Key.autoPauseMedia) }

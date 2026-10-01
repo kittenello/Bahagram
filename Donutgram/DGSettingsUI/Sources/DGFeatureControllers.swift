@@ -229,8 +229,9 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .toggle(17, 1, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
             .toggle(18, 1, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
             .toggle(19, 1, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
-            .header(20, 2, "ГОЛОС В ТЕКСТ"),
-            .disclosure(21, 2, "transcription", "Сервис", transcription),
+            .toggle(20, 1, "channelForwardCount", "Счетчик пересылок в каналах", s.showChannelForwardCount, true),
+            .header(21, 2, "ГОЛОС В ТЕКСТ"),
+            .disclosure(22, 2, "transcription", "Сервис", transcription),
             .header(30, 3, "ЗАПИСЬ"),
             .disclosure(31, 3, "camera", "Камера в кружках", cameraTitle),
             .toggle(32, 3, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
@@ -263,6 +264,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "greetingSticker": s.hideGreetingSticker = value
         case "mentionComma": s.commaAfterMention = value
         case "pollResultsBeforeVoting": s.showPollResultsBeforeVoting = value
+        case "channelForwardCount": s.showChannelForwardCount = value
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value
         case "staticZoom": s.staticRoundVideoZoom = value

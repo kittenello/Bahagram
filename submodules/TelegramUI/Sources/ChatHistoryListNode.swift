@@ -755,6 +755,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     
     private var donutgramSettingsObserver: NSObjectProtocol?
     private var donutgramTranscriptionBackend = DGSimpleSettings.shared.transcriptionBackend
+    private var donutgramShowChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
     
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
     
@@ -1284,15 +1285,18 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
 
         self.loadNextGenericReactionEffect(context: context)
         
-        // The transcribe button reads the Donutgram transcription service at layout time, so re-layout the loaded messages when it changes.
+        // These settings are read at layout time, so refresh the affected loaded messages.
         self.donutgramSettingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
             guard let self = self else {
                 return
             }
             let transcriptionBackend = DGSimpleSettings.shared.transcriptionBackend
-            if self.donutgramTranscriptionBackend != transcriptionBackend {
+            let showChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
+            let forwardCountChanged = self.donutgramShowChannelForwardCount != showChannelForwardCount
+            if self.donutgramTranscriptionBackend != transcriptionBackend || forwardCountChanged {
                 self.donutgramTranscriptionBackend = transcriptionBackend
-                self.updateLoadedMessageItems()
+                self.donutgramShowChannelForwardCount = showChannelForwardCount
+                self.updateLoadedMessageItems(includeChannelPosts: forwardCountChanged)
             }
         })
     }
@@ -4844,8 +4848,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
-    // Re-layouts the loaded voice messages and round videos: only they show a transcribe button.
-    private func updateLoadedMessageItems() {
+    // Refresh voice/round-video transcription controls and, when requested, channel post counters.
+    private func updateLoadedMessageItems(includeChannelPosts: Bool = false) {
         var messageIds: [MessageId] = []
         self.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
@@ -4859,7 +4863,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                         return false
                     }
                 })
-                if hasTranscribableMedia {
+                var isChannelPost = false
+                if includeChannelPosts, let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info {
+                    isChannelPost = true
+                }
+                if hasTranscribableMedia || isChannelPost {
                     messageIds.append(message.id)
                 }
             }

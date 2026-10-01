@@ -69,6 +69,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "snow": return "snowflake"
     case "islandFollowsIcon": return "link"
     case "pollResultsBeforeVoting": return "chart.bar"
+    case "channelForwardCount": return "arrowshape.turn.up.right"
     case "doubleTapSeek": return "goforward.15"
     case "hideArchive", "openArchiveOnPull": return "archivebox"
     case "downloadAcceleration": return "arrow.down.circle"
