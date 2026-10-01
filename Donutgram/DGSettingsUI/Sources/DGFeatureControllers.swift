@@ -213,6 +213,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case .rear: cameraTitle = "Основная"
         case .ask: cameraTitle = "Спрашивать"
         }
+        let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
         var result: [DGListEntry] = [
             .header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"),
             .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
@@ -230,11 +231,14 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .toggle(19, 1, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
             .header(20, 2, "ГОЛОС В ТЕКСТ"),
             .disclosure(21, 2, "transcription", "Сервис", transcription),
-            .header(30, 3, "КАМЕРА"),
+            .header(30, 3, "ЗАПИСЬ"),
             .disclosure(31, 3, "camera", "Камера в кружках", cameraTitle),
             .toggle(32, 3, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
             .toggle(33, 3, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
             .toggle(34, 3, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
+            .disclosure(35, 3, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
+            .toggle(36, 3, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
+            .info(37, 3, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
             .header(40, 4, "ВИДЕО"),
             .disclosure(41, 4, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
             .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),
@@ -245,8 +249,6 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         if s.hideArchive {
             result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
-        let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
-        result.append(.disclosure(53, 5, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"))
         result.append(contentsOf: [.header(60, 6, "СПИСОК ЧАТОВ"), .disclosure(61, 6, "chatListAppearance", "Внешний вид", "")])
         return result
     }, toggle: { key, value in
@@ -264,6 +266,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value
         case "staticZoom": s.staticRoundVideoZoom = value
+        case "builtInMic": s.forceBuiltInMicrophone = value
         case "autoPause": s.autoPause = value
         case "hideArchive":
             s.hideArchive = value

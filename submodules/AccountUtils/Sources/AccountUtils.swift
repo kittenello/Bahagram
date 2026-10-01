@@ -4,8 +4,10 @@ import TelegramCore
 import TelegramUIPreferences
 import AccountContext
 
-public let maximumNumberOfAccounts = 3
-public let maximumPremiumNumberOfAccounts = 4
+// Match Swiftgram's account capacity independently of Premium status.
+public let maximumDonutgramNumberOfAccounts = 500
+public let maximumNumberOfAccounts = maximumDonutgramNumberOfAccounts
+public let maximumPremiumNumberOfAccounts = maximumDonutgramNumberOfAccounts
 
 public func activeAccountsAndPeers(context: AccountContext, includePrimary: Bool = false) -> Signal<((AccountContext, EnginePeer)?, [(AccountContext, EnginePeer, Int32)]), NoError> {
     let sharedContext = context.sharedContext
