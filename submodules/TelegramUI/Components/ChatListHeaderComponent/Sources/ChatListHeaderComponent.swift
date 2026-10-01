@@ -137,6 +137,8 @@ public final class ChatListHeaderComponent: Component {
     public let storiesFraction: CGFloat
     public let storiesUnlocked: Bool
     public let uploadProgress: [EnginePeer.Id: Float]
+    /// Captured at init, like hideStories, so toggling «Заголовок по центру» makes the component unequal and the header is laid out again.
+    public let centeredTitle: Bool
     public let context: AccountContext
     public let theme: PresentationTheme
     public let strings: PresentationStrings
@@ -172,6 +174,7 @@ public final class ChatListHeaderComponent: Component {
         self.storiesFraction = storiesFraction
         self.storiesUnlocked = storiesUnlocked
         self.uploadProgress = uploadProgress
+        self.centeredTitle = DGSimpleSettings.shared.chatListCenteredTitle
         self.theme = theme
         self.strings = strings
         self.openStatusSetup = openStatusSetup
@@ -207,6 +210,9 @@ public final class ChatListHeaderComponent: Component {
             return false
         }
         if lhs.uploadProgress != rhs.uploadProgress {
+            return false
+        }
+        if lhs.centeredTitle != rhs.centeredTitle {
             return false
         }
         if lhs.context !== rhs.context {
@@ -448,7 +454,7 @@ public final class ChatListHeaderComponent: Component {
             self.chatListTitleView?.openEmojiStatusSetup()
         }
         
-        func update(context: AccountContext, theme: PresentationTheme, strings: PresentationStrings, content: Content, displayBackButton: Bool, sideInset: CGFloat, sideContentWidth: CGFloat, sideContentFraction: CGFloat, size: CGSize, transition: ComponentTransition) {
+        func update(context: AccountContext, theme: PresentationTheme, strings: PresentationStrings, content: Content, displayBackButton: Bool, centeredTitle: Bool, sideInset: CGFloat, sideContentWidth: CGFloat, sideContentFraction: CGFloat, size: CGSize, transition: ComponentTransition) {
             let alphaTransition: ComponentTransition = transition.animation.isImmediate ? .immediate : .easeInOut(duration: 0.3)
 
             transition.setPosition(view: self.titleOffsetContainer, position: CGPoint(x: size.width * 0.5, y: size.height * 0.5))
@@ -671,7 +677,6 @@ public final class ChatListHeaderComponent: Component {
                     self.titleScaleContainer.addSubview(chatListTitleView)
                 }
                 
-                let centeredTitle = DGSimpleSettings.shared.chatListCenteredTitle
                 // Centered: the title gets the free space between the buttons rather than a box mirrored from the wider side,
                 // and is moved to the screen center below as far as the room around it allows.
                 let titleAreaMinX = sideInset + nextLeftButtonX + 8.0
@@ -892,7 +897,7 @@ public final class ChatListHeaderComponent: Component {
                     )
                 }
                 
-                primaryContentView.update(context: component.context, theme: component.theme, strings: component.strings, content: primaryContent, displayBackButton: primaryContent.backPressed != nil, sideInset: component.sideInset, sideContentWidth: sideContentWidth, sideContentFraction: (1.0 - component.storiesFraction), size: availableSize, transition: primaryContentTransition)
+                primaryContentView.update(context: component.context, theme: component.theme, strings: component.strings, content: primaryContent, displayBackButton: primaryContent.backPressed != nil, centeredTitle: component.centeredTitle, sideInset: component.sideInset, sideContentWidth: sideContentWidth, sideContentFraction: (1.0 - component.storiesFraction), size: availableSize, transition: primaryContentTransition)
                 primaryContentTransition.setFrame(view: primaryContentView, frame: CGRect(origin: CGPoint(), size: availableSize))
                 
                 primaryContentView.updateContentOffsetFraction(contentOffsetFraction: 1.0 - self.storyOffsetFraction, transition: primaryContentTransition)
@@ -948,7 +953,7 @@ public final class ChatListHeaderComponent: Component {
                         titleHasLock: primaryTitleHasLock,
                         titleHasActivity: primaryTitleHasActivity,
                         titlePeerStatus: primaryTitlePeerStatus,
-                        centeredTitle: DGSimpleSettings.shared.chatListCenteredTitle,
+                        centeredTitle: component.centeredTitle,
                         minTitleX: self.primaryContentView?.centerContentLeftInset ?? 0.0,
                         maxTitleX: availableSize.width - (self.primaryContentView?.centerContentRightInset ?? 0.0),
                         useHiddenList: component.storiesIncludeHidden,
@@ -1031,7 +1036,7 @@ public final class ChatListHeaderComponent: Component {
                     self.leftButtonsContainer.addSubview(secondaryContentView.leftButtonsContainer)
                     self.rightButtonsContainer.addSubview(secondaryContentView.rightButtonsContainer)
                 }
-                secondaryContentView.update(context: component.context, theme: component.theme, strings: component.strings, content: secondaryContent, displayBackButton: true, sideInset: component.sideInset, sideContentWidth: 0.0, sideContentFraction: 0.0, size: availableSize, transition: secondaryContentTransition)
+                secondaryContentView.update(context: component.context, theme: component.theme, strings: component.strings, content: secondaryContent, displayBackButton: true, centeredTitle: component.centeredTitle, sideInset: component.sideInset, sideContentWidth: 0.0, sideContentFraction: 0.0, size: availableSize, transition: secondaryContentTransition)
                 secondaryContentTransition.setFrame(view: secondaryContentView, frame: CGRect(origin: CGPoint(), size: availableSize))
                 
                 secondaryContentView.updateContentOffsetFraction(contentOffsetFraction: 1.0 - self.storyOffsetFraction, transition: secondaryContentTransition)
