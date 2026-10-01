@@ -1082,6 +1082,8 @@ public class VideoMessageCameraScreen: ViewController {
             self.zoomSlider.value = 1.0
             self.zoomSlider.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
             self.zoomSlider.layer.cornerRadius = 22.0
+            self.zoomSlider.layer.cornerCurve = .continuous
+            self.zoomSlider.clipsToBounds = true
             self.zoomControlsView.addSubview(self.zoomSlider)
             self.zoomLabel.textAlignment = .center
             self.zoomLabel.textColor = .white
