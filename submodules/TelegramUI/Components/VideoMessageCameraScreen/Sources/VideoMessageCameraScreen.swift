@@ -32,11 +32,15 @@ import DGSimpleSettings
 import LottieComponent
 import GlassBackgroundComponent
 
-// A logarithmic ruler with a blue position marker and the same lens labels as the recording preview.
+// A logarithmic ruler with a blue position marker and the same lens labels as the zoom buttons.
 private final class RoundVideoZoomScaleView: UIView {
     var minimumValue: CGFloat = 1.0
     var maximumValue: CGFloat = 10.0
     var value: CGFloat = 1.0 {
+        didSet { self.setNeedsDisplay() }
+    }
+    // The lenses and sensor crops of the camera on screen; only these get a blue tick and a label.
+    var labeledValues: [CGFloat] = [] {
         didSet { self.setNeedsDisplay() }
     }
 
@@ -55,10 +59,11 @@ private final class RoundVideoZoomScaleView: UIView {
         let trackWidth = max(1.0, self.bounds.width - 24.0)
         let logRange = log(self.maximumValue / self.minimumValue)
         let ticks: [CGFloat] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
-        for zoom in ticks {
+        // A lens between these steps, such as a 2.2× one, still gets its own tick.
+        for zoom in ticks + self.labeledValues.filter({ !ticks.contains($0) }) {
             guard zoom >= self.minimumValue && zoom <= self.maximumValue else { continue }
             let x = 12.0 + log(zoom / self.minimumValue) / logRange * trackWidth
-            let major = [CGFloat(0.5), 1.0, 2.0, 5.0, 8.0, 10.0].contains(zoom)
+            let major = self.labeledValues.contains(zoom)
             context.setStrokeColor((major ? UIColor.systemBlue : UIColor.white.withAlphaComponent(0.5)).cgColor)
             context.setLineWidth(1.0)
             context.move(to: CGPoint(x: x, y: major ? 8.0 : 13.0))
@@ -1066,17 +1071,7 @@ public class VideoMessageCameraScreen: ViewController {
             self.zoomButtonsView.backgroundColor = UIColor(white: 0.1, alpha: 0.85)
             self.zoomButtonsView.layer.cornerRadius = 22.0
             self.zoomButtonsView.clipsToBounds = true
-            for zoom in [CGFloat(0.5), 1.0, 2.0, 5.0] {
-                let button = UIButton(type: .system)
-                button.tag = Int(zoom * 10.0)
-                button.titleLabel?.font = .systemFont(ofSize: 12.0, weight: .medium)
-                button.layer.cornerRadius = 22.0
-                button.setTitle(String(format: "%g×", Double(zoom)), for: .normal)
-                button.setTitleColor(.white, for: .normal)
-                button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
-                self.zoomButtonsView.addArrangedSubview(button)
-                self.zoomButtons.append(button)
-            }
+            // The buttons are added with the camera's zoom range, in `setZoomPresets`.
             self.containerView.addSubview(self.zoomControlsView)
             self.zoomControlsView.addSubview(self.zoomButtonsView)
             let zoomPanGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.handleZoomPan(_:)))
@@ -1296,9 +1291,31 @@ public class VideoMessageCameraScreen: ViewController {
             self.updateZoomControls()
         }
 
-        // Each camera has its own zoom and limit, so a flip starts over at 1×. The limit comes from the camera,
-        // not from `camera.metrics.zoomLevels`: those are the story camera's lens presets, which end at 2× on
-        // every iPhone except the Pro models from the 14 Pro on.
+        // One button per lens or 48 MP crop of the camera on screen, so a digital step never looks like a lens;
+        // the ruler labels the same values. A camera with a single lens, like the front one, gets just «1×».
+        private func setZoomPresets(_ zoomPresets: [CGFloat]) {
+            self.zoomSlider.labeledValues = zoomPresets
+            for button in self.zoomButtons {
+                button.removeFromSuperview()
+            }
+            self.zoomButtons.removeAll()
+            for zoom in zoomPresets {
+                let button = UIButton(type: .system)
+                button.tag = Int((zoom * 10.0).rounded())
+                button.titleLabel?.font = .systemFont(ofSize: 12.0, weight: .medium)
+                button.layer.cornerRadius = 22.0
+                button.setTitle(String(format: "%g", Double(zoom)), for: .normal)
+                button.setTitleColor(.white, for: .normal)
+                button.addTarget(self, action: #selector(self.zoomButtonPressed(_:)), for: .touchUpInside)
+                self.zoomButtonsView.addArrangedSubview(button)
+                self.zoomButtons.append(button)
+            }
+        }
+
+        // Each camera has its own zoom, limit and lenses, so a flip starts over at 1×. The limit and the buttons come
+        // from the camera, not from `camera.metrics.zoomLevels`: that table belongs to the attachment camera, ends at 2×
+        // on every iPhone except the Pro models from the 14 Pro on, gives the 16 Pro 3× instead of its 5× lens and
+        // knows neither the 11–13 nor the plain 16.
         private func resetZoomForVisibleCamera() {
             guard let camera = self.camera else {
                 return
@@ -1307,13 +1324,14 @@ public class VideoMessageCameraScreen: ViewController {
             self.minZoom = 1.0
             self.maxZoom = 1.0
             self.setDisplayedZoom(1.0)
-            self.zoomRangeDisposable.set((camera.zoomFactorRange
-            |> deliverOnMainQueue).startStrict(next: { [weak self] zoomRange in
+            self.zoomRangeDisposable.set((combineLatest(camera.zoomFactorRange, camera.nativeZoomFactors)
+            |> deliverOnMainQueue).startStrict(next: { [weak self] zoomRange, nativeZoomFactors in
                 guard let self else {
                     return
                 }
                 self.minZoom = max(0.5, zoomRange.lowerBound)
                 self.maxZoom = max(self.minZoom, min(zoomRange.upperBound, maxRoundVideoZoom))
+                self.setZoomPresets(nativeZoomFactors)
                 // Re-clamps a value set while the previous camera's limit still applied.
                 self.setDisplayedZoom(self.displayedZoom)
             }))

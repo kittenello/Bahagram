@@ -364,6 +364,35 @@ final class CameraDevice {
         return device.maxAvailableVideoZoomFactor / device.neutralZoomFactor
     }
     
+    // Donutgram: the `setZoomFactor` values that need no upscaling, as AVFoundation reports them: the lenses a virtual
+    // camera switches between (the 0.5× ultra-wide, the 1× wide, a 2–5× telephoto) and the crops of a 48 MP sensor,
+    // such as the wide camera's 2×. The crops are taken from every format: the small round-video format may not list
+    // them, but such a crop still covers it without upscaling. A single 12 MP lens, like a front camera, gives only 1×.
+    var nativeZoomFactors: [CGFloat] {
+        guard let device = self.videoDevice else {
+            return [1.0]
+        }
+        var rawFactors: [CGFloat] = [1.0]
+        if #available(iOS 13.0, *) {
+            rawFactors.append(contentsOf: device.virtualDeviceSwitchOverVideoZoomFactors.map { CGFloat($0.doubleValue) })
+        }
+        if #available(iOS 16.0, *) {
+            for format in device.formats {
+                rawFactors.append(contentsOf: format.secondaryNativeResolutionZoomFactors)
+            }
+        }
+        let neutralZoomFactor = device.neutralZoomFactor
+        var result: [CGFloat] = []
+        for rawFactor in rawFactors {
+            // One decimal, as on the labels, so a lens at 2.9999 and a crop at 3.0 make a single «3».
+            let factor = (rawFactor / neutralZoomFactor * 10.0).rounded() / 10.0
+            if !result.contains(factor) {
+                result.append(factor)
+            }
+        }
+        return result.sorted()
+    }
+
     func resetZoom(neutral: Bool = true) {
         guard let device = self.videoDevice else {
             return
