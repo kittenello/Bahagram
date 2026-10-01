@@ -8,6 +8,7 @@ import LocalizedPeerData
 import AccountContext
 import TelegramCore
 import ChatListTitleView
+import SearchBarNode
 import DGSnowEffect
 
 final class DGChatListPreviewItem: ListViewItem, ItemListItem {
@@ -17,15 +18,17 @@ final class DGChatListPreviewItem: ListViewItem, ItemListItem {
     let snow: Bool
     let hideEmojiStatus: Bool
     let centerTitle: Bool
+    let hideSearch: Bool
     let titleMode: Int
 
-    init(context: AccountContext, theme: PresentationTheme, sectionId: ItemListSectionId, snow: Bool, hideEmojiStatus: Bool, centerTitle: Bool, titleMode: Int) {
+    init(context: AccountContext, theme: PresentationTheme, sectionId: ItemListSectionId, snow: Bool, hideEmojiStatus: Bool, centerTitle: Bool, hideSearch: Bool, titleMode: Int) {
         self.context = context
         self.theme = theme
         self.sectionId = sectionId
         self.snow = snow
         self.hideEmojiStatus = hideEmojiStatus
         self.centerTitle = centerTitle
+        self.hideSearch = hideSearch
         self.titleMode = titleMode
     }
 
@@ -36,7 +39,7 @@ final class DGChatListPreviewItem: ListViewItem, ItemListItem {
             node.contentSize = layout.contentSize
             node.insets = layout.insets
             Queue.mainQueue().async {
-                completion(node, { (nil, { _ in apply() }) })
+                completion(node, { (nil, { _ in apply(.immediate) }) })
             }
         }
     }
@@ -47,7 +50,8 @@ final class DGChatListPreviewItem: ListViewItem, ItemListItem {
                 let makeLayout = nodeValue.asyncLayout()
                 async {
                     let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
-                    Queue.mainQueue().async { completion(layout, { _ in apply() }) }
+                    // The list animates the row's height with this transition, so the panel grows and shrinks with it.
+                    Queue.mainQueue().async { completion(layout, { _ in apply(animation.transition) }) }
                 }
             }
         }
@@ -65,6 +69,7 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
     private let menuLabel = UILabel()
     private let snowView = DGSnowView()
     private var titleView: ChatListTitleView?
+    private var searchNode: SearchBarPlaceholderNode?
     private var accountPeer: EnginePeer?
     private var presentationData: PresentationData?
     private let peerDisposable = MetaDisposable()
@@ -102,20 +107,26 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
         dgDisplayHighlight(in: self.block, theme: item.theme)
     }
 
-    func asyncLayout() -> (_ item: DGChatListPreviewItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
+    /// The title row is 60 pt. Unless «Скрыть строку поиска» is on, the search field follows at y 56
+    /// (44 pt, as in the chat list) with 14 pt under it.
+    private static func panelHeight(hideSearch: Bool) -> CGFloat {
+        return hideSearch ? 60.0 : 114.0
+    }
+
+    func asyncLayout() -> (_ item: DGChatListPreviewItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, (ContainedViewLayoutTransition) -> Void) {
         return { item, params, neighbors in
-            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: 104.0), insets: itemListNeighborsGroupedInsets(neighbors, params))
-            return (layout, { [weak self] in
+            let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: DGChatListPreviewItemNode.panelHeight(hideSearch: item.hideSearch) + 44.0), insets: itemListNeighborsGroupedInsets(neighbors, params))
+            return (layout, { [weak self] transition in
                 self?.item = item
                 self?.layoutWidth = params.width
                 self?.leftInset = params.leftInset
                 self?.rightInset = params.rightInset
-                self?.updateControls()
+                self?.updateControls(transition: transition)
             })
         }
     }
 
-    private func updateControls() {
+    private func updateControls(transition: ContainedViewLayoutTransition = .immediate) {
         guard self.isNodeLoaded, let item else { return }
         if !self.subscribed {
             self.subscribed = true
@@ -168,15 +179,34 @@ final class DGChatListPreviewItemNode: ListViewItemNode, ItemListItemNode {
         }
         titleView.setTitle(NetworkStatusTitle(text: title, activity: false, hasProxy: false, connectsViaProxy: false, isPasscodeSet: false, isManuallyLocked: false, peerStatus: peerStatus), animated: false)
         titleView.titleNode.attributedText = NSAttributedString(string: title, font: Font.semibold(21.0), textColor: item.theme.list.itemPrimaryTextColor)
+        let searchNode: SearchBarPlaceholderNode
+        if let current = self.searchNode {
+            searchNode = current
+        } else {
+            // Made here on the main thread, like titleView: the node loads its view in init.
+            searchNode = SearchBarPlaceholderNode(fieldStyle: .glass)
+            self.searchNode = searchNode
+            self.panel.insertSubview(searchNode.view, belowSubview: self.snowView)
+        }
         let blockWidth = max(0.0, self.layoutWidth - self.leftInset - self.rightInset)
-        self.block.frame = CGRect(x: self.leftInset, y: 0, width: blockWidth, height: 104.0)
-        self.panel.frame = CGRect(x: 22.0, y: 22.0, width: max(0.0, blockWidth - 44.0), height: 60.0)
+        let panelHeight = DGChatListPreviewItemNode.panelHeight(hideSearch: item.hideSearch)
+        transition.updateFrame(view: self.block, frame: CGRect(x: self.leftInset, y: 0, width: blockWidth, height: panelHeight + 44.0))
+        transition.updateFrame(view: self.panel, frame: CGRect(x: 22.0, y: 22.0, width: max(0.0, blockWidth - 44.0), height: panelHeight))
         let width = self.panel.bounds.width
         let titleSize = CGSize(width: max(1.0, width - 80.0), height: 60.0)
         let contentRect = titleView.updateLayoutInternal(size: titleSize, transition: .immediate, centerTitle: true)
         titleView.frame = CGRect(origin: CGPoint(x: item.centerTitle ? (width - titleSize.width) / 2.0 : 18.0 - contentRect.minX, y: 0.0), size: titleSize)
         self.menuLabel.frame = CGRect(x: width - 38.0, y: 15.0, width: 25.0, height: 30.0)
-        self.snowView.frame = self.panel.bounds
+        // Drawn like the chat list's field (NavigationBarSearchContentNode). When hidden, it fades out while the panel
+        // shrinks to the title row.
+        let searchTextColor = item.theme.rootController.navigationSearchBar.inputPlaceholderTextColor
+        let searchPlaceholder = NSAttributedString(string: presentationData.strings.Common_Search, font: Font.regular(17.0), textColor: searchTextColor)
+        let searchSize = CGSize(width: max(1.0, width - 32.0), height: 44.0)
+        let _ = searchNode.updateLayout(placeholderString: searchPlaceholder, compactPlaceholderString: searchPlaceholder, constrainedSize: searchSize, expansionProgress: 1.0, iconColor: searchTextColor, foregroundColor: item.theme.rootController.navigationSearchBar.inputFillColor, backgroundColor: item.theme.chatList.regularSearchBarColor, controlColor: item.theme.chat.inputPanel.panelControlColor, transition: .immediate)
+        searchNode.frame = CGRect(origin: CGPoint(x: 16.0, y: 56.0), size: searchSize)
+        transition.updateAlpha(node: searchNode, alpha: item.hideSearch ? 0.0 : 1.0)
+        // Always as tall as the panel with the field: a resize would lay the flakes out anew, and the panel clips the rest.
+        self.snowView.frame = CGRect(x: 0.0, y: 0.0, width: width, height: DGChatListPreviewItemNode.panelHeight(hideSearch: false))
         self.snowView.isHidden = !item.snow
         self.snowView.update(isDark: item.theme.overallDarkAppearance)
         self.panel.bringSubviewToFront(self.snowView)

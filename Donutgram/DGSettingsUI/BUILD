@@ -14,6 +14,7 @@ swift_library(
         "//Donutgram/DGSnowEffect:DGSnowEffect",
         "//submodules/TelegramUI/Components/ChatListTitleView:ChatListTitleView",
         "//submodules/LocalizedPeerData:LocalizedPeerData",
+        "//submodules/SearchBarNode:SearchBarNode",
         "//submodules/AppBundle:AppBundle",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",

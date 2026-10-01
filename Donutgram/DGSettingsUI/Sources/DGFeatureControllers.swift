@@ -294,7 +294,7 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
     return dgController(context: context, page: .chatListAppearance, title: "Внешний вид", focusKey: focusKey, entries: {
         [
             .header(0, 0, "СПИСОК ЧАТОВ"),
-            .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideEmojiStatus, settings.chatListCenteredTitle, settings.chatListTitleMode.rawValue),
+            .chatListPreview(1, 0, settings.forceSnow, settings.chatListHideEmojiStatus, settings.chatListCenteredTitle, settings.chatListHideSearch, settings.chatListTitleMode.rawValue),
             .toggle(2, 0, "snow", "Снег", settings.forceSnow, true),
             .toggle(3, 0, "hideStatus", "Скрыть статус соединения", settings.chatListHideStatus, true),
             .toggle(4, 0, "hideEmojiStatus", "Скрыть эмодзи-статус", settings.chatListHideEmojiStatus, true),
