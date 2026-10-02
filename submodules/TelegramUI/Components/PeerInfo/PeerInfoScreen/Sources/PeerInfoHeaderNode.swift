@@ -1276,7 +1276,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 subtitleColor = .white
                 
                 if DGSimpleSettings.shared.ghostHidesOnline {
-                    subtitleStringText = statusData.flatMap { $0.isActivity ? nil : $0.text } ?? presentationData.strings.LastSeen_Lately
+                    subtitleStringText = statusData.flatMap { $0.isActivity ? nil : $0.text } ?? presentationData.strings.Common_Loading
                 } else {
                     subtitleStringText = presentationData.strings.Presence_online
                 }

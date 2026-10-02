@@ -1219,9 +1219,13 @@ func peerInfoScreenData(
                 let statusManager = Atomic<Manager>(value: Manager())
                 let notify: () -> Void = {
                     let data = statusManager.with { manager -> PeerInfoStatusData? in
+                        let isOwnHiddenPresence = userPeerId == context.account.peerId && DGSimpleSettings.shared.ghostHidesOnline
+                        if isOwnHiddenPresence && DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) == nil {
+                            return PeerInfoStatusData(text: strings.Common_Loading, isActivity: false, key: nil)
+                        }
                         if let presence = manager.currentValue {
-                            let timestamp = CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970
-                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime)
+                            let timestamp = context.account.network.globalTime
+                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime, includeExactTime: isOwnHiddenPresence)
                             var isHiddenStatus = false
                             switch presence.status {
                             case .recently(let isHidden), .lastWeek(let isHidden), .lastMonth(let isHidden):
@@ -1263,7 +1267,7 @@ func peerInfoScreenData(
                         if let timestamp = DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) {
                             // Self presence in Postbox is permanently online. Use
                             // the last acknowledged visible session instead.
-                            let now = Int32(Date().timeIntervalSince1970)
+                            let now = Int32(context.account.network.globalTime)
                             return .presence(TelegramUserPresence(status: .present(until: min(timestamp, now - 1)), lastActivity: 0))
                         }
                         return .presence(TelegramUserPresence(status: .recently(isHidden: false), lastActivity: 0))
