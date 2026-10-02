@@ -184,6 +184,29 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
     private var finalImage = true
     
     private let disposable = MetaDisposable()
+
+    override var visibility: ListViewItemNodeVisibility {
+        didSet {
+            self.updateMessageVisibility()
+        }
+    }
+
+    private func updateMessageVisibility() {
+        for node in self.messageNodes ?? [] {
+            switch self.visibility {
+            case .none:
+                node.visibility = .none
+            case let .visible(_, rect):
+                // The container and message nodes are rotated: convert the visible rect into each child's coordinates.
+                let visibleRect = self.convert(rect, to: node).intersection(node.bounds)
+                if visibleRect.isNull || visibleRect.isEmpty {
+                    node.visibility = .none
+                } else {
+                    node.visibility = .visible(visibleRect.height / max(1.0, node.bounds.height), visibleRect)
+                }
+            }
+        }
+    }
     
     init() {
         self.topStripeNode = ASDisplayNode()
@@ -302,6 +325,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: contentSize)
                     
                     for oldNode in strongSelf.messageNodes ?? [] where !nodes.contains(where: { $0 === oldNode }) {
+                        oldNode.visibility = .none
                         oldNode.removeFromSupernode()
                     }
                     strongSelf.messageNodes = nodes
@@ -313,6 +337,8 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                         node.updateFrame(CGRect(origin: CGPoint(x: 0.0, y: topOffset), size: node.frame.size), within: layoutSize)
                         topOffset += node.frame.size.height
                     }
+                    // New/relaid out nodes need visibility even if the list row's visibility has not changed.
+                    strongSelf.updateMessageVisibility()
 
                     if let currentBackgroundNode = currentBackgroundNode, strongSelf.backgroundNode !== currentBackgroundNode {
                         strongSelf.backgroundNode = currentBackgroundNode
