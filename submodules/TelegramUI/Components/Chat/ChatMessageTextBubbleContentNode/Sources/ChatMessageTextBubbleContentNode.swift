@@ -27,6 +27,7 @@ import ChatControllerInteraction
 import InteractiveTextComponent
 import ShimmeringMask
 import StreamingTextReveal
+import DGSimpleSettings
 
 private final class CachedChatMessageText {
     let text: String
@@ -632,6 +633,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     attributedText = updatedString
                 }
                                 
+                if DGSimpleSettings.shared.mentionAvatars, let entities {
+                    attributedText = textWithMentionAvatars(attributedText, entities: entities, peers: item.message.peers.map { EnginePeer($0.1) })
+                }
+
                 var customTruncationToken: ((UIFont, Bool) -> NSAttributedString?)?
                 var maximumNumberOfLines: Int = 0
                 if item.presentationData.isPreview {

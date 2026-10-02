@@ -655,6 +655,9 @@ private func prepareProtectedForwardCopies(account: Account, messages: [EnqueueM
 
 public func enqueueMessages(account: Account, peerId: PeerId, messages: [EnqueueMessage]) -> Signal<[MessageId?], NoError> {
     return prepareProtectedForwardCopies(account: account, messages: messages)
+    |> mapToSignal { messages in
+        return prepareDonutgramGifVideos(account: account, peerId: peerId, messages: messages)
+    }
     |> mapToSignal { messages -> Signal<[(Bool, EnqueueMessage)], NoError> in
         if let transformOutgoingMessageMedia = account.transformOutgoingMessageMedia {
             return opportunisticallyTransformOutgoingMedia(network: account.network, postbox: account.postbox, transformOutgoingMessageMedia: transformOutgoingMessageMedia, messages: messages, userInteractive: true)
