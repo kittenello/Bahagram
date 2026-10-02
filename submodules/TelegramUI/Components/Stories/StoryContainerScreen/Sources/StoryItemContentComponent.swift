@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import Display
 import ComponentFlow
@@ -30,6 +31,7 @@ final class StoryItemContentComponent: Component {
     let strings: PresentationStrings
     let peer: EnginePeer
     let item: EngineStoryItem
+    let isCaptureProtected: Bool
     let availableReactions: StoryAvailableReactions?
     let entityFiles: [EngineMedia.Id: TelegramMediaFile]
     let audioMode: StoryContentItem.AudioMode
@@ -48,6 +50,7 @@ final class StoryItemContentComponent: Component {
         self.strings = strings
         self.peer = peer
 		self.item = item
+        self.isCaptureProtected = item.isForwardingDisabled && !DGSimpleSettings.shared.saveProtectedStories
         self.entityFiles = entityFiles
         self.availableReactions = availableReactions
         self.audioMode = audioMode
@@ -70,6 +73,9 @@ final class StoryItemContentComponent: Component {
             return false
         }
         if lhs.peer != rhs.peer {
+            return false
+        }
+        if lhs.isCaptureProtected != rhs.isCaptureProtected {
             return false
         }
 		if lhs.item != rhs.item {
@@ -356,7 +362,7 @@ final class StoryItemContentComponent: Component {
                             useLargeThumbnail: false,
                             autoFetchFullSizeThumbnail: false,
                             tempFilePath: nil,
-                            captureProtected: component.item.isForwardingDisabled,
+                            captureProtected: component.isCaptureProtected,
                             hintDimensions: file.dimensions?.cgSize,
                             storeAfterDownload: nil,
                             displayImage: false,
@@ -776,7 +782,7 @@ final class StoryItemContentComponent: Component {
                 availableReactions: component.availableReactions,
                 entityFiles: component.entityFiles,
                 size: size,
-                isCaptureProtected: component.item.isForwardingDisabled,
+                isCaptureProtected: component.isCaptureProtected,
                 attemptSynchronous: synchronousLoad,
                 isActive: self.progressMode.mode == .play,
                 transition: transition
@@ -829,6 +835,7 @@ final class StoryItemContentComponent: Component {
             }
             
             let previousItem = self.component?.item
+            let previousCaptureProtected = self.component?.isCaptureProtected
             
             self.component = component
             self.state = state
@@ -882,7 +889,7 @@ final class StoryItemContentComponent: Component {
             }
             
             var reloadMedia = false
-            if self.currentMessageMedia?.id != messageMedia?.id || (self.currentMessageMedia == nil) != (messageMedia == nil) {
+            if self.currentMessageMedia?.id != messageMedia?.id || (self.currentMessageMedia == nil) != (messageMedia == nil) || previousCaptureProtected != component.isCaptureProtected {
                 self.currentMessageMedia = messageMedia
                 reloadMedia = true
                 
@@ -972,7 +979,7 @@ final class StoryItemContentComponent: Component {
                         storyId: component.item.id,
                         media: messageMedia,
                         size: availableSize,
-                        isCaptureProtected: component.item.isForwardingDisabled,
+                        isCaptureProtected: component.isCaptureProtected,
                         attemptSynchronous: synchronousLoad,
                         transition: transition
                     )
@@ -1151,7 +1158,7 @@ final class StoryItemContentComponent: Component {
                         storyId: component.item.id,
                         media: messageMedia,
                         size: availableSize,
-                        isCaptureProtected: component.item.isForwardingDisabled,
+                        isCaptureProtected: component.isCaptureProtected,
                         attemptSynchronous: synchronousLoad,
                         transition: transition
                     )
