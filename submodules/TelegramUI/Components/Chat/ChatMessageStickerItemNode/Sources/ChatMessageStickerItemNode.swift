@@ -457,7 +457,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             var textLayoutAndApply: (TextNodeLayout, () -> TextNode)?
             if telegramFile?.isSticker == true {
                 let scale = CGFloat(DGSimpleSettings.shared.stickerScale)
-                imageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale).aspectFitted(CGSize(width: max(32.0, params.width - 100.0), height: 340.0))
+                imageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale).aspectFittedOrSmaller(CGSize(width: max(32.0, params.width - 100.0), height: 340.0))
             }
             var isEmoji = false
             if item.presentationData.largeEmoji && messageIsEligibleForLargeEmoji(EngineMessage(item.message)) {
