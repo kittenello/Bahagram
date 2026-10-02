@@ -364,8 +364,7 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
             .toggle(5, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
             .toggle(6, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
             .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode)),
-            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true),
-            .info(9, 0, "Панель папок отображается над нижней навигацией. Если нижняя панель скрыта, папки остаются у нижнего края экрана.")
+            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true)
         ]
     }, toggle: { key, value in
         switch key {
