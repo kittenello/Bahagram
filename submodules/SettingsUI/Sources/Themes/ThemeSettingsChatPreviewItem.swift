@@ -86,7 +86,9 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
     
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
-        async {
+        // Bubble previews create views and synchronously consume main-queue
+        // completion callbacks, including when ListView recycles an offscreen row.
+        Queue.mainQueue().async {
             let node = ThemeSettingsChatPreviewItemNode()
             let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
             
@@ -106,14 +108,10 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
             if let nodeValue = node() as? ThemeSettingsChatPreviewItemNode {
                 let makeLayout = nodeValue.asyncLayout()
                 
-                async {
-                    let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
-                    Queue.mainQueue().async {
-                        completion(layout, { _ in
-                            apply()
-                        })
-                    }
-                }
+                let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
+                completion(layout, { _ in
+                    apply()
+                })
             }
         }
     }

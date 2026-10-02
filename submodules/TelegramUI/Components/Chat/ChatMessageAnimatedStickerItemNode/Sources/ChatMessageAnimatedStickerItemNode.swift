@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import AVFoundation
 import AsyncDisplayKit
@@ -1101,6 +1102,10 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
             let displayLeftInset = params.leftInset + layoutConstants.bubble.edgeInset + avatarInset
             
             
+            if telegramFile?.isSticker == true && !isEmoji {
+                let scale = CGFloat(DGSimpleSettings.shared.stickerScale)
+                imageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale).aspectFitted(CGSize(width: max(32.0, params.width - 100.0), height: 340.0))
+            }
             var innerImageSize = imageSize
             imageSize = CGSize(width: imageSize.width + imageInset * 2.0, height: imageSize.height + imageInset * 2.0)
             var imageFrame = CGRect(origin: CGPoint(x: 0.0 + (incoming ? (params.leftInset + layoutConstants.bubble.edgeInset + avatarInset + layoutConstants.bubble.contentInsets.left) : (params.width - params.rightInset - imageSize.width - layoutConstants.bubble.edgeInset - layoutConstants.bubble.contentInsets.left - deliveryFailedInset - imageHorizontalOffset)), y: imageVerticalInset + imageTopPadding), size: CGSize(width: imageSize.width, height: imageSize.height))
@@ -1152,7 +1157,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 tonAmount = stakeTonAmount
             }
             
-            let dateText = stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: .regular, associatedData: item.associatedData)
+            let dateText = telegramFile?.isSticker == true && !isEmoji && DGSimpleSettings.shared.hideStickerTime ? "" : stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: .regular, associatedData: item.associatedData)
             
             var isReplyThread = false
             if case .replyThread = item.chatLocation {
@@ -1645,6 +1650,13 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                     }
                     
                     animation.animator.updateFrame(layer: strongSelf.imageNode.layer, frame: updatedContentFrame, completion: nil)
+                    let stickerCornerRadius = telegramFile?.isSticker == true && !isEmoji ? CGFloat(DGSimpleSettings.shared.stickerCornerRadius) : 0.0
+                    strongSelf.imageNode.layer.cornerRadius = stickerCornerRadius
+                    strongSelf.imageNode.clipsToBounds = stickerCornerRadius > 0.0
+                    if let animationNode = strongSelf.animationNode {
+                        animationNode.layer.cornerRadius = stickerCornerRadius
+                        animationNode.clipsToBounds = stickerCornerRadius > 0.0
+                    }
                     
                     strongSelf.contextSourceNode.contentRect = contextContentFrame
                     strongSelf.containerNode.targetNodeForActivationProgressContentRect = strongSelf.contextSourceNode.contentRect

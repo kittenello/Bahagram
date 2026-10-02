@@ -755,6 +755,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     
     private var donutgramSettingsObserver: NSObjectProtocol?
     private var donutgramTranscriptionBackend = DGSimpleSettings.shared.transcriptionBackend
+    private var donutgramStickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape)
     
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
     
@@ -1290,8 +1291,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 return
             }
             let transcriptionBackend = DGSimpleSettings.shared.transcriptionBackend
-            if self.donutgramTranscriptionBackend != transcriptionBackend {
+            let stickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape)
+            if self.donutgramTranscriptionBackend != transcriptionBackend || self.donutgramStickerAppearance != stickerAppearance {
                 self.donutgramTranscriptionBackend = transcriptionBackend
+                self.donutgramStickerAppearance = stickerAppearance
                 self.updateLoadedMessageItems()
             }
         })

@@ -1514,6 +1514,10 @@ public class Account {
         }))
 
         if !supplementary {
+            self.managedOperationsDisposable.add(managedProxyAutomation(accountManager: accountManager, network: network, foreground: self.shouldKeepOnlinePresence.get()))
+        }
+
+        if !supplementary {
             let mediaBox = postbox.mediaBox
             let _ = (accountManager.sharedData(keys: [SharedDataKeys.cacheStorageSettings])
             |> take(1)).start(next: { [weak mediaBox] sharedData in

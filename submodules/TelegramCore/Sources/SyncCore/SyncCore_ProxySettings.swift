@@ -76,6 +76,11 @@ public struct ProxySettings: Codable, Equatable {
     public var servers: [ProxyServerSettings]
     public var activeServer: ProxyServerSettings?
     public var useForCalls: Bool
+    public var autoSwitch: Bool = false
+    public var autoSwitchDelay: Int32 = 10
+    // Bits: VPN = 1, cellular = 2, Wi-Fi = 4. Manual enabled state is preserved.
+    public var disableOnNetworks: Int32 = 0
+    public var automaticallyDisabled: Bool = false
     
     public static var defaultSettings: ProxySettings {
         return ProxySettings(enabled: false, servers: [], activeServer: nil, useForCalls: false)
@@ -95,6 +100,11 @@ public struct ProxySettings: Codable, Equatable {
         self.servers = try container.decode([ProxyServerSettings].self, forKey: "servers")
         self.activeServer = try container.decodeIfPresent(ProxyServerSettings.self, forKey: "activeServer")
         self.useForCalls = ((try? container.decode(Int32.self, forKey: "useForCalls")) ?? 0) != 0
+        self.autoSwitch = (try container.decodeIfPresent(Bool.self, forKey: "autoSwitch")) ?? false
+        let delay = (try container.decodeIfPresent(Int32.self, forKey: "autoSwitchDelay")) ?? 10
+        self.autoSwitchDelay = [5, 10, 15, 30, 60].contains(delay) ? delay : 10
+        self.disableOnNetworks = ((try container.decodeIfPresent(Int32.self, forKey: "disableOnNetworks")) ?? 0) & 7
+        self.automaticallyDisabled = (try container.decodeIfPresent(Bool.self, forKey: "automaticallyDisabled")) ?? false
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -104,10 +114,14 @@ public struct ProxySettings: Codable, Equatable {
         try container.encode(self.servers, forKey: "servers")
         try container.encodeIfPresent(self.activeServer, forKey: "activeServer")
         try container.encode((self.useForCalls ? 1 : 0) as Int32, forKey: "useForCalls")
+        try container.encode(self.autoSwitch, forKey: "autoSwitch")
+        try container.encode(self.autoSwitchDelay, forKey: "autoSwitchDelay")
+        try container.encode(self.disableOnNetworks, forKey: "disableOnNetworks")
+        try container.encode(self.automaticallyDisabled, forKey: "automaticallyDisabled")
     }
     
     public var effectiveActiveServer: ProxyServerSettings? {
-        if self.enabled, let activeServer = self.activeServer {
+        if self.enabled && !self.automaticallyDisabled, let activeServer = self.activeServer {
             return activeServer
         } else {
             return nil

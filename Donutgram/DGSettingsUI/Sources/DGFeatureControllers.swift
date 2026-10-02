@@ -214,47 +214,66 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case .ask: cameraTitle = "Спрашивать"
         }
         let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
+        let replyCount = [1, 2, 4].filter { s.stickerReplyOptions & $0 != 0 }.count
         var result: [DGListEntry] = [
-            .header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"),
-            .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
-            .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true),
-            .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"),
-            .header(10, 1, "СООБЩЕНИЯ"),
-            .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies, s.editedIcon),
-            .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true),
-            .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true),
-            .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true),
-            .toggle(15, 1, "editedIcon", "Заменять «изменено» иконкой", s.editedIcon, true),
-            .toggle(16, 1, "onlineIndicator", "Показывать индикатор онлайна", s.showOnlineIndicator, true),
-            .toggle(17, 1, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
-            .toggle(18, 1, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
-            .toggle(19, 1, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
-            .header(20, 2, "ГОЛОС В ТЕКСТ"),
-            .disclosure(21, 2, "transcription", "Сервис", transcription),
-            .header(30, 3, "ЗАПИСЬ"),
-            .disclosure(31, 3, "camera", "Камера в кружках", cameraTitle),
-            .toggle(32, 3, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
-            .toggle(33, 3, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
-            .toggle(34, 3, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
-            .disclosure(35, 3, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
-            .toggle(36, 3, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
-            .info(37, 3, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
-            .header(40, 4, "ВИДЕО"),
-            .disclosure(41, 4, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
-            .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),
-            .disclosure(43, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
-            .header(50, 5, "ДРУГОЕ"),
-            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
+            .header(-30, 0, "СТИКЕРЫ"),
+            .stickerPreview(-29, 0, s.stickerSize, s.hideStickerTime, s.stickerReplyOptions, s.stickerShape),
+            .toggle(-28, 0, "hideStickerTime", "Скрыть время на стикерах", s.hideStickerTime, true),
+            .toggle(-27, 0, "stickerReplies", "Ответы (\(replyCount)/3)", s.stickerReplyOptions != 0, true)
         ]
-        if s.hideArchive {
-            result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
+        if s.stickerReplyOptions != 0 {
+            result.append(contentsOf: [
+                .checkbox(-26, 0, "stickerReply:1", "Цвета", s.stickerReplyOptions & 1 != 0),
+                .checkbox(-25, 0, "stickerReply:2", "Эмодзи", s.stickerReplyOptions & 2 != 0),
+                .checkbox(-24, 0, "stickerReply:4", "Фон", s.stickerReplyOptions & 4 != 0)
+            ])
         }
-        result.append(contentsOf: [.header(60, 6, "СПИСОК ЧАТОВ"), .disclosure(61, 6, "chatListAppearance", "Внешний вид", "")])
+        result.append(contentsOf: [
+            .header(-23, 1, "ФОРМА СТИКЕРОВ"),
+            .stickerShape(-22, 1, s.stickerShape),
+            .header(0, 2, "СТИКЕРЫ И ЭМОДЗИ"),
+            .toggle(1, 2, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
+            .toggle(2, 2, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true),
+            .disclosure(3, 2, "reactions", "Скрыть реакции", "\(hiddenCount)/3"),
+            .header(4, 3, "ВНЕШНИЙ ВИД"),
+            .disclosure(5, 3, "chatListAppearance", "Внешний вид", ""),
+            .header(10, 4, "СООБЩЕНИЯ"),
+            .messagePreview(11, 4, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies, s.editedIcon),
+            .toggle(12, 4, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true),
+            .toggle(13, 4, "seconds", "Показывать секунды", s.showMessageSeconds, true),
+            .toggle(14, 4, "replies", "Отключить цветные ответы", s.disableColoredReplies, true),
+            .toggle(15, 4, "editedIcon", "Заменять «изменено» иконкой", s.editedIcon, true),
+            .toggle(16, 4, "onlineIndicator", "Показывать индикатор онлайна", s.showOnlineIndicator, true),
+            .toggle(17, 4, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
+            .toggle(18, 4, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
+            .toggle(19, 4, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
+            .header(20, 5, "ГОЛОС В ТЕКСТ"),
+            .disclosure(21, 5, "transcription", "Сервис", transcription),
+            .header(30, 6, "ЗАПИСЬ"),
+            .disclosure(31, 6, "camera", "Камера в кружках", cameraTitle),
+            .toggle(32, 6, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
+            .toggle(33, 6, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
+            .toggle(34, 6, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
+            .disclosure(35, 6, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
+            .toggle(36, 6, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
+            .info(37, 6, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
+            .header(40, 7, "ВИДЕО"),
+            .disclosure(41, 7, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
+            .toggle(42, 7, "autoPause", "Авто пауза", s.autoPause, true),
+            .disclosure(43, 7, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
+            .header(50, 8, "ДРУГОЕ"),
+            .toggle(51, 8, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
+        ])
+        if s.hideArchive {
+            result.append(.toggle(52, 8, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
+        }
         return result
     }, toggle: { key, value in
         switch key {
         case "onlyAdded": s.onlyAddedStickers = value
         case "recent": s.infiniteRecentStickers = value
+        case "hideStickerTime": s.hideStickerTime = value
+        case "stickerReplies": s.stickerReplyOptions = value ? 7 : 0
         case "tails": s.removeMessageTails = value
         case "seconds": s.showMessageSeconds = value
         case "replies": s.disableColoredReplies = value
@@ -277,6 +296,17 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             }).startStandalone()
         case "openArchiveOnPull": s.openArchiveOnPull = value
         default: break
+        }
+    }, select: { key in
+        if key == "resetStickerAppearance" {
+            s.stickerSize = 11
+            s.hideStickerTime = false
+            s.stickerReplyOptions = 7
+            s.stickerShape = 0
+        } else if let value = Int(key.split(separator: ":").last ?? "") {
+            if key.hasPrefix("stickerSize:") { s.stickerSize = value }
+            else if key.hasPrefix("stickerShape:") { s.stickerShape = value }
+            else if key.hasPrefix("stickerReply:"), [1, 2, 4].contains(value) { s.stickerReplyOptions ^= value }
         }
     }, open: { key in
         switch key {
