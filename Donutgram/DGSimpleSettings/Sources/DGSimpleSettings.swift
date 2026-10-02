@@ -110,6 +110,7 @@ public final class DGSimpleSettings {
         static let chatListHideEmojiStatus = "donutgram.chats.appearance.hideEmojiStatus"
         static let chatListCenteredTitle = "donutgram.chats.appearance.centeredTitle"
         static let chatListHideSearch = "donutgram.chats.appearance.hideSearch"
+        static let chatListFoldersAtBottom = "donutgram.chats.appearance.foldersAtBottom"
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
@@ -138,6 +139,7 @@ public final class DGSimpleSettings {
         static let autoPause = "donutgram.chats.autoPause"
         static let doubleTapSeekSeconds = "donutgram.chats.doubleTapSeekSeconds"
         static let showPollResultsBeforeVoting = "donutgram.chats.showPollResultsBeforeVoting"
+        static let showChannelForwardCount = "donutgram.chats.showChannelForwardCount"
         static let autoPauseMedia = "donutgram.chats.autoPauseMedia"
         static let editedIcon = "donutgram.chats.editedIcon"
         static let showOnlineIndicator = "donutgram.chats.showOnlineIndicator"
@@ -380,6 +382,7 @@ public final class DGSimpleSettings {
     public var chatListHideEmojiStatus: Bool { get { bool(Key.chatListHideEmojiStatus) } set { setBool(newValue, Key.chatListHideEmojiStatus) } }
     public var chatListCenteredTitle: Bool { get { bool(Key.chatListCenteredTitle) } set { setBool(newValue, Key.chatListCenteredTitle) } }
     public var chatListHideSearch: Bool { get { bool(Key.chatListHideSearch) } set { setBool(newValue, Key.chatListHideSearch) } }
+    public var chatListFoldersAtBottom: Bool { get { bool(Key.chatListFoldersAtBottom) } set { setBool(newValue, Key.chatListFoldersAtBottom) } }
     public var chatListTitleMode: ChatListTitleMode {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
@@ -512,6 +515,7 @@ public final class DGSimpleSettings {
     }
 
     public var showPollResultsBeforeVoting: Bool { get { bool(Key.showPollResultsBeforeVoting) } set { setBool(newValue, Key.showPollResultsBeforeVoting) } }
+    public var showChannelForwardCount: Bool { get { bool(Key.showChannelForwardCount) } set { setBool(newValue, Key.showChannelForwardCount) } }
     /// Bitmask: video = 1, voice = 2, round video = 4.
     public var autoPauseMedia: Int {
         get { self.defaults.object(forKey: Key.autoPauseMedia) == nil ? 7 : integer(Key.autoPauseMedia) }
