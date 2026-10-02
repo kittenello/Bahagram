@@ -647,7 +647,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             } else {
                 dateFormat = .regular
             }
-            let dateText = telegramFile?.isSticker == true && DGSimpleSettings.shared.hideStickerTime ? "" : stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: dateFormat, associatedData: item.associatedData)
+            let dateText = stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: dateFormat, associatedData: item.associatedData)
             
             var isReplyThread = false
             if case .replyThread = item.chatLocation {
@@ -678,7 +678,8 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 canViewReactionList: canViewMessageReactionList(message: EngineMessage(item.message)),
                 animationCache: item.controllerInteraction.presentationContext.animationCache,
                 animationRenderer: item.controllerInteraction.presentationContext.animationRenderer,
-                hideSentStatus: item.message.id.peerId == item.context.account.peerId
+                hideSentStatus: item.message.id.peerId == item.context.account.peerId || (telegramFile?.isSticker == true && DGSimpleSettings.shared.hideStickerChecks),
+                hideDate: telegramFile?.isSticker == true && DGSimpleSettings.shared.hideStickerTime
             ))
             
             let (dateAndStatusSize, dateAndStatusApply) = statusSuggestedWidthAndContinue.1(statusSuggestedWidthAndContinue.0)

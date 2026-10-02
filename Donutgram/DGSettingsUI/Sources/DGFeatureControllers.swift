@@ -238,9 +238,10 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         var result: [DGListEntry] = [
             .header(-30, 0, "СТИКЕРЫ"),
             .stickerSizeSlider(-29, 0, s.stickerSize),
-            .stickerPreview(-28, 0, s.stickerSize, s.hideStickerTime, s.stickerReplyOptions, s.stickerShape, previewSticker),
+            .stickerPreview(-28, 0, s.stickerSize, s.hideStickerTime, s.hideStickerChecks, s.stickerReplyOptions, s.stickerShape, previewSticker),
             .toggle(-27, 0, "hideStickerTime", "Скрыть время на стикерах", s.hideStickerTime, true),
-            .stickerReplies(-26, 0, s.stickerReplyOptions)
+            .toggle(-26, 0, "hideStickerChecks", "Скрыть галочки на стикерах", s.hideStickerChecks, true),
+            .stickerReplies(-25, 0, s.stickerReplyOptions)
         ]
         result.append(contentsOf: [
             .header(-23, 1, "ФОРМА СТИКЕРОВ"),
@@ -288,6 +289,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "onlyAdded": s.onlyAddedStickers = value
         case "recent": s.infiniteRecentStickers = value
         case "hideStickerTime": s.hideStickerTime = value
+        case "hideStickerChecks": s.hideStickerChecks = value
         case "stickerReplies": s.stickerReplyOptions = value ? 7 : 0
         case "tails": s.removeMessageTails = value
         case "seconds": s.showMessageSeconds = value
@@ -317,6 +319,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         if key == "resetStickerAppearance" {
             s.stickerSize = 11
             s.hideStickerTime = false
+            s.hideStickerChecks = false
             s.stickerReplyOptions = 7
             s.stickerShape = 0
         } else if let value = Int(key.split(separator: ":").last ?? "") {

@@ -324,6 +324,10 @@ public final class DGSimpleSettings {
         default: return 0.0
         }
     }
+    public var hideStickerChecks: Bool {
+        get { bool("donutgram.chats.stickers.hideChecks") }
+        set { setBool(newValue, "donutgram.chats.stickers.hideChecks") }
+    }
 
     public func lastOnlineTimestamp(accountId: Int64) -> Int32? {
         let value = integer(accountKey("lastOnlineTimestamp", accountId: accountId))
