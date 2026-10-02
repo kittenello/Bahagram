@@ -300,7 +300,7 @@ private func proxySettingsControllerEntries(theme: PresentationTheme, strings: P
         entries.append(.option(3, theme, "info", "Если текущий прокси перестанет работать, после указанного времени будет выбран доступный прокси с наименьшей задержкой.", nil, nil))
     }
     let conditions = [(Int32(1), "VPN"), (Int32(2), "Мобильная сеть"), (Int32(4), "Wi-Fi")].filter { proxySettings.disableOnNetworks & $0.0 != 0 }.map { $0.1 }
-    entries.append(.option(4, theme, "disableOnNetworks", "Отключать прокси", conditions.isEmpty ? "Никогда" : conditions.joined(separator: ", "), nil))
+    entries.append(.option(4, theme, "disableOnNetworks", "Отключать прокси", conditions.isEmpty ? "Никогда" : (conditions.count == 3 ? "Всегда" : conditions.joined(separator: ", ")), nil))
     if proxySettings.automaticallyDisabled {
         entries.append(.option(5, theme, "info", "Прокси временно отключён по выбранным условиям. Он включится снова, когда они перестанут действовать.", nil, nil))
     }
