@@ -193,6 +193,10 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
         let isQuoteExpanded = maybeNode?.isQuoteExpanded ?? false
         
         return { arguments in
+            let isStickerReply = [arguments.message, Optional(arguments.parentMessage)].compactMap { $0 }.contains { message in
+                message.media.contains { ($0 as? TelegramMediaFile)?.isSticker == true }
+            }
+            let replyOptions = isStickerReply ? DGSimpleSettings.shared.stickerReplyOptions : 7
             let fontSize = floor(arguments.presentationData.fontSize.baseDisplaySize * 14.0 / 17.0)
             let titleFont = Font.semibold(fontSize)
             let textFont = Font.regular(fontSize)
@@ -227,7 +231,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
             }
             
             var giftEmojiFileId: Int64?
-            if !DGSimpleSettings.shared.disableColoredReplies {
+            if !DGSimpleSettings.shared.disableColoredReplies && replyOptions & 1 != 0 {
             switch author?.nameColor {
             case let .preset(nameColor):
                 let colors = arguments.context.peerNameColors.get(nameColor, dark: arguments.presentationData.theme.theme.overallDarkAppearance)
@@ -247,6 +251,9 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
             
             if arguments.isSummarized {
                 authorNameColor = nil
+            }
+            if replyOptions & 2 == 0 {
+                giftEmojiFileId = nil
             }
             
             switch arguments.type {
@@ -906,7 +913,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                 node.backgroundView.frame = backgroundFrame
                 
                 var pattern: MessageInlineBlockBackgroundView.Pattern?
-                if let backgroundEmojiId = author?.backgroundEmojiId {
+                if replyOptions & 2 != 0, let backgroundEmojiId = author?.backgroundEmojiId {
                     pattern = MessageInlineBlockBackgroundView.Pattern(
                         context: arguments.context,
                         fileId: backgroundEmojiId,
@@ -927,7 +934,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                     primaryColor: mainColor,
                     secondaryColor: secondaryColor,
                     thirdColor: tertiaryColor,
-                    backgroundColor: nil,
+                    backgroundColor: replyOptions & 4 != 0 ? nil : .clear,
                     pattern: pattern,
                     animation: animation
                 )

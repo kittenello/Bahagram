@@ -204,6 +204,27 @@ private func dgDialogIdFormatController(context: AccountContext, focusKey: Strin
 
 func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
+    var previewSticker: TelegramMediaFile?
+    let stickerSource: Signal<TelegramMediaFile?, NoError> = context.account.postbox.transaction { transaction -> TelegramMediaFile? in
+        for entry in transaction.getOrderedListItems(collectionId: Namespaces.OrderedItemList.CloudSavedStickers) {
+            if let file = entry.contents.get(SavedStickerItem.self)?.file._parse(), file.isSticker, !file.isPremiumSticker {
+                return file
+            }
+        }
+        for entry in transaction.getOrderedListItems(collectionId: Namespaces.OrderedItemList.CloudRecentStickers) {
+            if let file = entry.contents.get(RecentMediaItem.self)?.media._parse(), file.isSticker, !file.isPremiumSticker {
+                return file
+            }
+        }
+        return nil
+    }
+    |> mapToSignal { file -> Signal<TelegramMediaFile?, NoError> in
+        if let file { return .single(file) }
+        return context.engine.stickers.randomGreetingSticker() |> map { $0?.file }
+    }
+    let previewUpdates = (Signal<TelegramMediaFile?, NoError>.single(nil) |> then(stickerSource))
+    |> deliverOnMainQueue
+    |> map { file -> Void in previewSticker = file }
     return dgController(context: context, page: .chats, title: "Чаты", focusKey: focusKey, entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
         let transcription = dgTranscriptionBackendTitle(s.transcriptionBackend)
@@ -215,47 +236,61 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         }
         let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
         var result: [DGListEntry] = [
-            .header(0, 0, "СТИКЕРЫ И ЭМОДЗИ"),
-            .toggle(1, 0, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
-            .toggle(2, 0, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true),
-            .disclosure(3, 0, "reactions", "Скрыть реакции", "\(hiddenCount)/3"),
-            .header(10, 1, "СООБЩЕНИЯ"),
-            .messagePreview(11, 1, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies, s.editedIcon),
-            .toggle(12, 1, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true),
-            .toggle(13, 1, "seconds", "Показывать секунды", s.showMessageSeconds, true),
-            .toggle(14, 1, "replies", "Отключить цветные ответы", s.disableColoredReplies, true),
-            .toggle(15, 1, "editedIcon", "Заменять «изменено» иконкой", s.editedIcon, true),
-            .toggle(16, 1, "onlineIndicator", "Показывать индикатор онлайна", s.showOnlineIndicator, true),
-            .toggle(17, 1, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
-            .toggle(18, 1, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
-            .toggle(19, 1, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
-            .toggle(20, 1, "channelForwardCount", "Счетчик пересылок в каналах", s.showChannelForwardCount, true),
-            .header(21, 2, "ГОЛОС В ТЕКСТ"),
-            .disclosure(22, 2, "transcription", "Сервис", transcription),
-            .header(30, 3, "ЗАПИСЬ"),
-            .disclosure(31, 3, "camera", "Камера в кружках", cameraTitle),
-            .toggle(32, 3, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
-            .toggle(33, 3, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
-            .toggle(34, 3, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
-            .disclosure(35, 3, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
-            .toggle(36, 3, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
-            .info(37, 3, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
-            .header(40, 4, "ВИДЕО"),
-            .disclosure(41, 4, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
-            .toggle(42, 4, "autoPause", "Авто пауза", s.autoPause, true),
-            .disclosure(43, 4, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
-            .header(50, 5, "ДРУГОЕ"),
-            .toggle(51, 5, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
+            .header(-30, 0, "СТИКЕРЫ"),
+            .stickerSizeSlider(-29, 0, s.stickerSize),
+            .stickerPreview(-28, 0, s.stickerSize, s.hideStickerTime, s.hideStickerChecks, s.stickerReplyOptions, s.stickerShape, previewSticker),
+            .toggle(-27, 0, "hideStickerTime", "Скрыть время на стикерах", s.hideStickerTime, true),
+            .toggle(-26, 0, "hideStickerChecks", "Скрыть галочки на стикерах", s.hideStickerChecks, true),
+            .stickerReplies(-25, 0, s.stickerReplyOptions)
         ]
+        result.append(contentsOf: [
+            .header(-23, 1, "ФОРМА СТИКЕРОВ"),
+            .stickerShape(-22, 1, s.stickerShape),
+            .header(0, 2, "СТИКЕРЫ И ЭМОДЗИ"),
+            .toggle(1, 2, "onlyAdded", "Показывать только добавленные стикеры", s.onlyAddedStickers, true),
+            .toggle(2, 2, "recent", "Беск. недавние стикеры", s.infiniteRecentStickers, true),
+            .disclosure(3, 2, "reactions", "Скрыть реакции", "\(hiddenCount)/3"),
+            .header(4, 3, "ВНЕШНИЙ ВИД"),
+            .disclosure(5, 3, "chatListAppearance", "Внешний вид", ""),
+            .header(10, 4, "СООБЩЕНИЯ"),
+            .messagePreview(11, 4, s.removeMessageTails, s.showMessageSeconds, s.disableColoredReplies, s.editedIcon),
+            .toggle(12, 4, "tails", "Убрать хвост у сообщений", s.removeMessageTails, true),
+            .toggle(13, 4, "seconds", "Показывать секунды", s.showMessageSeconds, true),
+            .toggle(14, 4, "replies", "Отключить цветные ответы", s.disableColoredReplies, true),
+            .toggle(15, 4, "editedIcon", "Заменять «изменено» иконкой", s.editedIcon, true),
+            .toggle(16, 4, "onlineIndicator", "Показывать индикатор онлайна", s.showOnlineIndicator, true),
+            .toggle(17, 4, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
+            .toggle(18, 4, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
+            .toggle(19, 4, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
+            .toggle(20, 4, "channelForwardCount", "Счетчик пересылок в каналах", s.showChannelForwardCount, true),
+            .header(21, 5, "ГОЛОС В ТЕКСТ"),
+            .disclosure(22, 5, "transcription", "Сервис", transcription),
+            .header(30, 6, "ЗАПИСЬ"),
+            .disclosure(31, 6, "camera", "Камера в кружках", cameraTitle),
+            .toggle(32, 6, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
+            .toggle(33, 6, "zoomSlider", "Слайдер зума", s.roundVideoZoomSlider, true),
+            .toggle(34, 6, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
+            .disclosure(35, 6, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
+            .toggle(36, 6, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
+            .info(37, 6, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
+            .header(40, 7, "ВИДЕО"),
+            .disclosure(41, 7, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
+            .toggle(42, 7, "autoPause", "Авто пауза", s.autoPause, true),
+            .disclosure(43, 7, "autoPauseMedia", "Приостанавливать", "\([1, 2, 4].filter { s.autoPauseMedia & $0 != 0 }.count)/3"),
+            .header(50, 8, "ДРУГОЕ"),
+            .toggle(51, 8, "hideArchive", "Скрывать архив из списка чатов", s.hideArchive, true)
+        ])
         if s.hideArchive {
-            result.append(.toggle(52, 5, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
+            result.append(.toggle(52, 8, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
-        result.append(contentsOf: [.header(60, 6, "СПИСОК ЧАТОВ"), .disclosure(61, 6, "chatListAppearance", "Внешний вид", "")])
         return result
-    }, toggle: { key, value in
+    }, additionalUpdates: previewUpdates, toggle: { key, value in
         switch key {
         case "onlyAdded": s.onlyAddedStickers = value
         case "recent": s.infiniteRecentStickers = value
+        case "hideStickerTime": s.hideStickerTime = value
+        case "hideStickerChecks": s.hideStickerChecks = value
+        case "stickerReplies": s.stickerReplyOptions = value ? 7 : 0
         case "tails": s.removeMessageTails = value
         case "seconds": s.showMessageSeconds = value
         case "replies": s.disableColoredReplies = value
@@ -280,9 +315,21 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "openArchiveOnPull": s.openArchiveOnPull = value
         default: break
         }
+    }, select: { key in
+        if key == "resetStickerAppearance" {
+            s.stickerSize = 11
+            s.hideStickerTime = false
+            s.hideStickerChecks = false
+            s.stickerReplyOptions = 7
+            s.stickerShape = 0
+        } else if let value = Int(key.split(separator: ":").last ?? "") {
+            if key.hasPrefix("stickerSize:") { s.stickerSize = value }
+            else if key.hasPrefix("stickerShape:") { s.stickerShape = value }
+        }
     }, open: { key in
         switch key {
         case "reactions": return dgHiddenReactionsController(context: context)
+        case "stickerReplyOptions": return dgStickerRepliesController(context: context)
         case "transcription": return dgTranscriptionController(context: context)
         case "camera": return dgRoundVideoCameraController(context: context)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
@@ -291,6 +338,17 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "pauseMusicOnRecording": return dgMusicPlaybackExceptionsController(context: context)
         default: return nil
         }
+    })
+}
+
+private func dgStickerRepliesController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    return dgController(context: context, page: .stickerReplies, title: "Ответы на стикеры", focusKey: focusKey, entries: {
+        [.checkbox(0, 0, "1", "Цвета", settings.stickerReplyOptions & 1 != 0),
+         .checkbox(1, 0, "2", "Эмодзи", settings.stickerReplyOptions & 2 != 0),
+         .checkbox(2, 0, "4", "Фон", settings.stickerReplyOptions & 4 != 0)]
+    }, select: { key in
+        if let option = Int(key), [1, 2, 4].contains(option) { settings.stickerReplyOptions ^= option }
     })
 }
 
@@ -306,8 +364,7 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
             .toggle(5, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
             .toggle(6, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
             .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode)),
-            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true),
-            .info(9, 0, "Панель папок отображается над нижней навигацией. Если нижняя панель скрыта, папки остаются у нижнего края экрана.")
+            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true)
         ]
     }, toggle: { key, value in
         switch key {
@@ -470,6 +527,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .downloads: makeController = dgDownloadsSettingsController
     case .transcription: makeController = dgTranscriptionController
     case .reactions: makeController = dgHiddenReactionsController
+    case .stickerReplies: makeController = dgStickerRepliesController
     case .visualId: makeController = dgVisualIdController
     case .visualRating: makeController = dgVisualRatingController
     case .visualUsernames: makeController = dgVisualUsernamesController

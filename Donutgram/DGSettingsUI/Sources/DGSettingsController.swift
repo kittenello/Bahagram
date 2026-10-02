@@ -4,6 +4,7 @@ import UIKit
 import Display
 import SwiftSignalKit
 import AccountContext
+import TelegramCore
 import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
@@ -56,7 +57,8 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "disableAds": return "xmark.rectangle"
     case "onlyAdded", "recent": return "face.smiling"
     case "reactions": return "heart"
-    case "seconds": return "clock"
+    case "seconds", "hideStickerTime": return "clock"
+    case "hideStickerChecks": return "checkmark"
     case "foldersAtBottom": return "folder"
     case "transcription": return "waveform"
     case "camera", "rearCamera", "rememberCamera", "zoomSlider", "staticZoom": return "camera.rotate"
@@ -104,6 +106,10 @@ enum DGListEntry: ItemListNodeEntry {
     case appIcons(Int32, Int32, Int)
     case islandStyles(Int32, Int32, Int)
     case speedSlider(Int32, Int32, Int)
+    case stickerSizeSlider(Int32, Int32, Int)
+    case stickerPreview(Int32, Int32, Int, Bool, Bool, Int, Int, TelegramMediaFile?)
+    case stickerReplies(Int32, Int32, Int)
+    case stickerShape(Int32, Int32, Int)
     // The «Иконка и остров» row: DGSimpleSettings.appMarks indices of the icon and of the island, as diff keys.
     case iconAndIsland(Int32, Int32, Int, Int)
     // «Предпросмотр» on «Иконка и остров»: DGSimpleSettings.appMarks indices of the icon and of the island.
@@ -111,12 +117,12 @@ enum DGListEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _, _),let .appIcons(_, section, _), let .islandStyles(_, section, _), let .speedSlider(_, section, _), let .iconAndIsland(_, section, _, _), let .iconIslandPreview(_, section, _, _): return section
+        case let .header(_, section, _), let .toggle(_, section, _, _, _, _), let .disclosure(_, section, _, _, _), let .checkbox(_, section, _, _, _), let .info(_, section, _), let .input(_, section, _, _, _), let .messagePreview(_, section, _, _, _, _), let .chatListPreview(_, section, _, _, _, _, _),let .appIcons(_, section, _), let .islandStyles(_, section, _), let .speedSlider(_, section, _), let .iconAndIsland(_, section, _, _), let .iconIslandPreview(_, section, _, _), let .stickerSizeSlider(_, section, _), let .stickerReplies(_, section, _), let .stickerPreview(_, section, _, _, _, _, _, _), let .stickerShape(_, section, _): return section
         }
     }
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _),let .appIcons(id, _, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _), let .iconAndIsland(id, _, _, _), let .iconIslandPreview(id, _, _, _): return id
+        case let .header(id, _, _), let .toggle(id, _, _, _, _, _), let .disclosure(id, _, _, _, _), let .checkbox(id, _, _, _, _), let .info(id, _, _), let .input(id, _, _, _, _), let .messagePreview(id, _, _, _, _, _), let .chatListPreview(id, _, _, _, _, _, _),let .appIcons(id, _, _), let .islandStyles(id, _, _), let .speedSlider(id, _, _), let .iconAndIsland(id, _, _, _), let .iconIslandPreview(id, _, _, _), let .stickerSizeSlider(id, _, _), let .stickerReplies(id, _, _), let .stickerPreview(id, _, _, _, _, _, _, _), let .stickerShape(id, _, _): return id
         }
     }
     // The tag the row's node reports: the one item(presentationData:arguments:) gives the item,
@@ -127,6 +133,9 @@ enum DGListEntry: ItemListNodeEntry {
         case .iconAndIsland: return DGSettingItemTag(key: "iconAndIsland")
         case .speedSlider: return DGSettingItemTag(key: "downloadAcceleration")
         case .chatListPreview: return DGSettingItemTag(key: "chatListPreview")
+        case .stickerSizeSlider: return DGSettingItemTag(key: "stickerSize")
+        case .stickerReplies: return DGSettingItemTag(key: "stickerReplies")
+        case .stickerShape: return DGSettingItemTag(key: "stickerShape")
         default: return nil
         }
     }
@@ -161,6 +170,17 @@ enum DGListEntry: ItemListNodeEntry {
             return DGIslandStyleItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("islandStyle:\($0)") })
         case let .speedSlider(_, _, value):
             return DGSpeedSliderItem(theme: presentationData.theme, sectionId: self.section, value: value, updated: { arguments.select("downloadAcceleration:\($0)") })
+        case let .stickerSizeSlider(_, _, size):
+            return DGStickerAppearanceItem(theme: presentationData.theme, sectionId: self.section, shapePicker: false, size: size, shape: 0, updated: { arguments.select($0) })
+        case let .stickerPreview(_, _, _, _, _, _, _, sticker):
+            return donutgramStickerPreviewItem(context: arguments.context, sectionId: self.section, sticker: sticker)
+        case let .stickerReplies(_, _, options):
+            let subItems = [(1, "Цвета"), (2, "Эмодзи"), (4, "Фон")].map { bit, title in
+                ItemListExpandableSwitchItem.SubItem(id: bit, title: title, isSelected: options & bit != 0, isEnabled: true)
+            }
+            return ItemListExpandableSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Ответы", value: options != 0, isExpanded: false, subItems: subItems, sectionId: self.section, style: .blocks, updated: { arguments.toggle("stickerReplies", $0) }, selectAction: { arguments.open("stickerReplyOptions") }, subAction: { _ in }, tag: DGSettingItemTag(key: "stickerReplies"))
+        case let .stickerShape(_, _, shape):
+            return DGStickerAppearanceItem(theme: presentationData.theme, sectionId: self.section, shapePicker: true, size: DGSimpleSettings.shared.stickerSize, shape: shape, updated: { arguments.select($0) })
         case let .iconAndIsland(_, _, iconMark, islandMark):
             return donutgramIconAndIslandItem(presentationData: presentationData, sectionId: self.section, iconName: DGSimpleSettings.appMarks[iconMark].iconName, islandMark: islandMark, action: { arguments.open("iconAndIsland") }, tag: DGSettingItemTag(key: "iconAndIsland"))
         case let .iconIslandPreview(_, _, iconMark, islandMark):
@@ -169,7 +189,7 @@ enum DGListEntry: ItemListNodeEntry {
     }
 }
 
-func dgController(context: AccountContext, page: DGSettingsPage, title: String, focusKey: String?, entries: @escaping () -> [DGListEntry], restartRequiredKeys: Set<String> = [], toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
+func dgController(context: AccountContext, page: DGSettingsPage, title: String, focusKey: String?, entries: @escaping () -> [DGListEntry], restartRequiredKeys: Set<String> = [], additionalUpdates: Signal<Void, NoError> = .single(()), toggle: @escaping (String, Bool) -> Void = { _, _ in }, select: @escaping (String) -> Void = { _ in }, textUpdated: @escaping (String, String) -> Void = { _, _ in }, open: @escaping (String) -> ViewController? = { _ in nil }) -> ViewController {
     let focusTag = focusKey.map { DGSettingItemTag(key: $0) }
     let initialState = DGListState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
@@ -195,8 +215,8 @@ func dgController(context: AccountContext, page: DGSettingsPage, title: String, 
             pushControllerImpl?(controller)
         }
     }, textUpdated: { key, value in textUpdated(key, value) })
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
-    |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), additionalUpdates)
+    |> map { presentationData, _, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listEntries = entries()
         // Scroll to a linked row by index: on open the list builds nodes only for the visible area plus 500 pt, and a lookup

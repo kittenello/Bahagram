@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -454,6 +455,10 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             }
             
             var textLayoutAndApply: (TextNodeLayout, () -> TextNode)?
+            if telegramFile?.isSticker == true {
+                let scale = CGFloat(DGSimpleSettings.shared.stickerScale)
+                imageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale).aspectFittedOrSmaller(CGSize(width: max(32.0, params.width - 100.0), height: 340.0))
+            }
             var isEmoji = false
             if item.presentationData.largeEmoji && messageIsEligibleForLargeEmoji(EngineMessage(item.message)) {
                 let attributedText = NSAttributedString(string: item.message.text, font: item.presentationData.messageEmojiFont, textColor: .black)
@@ -673,7 +678,8 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 canViewReactionList: canViewMessageReactionList(message: EngineMessage(item.message)),
                 animationCache: item.controllerInteraction.presentationContext.animationCache,
                 animationRenderer: item.controllerInteraction.presentationContext.animationRenderer,
-                hideSentStatus: item.message.id.peerId == item.context.account.peerId
+                hideSentStatus: item.message.id.peerId == item.context.account.peerId || (telegramFile?.isSticker == true && DGSimpleSettings.shared.hideStickerChecks),
+                hideDate: telegramFile?.isSticker == true && DGSimpleSettings.shared.hideStickerTime
             ))
             
             let (dateAndStatusSize, dateAndStatusApply) = statusSuggestedWidthAndContinue.1(statusSuggestedWidthAndContinue.0)
@@ -1097,6 +1103,9 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                     strongSelf.contextSourceNode.frame = CGRect(origin: CGPoint(), size: layoutSize)
                     strongSelf.contextSourceNode.contentNode.frame = CGRect(origin: CGPoint(), size: layoutSize)
                     strongSelf.contextSourceNode.contentRect = strongSelf.imageNode.frame
+                    let stickerCornerRadius = telegramFile?.isSticker == true ? CGFloat(DGSimpleSettings.shared.stickerCornerRadius) : 0.0
+                    strongSelf.imageNode.layer.cornerRadius = stickerCornerRadius
+                    strongSelf.imageNode.clipsToBounds = stickerCornerRadius > 0.0
                     strongSelf.containerNode.targetNodeForActivationProgressContentRect = strongSelf.contextSourceNode.contentRect
                     
                     animation.animator.updateFrame(layer: strongSelf.dateAndStatusNode.layer, frame: dateAndStatusFrame, completion: nil)
