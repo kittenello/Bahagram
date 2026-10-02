@@ -1292,10 +1292,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             }
             let transcriptionBackend = DGSimpleSettings.shared.transcriptionBackend
             let stickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape)
-            if self.donutgramTranscriptionBackend != transcriptionBackend || self.donutgramStickerAppearance != stickerAppearance {
+            let stickerAppearanceChanged = self.donutgramStickerAppearance != stickerAppearance
+            let stickerRepliesChanged = self.donutgramStickerAppearance.2 != stickerAppearance.2
+            if self.donutgramTranscriptionBackend != transcriptionBackend || stickerAppearanceChanged {
                 self.donutgramTranscriptionBackend = transcriptionBackend
                 self.donutgramStickerAppearance = stickerAppearance
-                self.updateLoadedMessageItems()
+                self.updateLoadedMessageItems(includeStickers: stickerAppearanceChanged, includeAllMessages: stickerRepliesChanged)
             }
         })
     }
@@ -4847,8 +4849,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
-    // Re-layouts the loaded voice messages and round videos: only they show a transcribe button.
-    private func updateLoadedMessageItems() {
+    // Refresh loaded media and reply decorations when their settings change.
+    private func updateLoadedMessageItems(includeStickers: Bool = false, includeAllMessages: Bool = false) {
         var messageIds: [MessageId] = []
         self.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
@@ -4862,7 +4864,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                         return false
                     }
                 })
-                if hasTranscribableMedia {
+                let hasSticker = includeStickers && message.media.contains { ($0 as? TelegramMediaFile)?.isSticker == true }
+                if hasTranscribableMedia || hasSticker || includeAllMessages {
                     messageIds.append(message.id)
                 }
             }
