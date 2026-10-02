@@ -28,6 +28,69 @@ private let myNotesIcon = generateTintedImage(image: UIImage(bundleImageName: "A
 private let cameraIcon = generateTintedImage(image: UIImage(bundleImageName: "Avatar/CameraIcon"), color: .white)
 private let storyIcon = generateTintedImage(image: UIImage(bundleImageName: "Share/Story"), color: .white)
 
+private func avatarGlowColor(from image: UIImage) -> UIColor? {
+    guard let cgImage = image.cgImage, let context = DrawingContext(size: CGSize(width: 16.0, height: 16.0), scale: 1.0, clear: true) else {
+        return nil
+    }
+    context.withFlippedContext { context in
+        context.interpolationQuality = .low
+        context.draw(cgImage, in: CGRect(x: 0.0, y: 0.0, width: 16.0, height: 16.0))
+    }
+
+    // Prefer a prominent color over an average that mixes unrelated hues into grey.
+    var weights = [CGFloat](repeating: 0.0, count: 12)
+    var reds = weights
+    var greens = weights
+    var blues = weights
+    var totalWeight: CGFloat = 0.0
+    var totalRed: CGFloat = 0.0
+    var totalGreen: CGFloat = 0.0
+    var totalBlue: CGFloat = 0.0
+    for y in 0 ..< 16 {
+        for x in 0 ..< 16 {
+            let color = context.colorAt(CGPoint(x: CGFloat(x), y: CGFloat(y)))
+            var red: CGFloat = 0.0
+            var green: CGFloat = 0.0
+            var blue: CGFloat = 0.0
+            var alpha: CGFloat = 0.0
+            guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha), alpha > 0.1 else {
+                continue
+            }
+            var hue: CGFloat = 0.0
+            var saturation: CGFloat = 0.0
+            var brightness: CGFloat = 0.0
+            color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
+            let index = Int((hue * 12.0).rounded()) % 12
+            let weight = alpha * saturation * saturation * brightness
+            weights[index] += weight
+            reds[index] += red * weight
+            greens[index] += green * weight
+            blues[index] += blue * weight
+            totalWeight += alpha
+            totalRed += red * alpha
+            totalGreen += green * alpha
+            totalBlue += blue * alpha
+        }
+    }
+    guard totalWeight > 0.0 else { return nil }
+    var strongestIndex = 0
+    for index in 1 ..< weights.count where weights[index] > weights[strongestIndex] {
+        strongestIndex = index
+    }
+    let color: UIColor
+    if weights[strongestIndex] > totalWeight * 0.015 {
+        let weight = weights[strongestIndex]
+        color = UIColor(red: reds[strongestIndex] / weight, green: greens[strongestIndex] / weight, blue: blues[strongestIndex] / weight, alpha: 1.0)
+    } else {
+        color = UIColor(red: totalRed / totalWeight, green: totalGreen / totalWeight, blue: totalBlue / totalWeight, alpha: 1.0)
+    }
+    var hue: CGFloat = 0.0
+    var saturation: CGFloat = 0.0
+    var brightness: CGFloat = 0.0
+    color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
+    return UIColor(hue: hue, saturation: min(1.0, saturation * 1.15), brightness: max(0.7, brightness), alpha: 1.0)
+}
+
 public func avatarPlaceholderFont(size: CGFloat) -> UIFont {
     return Font.with(size: size, design: .round, weight: .bold)
 }
@@ -375,7 +438,13 @@ public final class AvatarNode: ASDisplayNode {
                 }
             }
         }
-        private var parameters: AvatarNodeParameters?
+        private var parameters: AvatarNodeParameters? {
+            didSet {
+                self.glowHasImage = self.parameters?.hasImage ?? false
+                self.glowPlaceholderColors = self.parameters?.colors ?? []
+                self.glowContentUpdated?()
+            }
+        }
         private var theme: PresentationTheme?
         private var overrideImage: AvatarNodeImageOverride?
         public let imageNode: ImageNode
@@ -386,7 +455,27 @@ public final class AvatarNode: ASDisplayNode {
         fileprivate var state: AvatarNodeState = .empty
         
         public var unroundedImage: UIImage?
-        private var currentImage: UIImage?
+        private var currentImage: UIImage? {
+            didSet {
+                self.cachedGlowColor = nil
+                self.glowContentUpdated?()
+            }
+        }
+        private var cachedGlowColor: UIColor?
+        private var glowHasImage = false
+        private var glowPlaceholderColors: [UIColor] = []
+        fileprivate var glowContentUpdated: (() -> Void)?
+
+        fileprivate var glowColor: UIColor {
+            if self.glowHasImage, let image = self.currentImage {
+                if let cachedGlowColor = self.cachedGlowColor { return cachedGlowColor }
+                let color = avatarGlowColor(from: image) ?? .gray
+                self.cachedGlowColor = color
+                return color
+            }
+            guard let first = self.glowPlaceholderColors.first else { return .gray }
+            return first.mixedWith(self.glowPlaceholderColors.last ?? first, alpha: 0.5).withAlphaComponent(1.0)
+        }
         
         private var params: Params?
         private var loadDisposable = MetaDisposable()
@@ -639,6 +728,7 @@ public final class AvatarNode: ASDisplayNode {
             let updatedState: AvatarNodeState = .peerAvatar(peer?.id ?? EnginePeer.Id(0), peer?.nameColor, peer?.displayLetters ?? [], representation, clipStyle, cutoutRect)
             if updatedState != self.state || overrideImage != self.overrideImage || theme !== self.theme {
                 self.state = updatedState
+                self.currentImage = nil
                 self.overrideImage = overrideImage
                 self.theme = theme
                 
@@ -723,11 +813,17 @@ public final class AvatarNode: ASDisplayNode {
                 displayDimensions: displayDimensions,
                 clipStyle: clipStyle
             )
+            self.glowHasImage = smallProfileImage != nil
+            self.glowPlaceholderColors = calculateAvatarColors(context: genericContext, explicitColorIndex: nil, peerId: peer?.id, nameColor: peer?.nameColor, icon: .none, theme: theme)
             if self.params == params {
+                self.glowContentUpdated?()
                 return
             }
             let previousSize = self.params?.displayDimensions
             self.params = params
+            self.loadDisposable.set(nil)
+            self.currentImage = nil
+            self.imageNode.contents = nil
             
             switch clipStyle {
             case .none:
@@ -768,13 +864,15 @@ public final class AvatarNode: ASDisplayNode {
                 if let result = imageCache.getAvatarImage(peer: peerReference, resource: MediaResourceReference.avatar(peer: peerReference, resource: smallProfileImage.resource), immediateThumbnail: peer.profileImageRepresentations.first?.immediateThumbnailData, size: Int(displayDimensions.width * UIScreenScale), synchronous: synchronousLoad) {
                     if let image = result.image {
                         self.imageNode.contents = image.cgImage
+                        self.currentImage = image
                     }
                     if let loadSignal = result.loadSignal {
                         self.loadDisposable.set((loadSignal |> deliverOnMainQueue).start(next: { [weak self] image in
-                            guard let self else {
+                            guard let self, self.params == params else {
                                 return
                             }
                             self.imageNode.contents = image?.cgImage
+                            self.currentImage = image
                         }).strict())
                     }
                 }
@@ -846,6 +944,7 @@ public final class AvatarNode: ASDisplayNode {
             let updatedState: AvatarNodeState = .peerAvatar(peer?.id ?? EnginePeer.Id(0), peer?.nameColor, peer?.displayLetters ?? [], representation, clipStyle, cutoutRect)
             if updatedState != self.state || overrideImage != self.overrideImage || theme !== self.theme {
                 self.state = updatedState
+                self.currentImage = nil
                 self.overrideImage = overrideImage
                 self.theme = theme
                 
@@ -923,6 +1022,7 @@ public final class AvatarNode: ASDisplayNode {
             let updatedState: AvatarNodeState = .custom(letter: letters, explicitColorIndex: explicitIndex, explicitIcon: icon)
             if updatedState != self.state {
                 self.state = updatedState
+                self.currentImage = nil
                 
                 let parameters: AvatarNodeParameters
                 if let icon = icon, case .phone = icon {
@@ -1157,17 +1257,14 @@ public final class AvatarNode: ASDisplayNode {
     
     public let contentNode: ContentNode
     private var glowObserver: NSObjectProtocol?
-    private var glowColor: UIColor = .systemIndigo
-
-    private func updateGlow(theme: PresentationTheme? = nil) {
+    private func updateGlow() {
         if !Thread.isMainThread {
-            Queue.mainQueue().async { [weak self] in self?.updateGlow(theme: theme) }
+            Queue.mainQueue().async { [weak self] in self?.updateGlow() }
             return
         }
-        if let theme { self.glowColor = theme.list.itemAccentColor }
         guard self.isNodeLoaded else { return }
         let enabled = DGSimpleSettings.shared.avatarGlow && !self.bounds.isEmpty
-        self.layer.shadowColor = self.glowColor.cgColor
+        if enabled { self.layer.shadowColor = self.contentNode.glowColor.cgColor }
         self.layer.shadowOffset = .zero
         self.layer.shadowRadius = min(12.0, self.bounds.width * 0.18)
         self.layer.shadowOpacity = enabled ? 0.8 : 0.0
@@ -1247,6 +1344,10 @@ public final class AvatarNode: ASDisplayNode {
         
         super.init()
         
+        self.contentNode.glowContentUpdated = { [weak self] in
+            self?.updateGlow()
+        }
+
         self.onDidLoad { [weak self] _ in
             guard let self else {
                 return
@@ -1326,7 +1427,6 @@ public final class AvatarNode: ASDisplayNode {
         displayDimensions: CGSize = CGSize(width: 60.0, height: 60.0),
         storeUnrounded: Bool = false
     ) {
-        self.updateGlow(theme: theme)
         self.contentNode.setPeer(
             accountPeerId: accountPeerId,
             postbox: postbox,
@@ -1356,7 +1456,6 @@ public final class AvatarNode: ASDisplayNode {
         displayDimensions: CGSize = CGSize(width: 60.0, height: 60.0),
         storeUnrounded: Bool = false
     ) {
-        self.updateGlow(theme: theme)
         self.contentNode.setPeerV2(
             context: genericContext,
             theme: theme,
@@ -1385,7 +1484,6 @@ public final class AvatarNode: ASDisplayNode {
         storeUnrounded: Bool = false,
         cutoutRect: CGRect? = nil
     ) {
-        self.updateGlow(theme: theme)
         self.contentNode.setPeer(
             context: context,
             account: account,
