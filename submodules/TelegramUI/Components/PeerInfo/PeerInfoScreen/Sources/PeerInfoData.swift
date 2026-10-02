@@ -1216,12 +1216,16 @@ func peerInfoScreenData(
                     var currentValue: TelegramUserPresence? = nil
                     var updateManager: QueueLocalObject<PeerPresenceStatusManager>? = nil
                 }
-                let manager = Atomic<Manager>(value: Manager())
+                let statusManager = Atomic<Manager>(value: Manager())
                 let notify: () -> Void = {
-                    let data = manager.with { manager -> PeerInfoStatusData? in
+                    let data = statusManager.with { manager -> PeerInfoStatusData? in
+                        let isOwnHiddenPresence = userPeerId == context.account.peerId && DGSimpleSettings.shared.ghostHidesOnline
+                        if isOwnHiddenPresence && DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) == nil {
+                            return PeerInfoStatusData(text: strings.Channel_NotificationLoading, isActivity: false, key: nil)
+                        }
                         if let presence = manager.currentValue {
-                            let timestamp = CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970
-                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime)
+                            let timestamp = context.account.network.globalTime
+                            let (text, isActivity) = stringAndActivityForUserPresence(strings: strings, dateTimeFormat: dateTimeFormat, presence: EnginePeer.Presence(presence), relativeTo: Int32(timestamp), expanded: !DGSimpleSettings.shared.relativeOnlineTime, includeExactTime: isOwnHiddenPresence)
                             var isHiddenStatus = false
                             switch presence.status {
                             case .recently(let isHidden), .lastWeek(let isHidden), .lastMonth(let isHidden):
@@ -1236,13 +1240,37 @@ func peerInfoScreenData(
                     }
                     subscriber.putNext(data)
                 }
-                let disposable = (context.account.viewTracker.peerView(userPeerId, updateData: false)
-                |> map { view -> StatusInputData in
+                let ownPresenceUpdates = Signal<Void, NoError> { subscriber in
+                    var observers: [NSObjectProtocol] = []
+                    if userPeerId == context.account.peerId {
+                        for name in [DGSimpleSettings.didChangeNotification, DGSimpleSettings.lastOnlineDidChangeNotification] {
+                            observers.append(NotificationCenter.default.addObserver(forName: name, object: DGSimpleSettings.shared, queue: nil) { _ in
+                                subscriber.putNext(())
+                            })
+                        }
+                    }
+                    subscriber.putNext(())
+                    return ActionDisposable {
+                        for observer in observers {
+                            NotificationCenter.default.removeObserver(observer)
+                        }
+                    }
+                }
+                let disposable = (combineLatest(context.account.viewTracker.peerView(userPeerId, updateData: false), ownPresenceUpdates)
+                |> deliverOnMainQueue
+                |> map { view, _ -> StatusInputData in
                     guard let user = view.peers[userPeerId] as? TelegramUser else {
                         return .none
                     }
                     if user.id == context.account.peerId {
-                        return .none
+                        guard DGSimpleSettings.shared.ghostHidesOnline else { return .none }
+                        if let timestamp = DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) {
+                            // Self presence in Postbox is permanently online. Use
+                            // the last acknowledged visible session instead.
+                            let now = Int32(context.account.network.globalTime)
+                            return .presence(TelegramUserPresence(status: .present(until: min(timestamp, now - 1)), lastActivity: 0))
+                        }
+                        return .presence(TelegramUserPresence(status: .recently(isHidden: false), lastActivity: 0))
                     }
                     if user.isDeleted {
                         return .none
@@ -1273,7 +1301,7 @@ func peerInfoScreenData(
                         if case let .presence(value) = inputData {
                             presence = value
                         }
-                        let _ = manager.with { manager -> Void in
+                        let _ = statusManager.with { manager -> Void in
                             manager.currentValue = presence
                             if let presence = presence {
                                 let updateManager: QueueLocalObject<PeerPresenceStatusManager>
@@ -1283,8 +1311,16 @@ func peerInfoScreenData(
                                     updateManager = QueueLocalObject<PeerPresenceStatusManager>(queue: .mainQueue(), generate: {
                                         return PeerPresenceStatusManager(update: {
                                             notify()
+                                            statusManager.with { manager in
+                                                if let presence = manager.currentValue {
+                                                    manager.updateManager?.with { updateManager in
+                                                        updateManager.reset(presence: EnginePeer.Presence(presence))
+                                                    }
+                                                }
+                                            }
                                         })
                                     })
+                                    manager.updateManager = updateManager
                                 }
                                 updateManager.with { updateManager in
                                     updateManager.reset(presence: EnginePeer.Presence(presence))
@@ -1296,7 +1332,12 @@ func peerInfoScreenData(
                         notify()
                     }
                 })
-                return disposable
+                return ActionDisposable {
+                    disposable.dispose()
+                    statusManager.with { manager in
+                        manager.updateManager = nil
+                    }
+                }
             }
             |> distinctUntilChanged
             

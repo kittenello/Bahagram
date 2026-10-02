@@ -1275,7 +1275,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 let subtitleColor: UIColor
                 subtitleColor = .white
                 
-                subtitleStringText = presentationData.strings.Presence_online
+                if DGSimpleSettings.shared.ghostHidesOnline {
+                    subtitleStringText = statusData.flatMap { $0.isActivity ? nil : $0.text } ?? presentationData.strings.Channel_NotificationLoading
+                } else {
+                    subtitleStringText = presentationData.strings.Presence_online
+                }
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: subtitleColor)
                 smallSubtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(16.0), color: .white, shadowColor: titleShadowColor)
                 

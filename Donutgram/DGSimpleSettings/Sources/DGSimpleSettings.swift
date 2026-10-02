@@ -28,6 +28,7 @@ public final class DGSimpleSettings {
     public static let shared = DGSimpleSettings()
     public static let didChangeNotification = Notification.Name("donutgram.settings.didChange")
     public static let requestOfflineNotification = Notification.Name("donutgram.ghost.requestOffline")
+    public static let lastOnlineDidChangeNotification = Notification.Name("donutgram.presence.lastOnlineDidChange")
 
     public enum TranscriptionBackend: String, CaseIterable {
         case telegram
@@ -274,6 +275,9 @@ public final class DGSimpleSettings {
     public var ghostSendOnline: Bool { get { bool(Key.ghostSendOnline) } set { setBool(newValue, Key.ghostSendOnline) } }
     public var ghostSendTyping: Bool { get { bool(Key.ghostSendTyping) } set { setBool(newValue, Key.ghostSendTyping) } }
     public var ghostAutomaticOffline: Bool { get { bool(Key.ghostAutomaticOffline) } set { setBool(newValue, Key.ghostAutomaticOffline) } }
+    public var ghostHidesOnline: Bool {
+        return ghostModeEnabled && (!ghostSendOnline || ghostAutomaticOffline)
+    }
     public var ghostReadOnAction: Bool { get { bool(Key.ghostReadOnAction) } set { setBool(newValue, Key.ghostReadOnAction) } }
     public var ghostUseScheduledMessages: Bool { get { bool(Key.ghostUseScheduledMessages) } set { setBool(newValue, Key.ghostUseScheduledMessages) } }
     public var ghostSendWithoutSound: Int { get { integer(Key.ghostSendWithoutSound) } set { setInteger(newValue, Key.ghostSendWithoutSound) } }
@@ -284,6 +288,20 @@ public final class DGSimpleSettings {
 
     private func accountKey(_ suffix: String, accountId: Int64) -> String {
         return "donutgram.profile.\(accountId).\(suffix)"
+    }
+
+    public func lastOnlineTimestamp(accountId: Int64) -> Int32? {
+        let value = integer(accountKey("lastOnlineTimestamp", accountId: accountId))
+        guard value > 0, let timestamp = Int32(exactly: value) else { return nil }
+        return timestamp
+    }
+
+    public func setLastOnlineTimestamp(_ timestamp: Int32, accountId: Int64) {
+        let key = accountKey("lastOnlineTimestamp", accountId: accountId)
+        guard timestamp > 0, integer(key) != Int(timestamp) else { return }
+        self.defaults.set(Int(timestamp), forKey: key)
+        // Presence updates must not trigger another account.updateStatus request.
+        NotificationCenter.default.post(name: DGSimpleSettings.lastOnlineDidChangeNotification, object: self)
     }
 
     public func visualProfileId(accountId: Int64) -> String {

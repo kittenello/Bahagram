@@ -11,20 +11,26 @@ private typealias SignalKitTimer = SwiftSignalKit.Timer
 private final class AccountPresenceManagerImpl {
     private let queue: Queue
     private let network: Network
+    private let accountId: Int64
     let isPerformingUpdate = ValuePromise<Bool>(false, ignoreRepeated: true)
     
     private var shouldKeepOnlinePresenceDisposable: Disposable?
     private let currentRequestDisposable = MetaDisposable()
+    private let initialPresenceRequestDisposable = MetaDisposable()
     private var onlineTimer: SignalKitTimer?
     private var offlineTimer: SignalKitTimer?
     private var settingsObserver: NSObjectProtocol?
     private var offlineRequestObserver: NSObjectProtocol?
     
     private var wasOnline: Bool = false
+    private var lastAcknowledgedPresenceOnline: Bool = false
+    private var resolvingInitialPresence = false
+    private var didResolveInitialPresence = false
     
-    init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {
+    init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network, accountId: Int64) {
         self.queue = queue
         self.network = network
+        self.accountId = accountId
         
         self.shouldKeepOnlinePresenceDisposable = (shouldKeepOnlinePresence
         |> distinctUntilChanged
@@ -63,6 +69,7 @@ private final class AccountPresenceManagerImpl {
         assert(self.queue.isCurrent())
         self.shouldKeepOnlinePresenceDisposable?.dispose()
         self.currentRequestDisposable.dispose()
+        self.initialPresenceRequestDisposable.dispose()
         self.onlineTimer?.invalidate()
         self.offlineTimer?.invalidate()
         if let settingsObserver = self.settingsObserver {
@@ -73,21 +80,75 @@ private final class AccountPresenceManagerImpl {
         }
     }
 
+    private func recordAcknowledgedPresence(isOnline: Bool, timestamp: Int32) {
+        if isOnline || self.lastAcknowledgedPresenceOnline || DGSimpleSettings.shared.lastOnlineTimestamp(accountId: self.accountId) == nil {
+            DGSimpleSettings.shared.setLastOnlineTimestamp(timestamp, accountId: self.accountId)
+        }
+        // Repeated offline requests must keep the original last-seen time.
+        self.lastAcknowledgedPresenceOnline = isOnline
+    }
+
     private func requestOfflinePresence() {
+        guard !self.resolvingInitialPresence else { return }
+        let timestamp = Int32(self.network.globalTime)
         let request = self.network.request(Api.functions.account.updateStatus(offline: .boolTrue))
         self.isPerformingUpdate.set(true)
         self.currentRequestDisposable.set((request
         |> `catch` { _ -> Signal<Api.Bool, NoError> in
             return .single(.boolFalse)
         }
-        |> deliverOn(self.queue)).start(completed: { [weak self] in
+        |> deliverOn(self.queue)).start(next: { [weak self] result in
+            if case .boolTrue = result {
+                self?.recordAcknowledgedPresence(isOnline: false, timestamp: timestamp)
+            }
+        }, completed: { [weak self] in
             self?.isPerformingUpdate.set(false)
         }))
     }
     
     private func updatePresence(_ isOnline: Bool) {
         let ghost = DGSimpleSettings.shared
-        let effectiveOnline = isOnline && !(ghost.ghostModeEnabled && !ghost.ghostSendOnline)
+        let effectiveOnline = isOnline && !ghost.ghostHidesOnline
+        if !effectiveOnline && !self.didResolveInitialPresence && ghost.lastOnlineTimestamp(accountId: self.accountId) == nil {
+            if !self.resolvingInitialPresence {
+                self.resolvingInitialPresence = true
+                self.onlineTimer?.invalidate()
+                self.onlineTimer = nil
+                // Fetch the real self status before the first offline packet.
+                // Postbox deliberately replaces self presence with "online".
+                // Bound the lookup so an unavailable server cannot stall it.
+                self.initialPresenceRequestDisposable.set((self.network.request(Api.functions.users.getUsers(id: [.inputUserSelf]), automaticFloodWait: false)
+                |> `catch` { _ -> Signal<[Api.User], NoError> in
+                    return .single([])
+                }
+                |> timeout(2.0, queue: self.queue, alternate: .single([]))
+                |> deliverOn(self.queue)).start(next: { [weak self] users in
+                    guard let self, ghost.lastOnlineTimestamp(accountId: self.accountId) == nil else { return }
+                    for user in users {
+                        guard case let .user(data) = user, let status = data.status else { continue }
+                        switch status {
+                        case let .userStatusOffline(data):
+                            ghost.setLastOnlineTimestamp(data.wasOnline, accountId: self.accountId)
+                        case .userStatusOnline:
+                            self.lastAcknowledgedPresenceOnline = true
+                        default:
+                            break
+                        }
+                    }
+                }, completed: { [weak self] in
+                    guard let self else { return }
+                    self.resolvingInitialPresence = false
+                    self.didResolveInitialPresence = true
+                    self.updatePresence(self.wasOnline)
+                }))
+            }
+            return
+        } else if self.resolvingInitialPresence {
+            self.initialPresenceRequestDisposable.set(nil)
+            self.resolvingInitialPresence = false
+            self.didResolveInitialPresence = true
+        }
+        let timestamp = Int32(self.network.globalTime)
         let request: Signal<Api.Bool, MTRpcError>
         if effectiveOnline {
             self.offlineTimer?.invalidate()
@@ -122,7 +183,11 @@ private final class AccountPresenceManagerImpl {
         |> `catch` { _ -> Signal<Api.Bool, NoError> in
             return .single(.boolFalse)
         }
-        |> deliverOn(self.queue)).start(completed: { [weak self] in
+        |> deliverOn(self.queue)).start(next: { [weak self] result in
+            if case .boolTrue = result {
+                self?.recordAcknowledgedPresence(isOnline: effectiveOnline, timestamp: timestamp)
+            }
+        }, completed: { [weak self] in
             guard let strongSelf = self else {
                 return
             }
@@ -135,10 +200,10 @@ final class AccountPresenceManager {
     private let queue = Queue()
     private let impl: QueueLocalObject<AccountPresenceManagerImpl>
     
-    init(shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {
+    init(shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network, accountId: Int64) {
         let queue = self.queue
         self.impl = QueueLocalObject(queue: self.queue, generate: {
-            return AccountPresenceManagerImpl(queue: queue, shouldKeepOnlinePresence: shouldKeepOnlinePresence, network: network)
+            return AccountPresenceManagerImpl(queue: queue, shouldKeepOnlinePresence: shouldKeepOnlinePresence, network: network, accountId: accountId)
         })
     }
     
