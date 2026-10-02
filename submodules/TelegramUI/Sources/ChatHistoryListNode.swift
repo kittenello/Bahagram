@@ -756,6 +756,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     private var donutgramSettingsObserver: NSObjectProtocol?
     private var donutgramTranscriptionBackend = DGSimpleSettings.shared.transcriptionBackend
     private var donutgramStickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape)
+    private var donutgramShowChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
     
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
     
@@ -1285,7 +1286,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
 
         self.loadNextGenericReactionEffect(context: context)
         
-        // The transcribe button reads the Donutgram transcription service at layout time, so re-layout the loaded messages when it changes.
+        // These settings are read at layout time, so refresh the affected loaded messages.
         self.donutgramSettingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
             guard let self = self else {
                 return
@@ -1294,10 +1295,13 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             let stickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape)
             let stickerAppearanceChanged = self.donutgramStickerAppearance != stickerAppearance
             let stickerRepliesChanged = self.donutgramStickerAppearance.2 != stickerAppearance.2
-            if self.donutgramTranscriptionBackend != transcriptionBackend || stickerAppearanceChanged {
+            let showChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
+            let forwardCountChanged = self.donutgramShowChannelForwardCount != showChannelForwardCount
+            if self.donutgramTranscriptionBackend != transcriptionBackend || stickerAppearanceChanged || forwardCountChanged {
                 self.donutgramTranscriptionBackend = transcriptionBackend
                 self.donutgramStickerAppearance = stickerAppearance
-                self.updateLoadedMessageItems(includeStickers: stickerAppearanceChanged, includeAllMessages: stickerRepliesChanged)
+                self.donutgramShowChannelForwardCount = showChannelForwardCount
+                self.updateLoadedMessageItems(includeChannelPosts: forwardCountChanged, includeStickers: stickerAppearanceChanged, includeAllMessages: stickerRepliesChanged)
             }
         })
     }
@@ -4850,7 +4854,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     }
     
     // Refresh loaded media and reply decorations when their settings change.
-    private func updateLoadedMessageItems(includeStickers: Bool = false, includeAllMessages: Bool = false) {
+    private func updateLoadedMessageItems(includeChannelPosts: Bool = false, includeStickers: Bool = false, includeAllMessages: Bool = false) {
         var messageIds: [MessageId] = []
         self.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
@@ -4865,7 +4869,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     }
                 })
                 let hasSticker = includeStickers && message.media.contains { ($0 as? TelegramMediaFile)?.isSticker == true }
-                if hasTranscribableMedia || hasSticker || includeAllMessages {
+                var isChannelPost = false
+                if includeChannelPosts, let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info {
+                    isChannelPost = true
+                }
+                if hasTranscribableMedia || isChannelPost || hasSticker || includeAllMessages {
                     messageIds.append(message.id)
                 }
             }

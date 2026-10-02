@@ -1144,6 +1144,20 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
     private var tapRecognizer: UITapGestureRecognizer?
     var navigationBar: NavigationBar?
     let navigationBarView = ComponentView<Empty>()
+    private var bottomFoldersPanel: ComponentView<Empty>?
+    private var bottomFoldersInset: CGFloat = 0.0
+
+    // Swipe progress and reordered IDs must come from the visible folder strip.
+    var folderTabsView: HorizontalTabsComponent.View? {
+        if let panel = self.bottomFoldersPanel?.view as? HeaderPanelContainerComponent.View {
+            return panel.tabs as? HorizontalTabsComponent.View
+        }
+        if let navigationBar = self.navigationBarView.view as? ChatListNavigationBar.View,
+           let panel = navigationBar.headerPanels as? HeaderPanelContainerComponent.View {
+            return panel.tabs as? HorizontalTabsComponent.View
+        }
+        return nil
+    }
     weak var controller: ChatListControllerImpl?
     
     private var toolbar: ComponentView<Empty>?
@@ -1530,6 +1544,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             )
         }
         
+        let foldersAtBottom = DGSimpleSettings.shared.chatListFoldersAtBottom && self.location == .chatList(groupId: .root)
+        var bottomFolderTabs: AnyComponent<Empty>?
         var navigationHeaderPanels: AnyComponent<Empty>?
         if self.controller?.tabContainerData != nil || !panels.isEmpty {
             var tabs: AnyComponent<Empty>?
@@ -1669,11 +1685,17 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 ))
             }
                 
-            navigationHeaderPanels = AnyComponent(HeaderPanelContainerComponent(
-                theme: self.presentationData.theme,
-                tabs: tabs,
-                panels: panels
-            ))
+            if foldersAtBottom {
+                bottomFolderTabs = tabs
+                tabs = nil
+            }
+            if !foldersAtBottom || !panels.isEmpty {
+                navigationHeaderPanels = AnyComponent(HeaderPanelContainerComponent(
+                    theme: self.presentationData.theme,
+                    tabs: tabs,
+                    panels: panels
+                ))
+            }
         }
         
         var effectiveStorySubscriptions: EngineStorySubscriptions?
@@ -1743,6 +1765,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             environment: {},
             containerSize: layout.size
         )
+        self.updateBottomFolders(layout: layout, tabs: bottomFolderTabs, transition: transition)
+
         if let navigationBarComponentView = self.navigationBarView.view as? ChatListNavigationBar.View {
             if deferScrollApplication {
                 navigationBarComponentView.deferScrollApplication = true
@@ -1759,6 +1783,56 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }
     }
     
+    private func updateBottomFolders(layout: ContainerViewLayout, tabs: AnyComponent<Empty>?, transition: ComponentTransition) {
+        self.bottomFoldersInset = 0.0
+        guard let tabs else {
+            if let panel = self.bottomFoldersPanel {
+                self.bottomFoldersPanel = nil
+                if let panelView = panel.view {
+                    panelView.isUserInteractionEnabled = false
+                    transition.setAlpha(view: panelView, alpha: 0.0, completion: { [weak panelView] _ in
+                        panelView?.removeFromSuperview()
+                    })
+                }
+            }
+            return
+        }
+
+        let panel: ComponentView<Empty>
+        var panelTransition = transition
+        if let current = self.bottomFoldersPanel {
+            panel = current
+        } else {
+            panel = ComponentView()
+            self.bottomFoldersPanel = panel
+            panelTransition = .immediate
+        }
+
+        let panelSize = panel.update(
+            transition: panelTransition,
+            component: AnyComponent(HeaderPanelContainerComponent(theme: self.presentationData.theme, tabs: tabs, panels: [])),
+            environment: {},
+            containerSize: CGSize(width: max(0.0, layout.size.width - layout.safeInsets.left - layout.safeInsets.right), height: 40.0)
+        )
+        let bottomInset = layout.insets(options: [.input]).bottom
+        let spacing: CGFloat = 8.0
+        let panelFrame = CGRect(origin: CGPoint(x: layout.safeInsets.left, y: layout.size.height - bottomInset - spacing - panelSize.height), size: panelSize)
+        let visibility: CGFloat = self.isSearchDisplayControllerActive == nil ? (1.0 - self.inlineStackContainerTransitionFraction) : 0.0
+
+        if let panelView = panel.view {
+            if panelView.superview == nil {
+                self.view.addSubview(panelView)
+            }
+            panelTransition.setFrame(view: panelView, frame: panelFrame)
+            transition.setAlpha(view: panelView, alpha: visibility)
+            panelView.isUserInteractionEnabled = visibility == 1.0
+            panelView.accessibilityElementsHidden = visibility != 1.0
+        }
+        // The native tab bar (or only the home-indicator inset when hidden) is already
+        // included in layout. Reserve the folder strip as well, keeping the last chat reachable.
+        self.bottomFoldersInset = (panelSize.height + spacing) * visibility
+    }
+
     private func updateNavigationScrolling(navigationHeight: CGFloat, transition: ContainedViewLayoutTransition) {
         var mainOffset: CGFloat
         if let contentOffset = self.mainContainerNode.contentOffset, case let .known(value) = contentOffset {
@@ -1966,13 +2040,14 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }
         
         var childrenLayout = layout
-        childrenLayout.intrinsicInsets = UIEdgeInsets(top: visualNavigationHeight, left: childrenLayout.intrinsicInsets.left, bottom: childrenLayout.intrinsicInsets.bottom, right: childrenLayout.intrinsicInsets.right)
+        childrenLayout.intrinsicInsets = UIEdgeInsets(top: visualNavigationHeight, left: childrenLayout.intrinsicInsets.left, bottom: childrenLayout.intrinsicInsets.bottom + self.bottomFoldersInset, right: childrenLayout.intrinsicInsets.right)
         self.controller?.presentationContext.containerLayoutUpdated(childrenLayout, transition: transition)
         
         transition.updateFrame(node: self.mainContainerNode, frame: CGRect(origin: CGPoint(), size: layout.size))
         var mainNavigationBarHeight = navigationBarHeight
         var cleanMainNavigationBarHeight = cleanNavigationBarHeight
         var mainInsets = insets
+        mainInsets.bottom += self.bottomFoldersInset
         if self.inlineStackContainerNode != nil && "".isEmpty {
             mainNavigationBarHeight = visualNavigationHeight
             cleanMainNavigationBarHeight = visualNavigationHeight

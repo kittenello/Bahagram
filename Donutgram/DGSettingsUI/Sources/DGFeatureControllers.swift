@@ -247,8 +247,9 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .toggle(17, 4, "greetingSticker", "Скрыть приветственный стикер", s.hideGreetingSticker, true),
             .toggle(18, 4, "mentionComma", "Запятая после упоминания", s.commaAfterMention, true),
             .toggle(19, 4, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
-            .header(20, 5, "ГОЛОС В ТЕКСТ"),
-            .disclosure(21, 5, "transcription", "Сервис", transcription),
+            .toggle(20, 4, "channelForwardCount", "Счетчик пересылок в каналах", s.showChannelForwardCount, true),
+            .header(21, 5, "ГОЛОС В ТЕКСТ"),
+            .disclosure(22, 5, "transcription", "Сервис", transcription),
             .header(30, 6, "ЗАПИСЬ"),
             .disclosure(31, 6, "camera", "Камера в кружках", cameraTitle),
             .toggle(32, 6, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
@@ -282,6 +283,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "greetingSticker": s.hideGreetingSticker = value
         case "mentionComma": s.commaAfterMention = value
         case "pollResultsBeforeVoting": s.showPollResultsBeforeVoting = value
+        case "channelForwardCount": s.showChannelForwardCount = value
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value
         case "staticZoom": s.staticRoundVideoZoom = value
@@ -333,7 +335,9 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
             .toggle(4, 0, "hideEmojiStatus", "Скрыть эмодзи-статус", settings.chatListHideEmojiStatus, true),
             .toggle(5, 0, "centerTitle", "Заголовок по центру", settings.chatListCenteredTitle, true),
             .toggle(6, 0, "hideSearch", "Скрыть строку поиска", settings.chatListHideSearch, true),
-            .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode))
+            .disclosure(7, 0, "titleMode", "Текст в заголовке", dgChatListTitleModeTitle(settings.chatListTitleMode)),
+            .toggle(8, 0, "foldersAtBottom", "Папки внизу", settings.chatListFoldersAtBottom, true),
+            .info(9, 0, "Панель папок отображается над нижней навигацией. Если нижняя панель скрыта, папки остаются у нижнего края экрана.")
         ]
     }, toggle: { key, value in
         switch key {
@@ -342,6 +346,7 @@ private func dgChatListAppearanceController(context: AccountContext, focusKey: S
         case "hideEmojiStatus": settings.chatListHideEmojiStatus = value
         case "centerTitle": settings.chatListCenteredTitle = value
         case "hideSearch": settings.chatListHideSearch = value
+        case "foldersAtBottom": settings.chatListFoldersAtBottom = value
         default: break
         }
     }, open: { key in

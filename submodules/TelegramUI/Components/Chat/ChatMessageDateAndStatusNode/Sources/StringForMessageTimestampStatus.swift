@@ -265,5 +265,21 @@ public func stringForMessageTimestampStatus(
         dateText = "\(donutgramDeletedMarker)\(dateText)"
     }
     
+    if DGSimpleSettings.shared.showChannelForwardCount,
+       let channel = message.peers[message.id.peerId] as? TelegramChannel,
+       case .broadcast = channel.info {
+        for attribute in message.attributes {
+            if let attribute = attribute as? ForwardCountMessageAttribute {
+                if attribute.count > 0 {
+                    let countText = compactNumericCountString(attribute.count, decimalSeparator: dateTimeFormat.decimalSeparator)
+                    // The shared status node adds views before this text and measures the inline arrow,
+                    // so the count fits the same row for text, media, polls and albums.
+                    dateText = "\(donutgramForwardCountMarker)\(countText) \(dateText)"
+                }
+                break
+            }
+        }
+    }
+
     return dateText
 }

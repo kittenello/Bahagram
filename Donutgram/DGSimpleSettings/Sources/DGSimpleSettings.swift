@@ -28,6 +28,7 @@ public final class DGSimpleSettings {
     public static let shared = DGSimpleSettings()
     public static let didChangeNotification = Notification.Name("donutgram.settings.didChange")
     public static let requestOfflineNotification = Notification.Name("donutgram.ghost.requestOffline")
+    public static let lastOnlineDidChangeNotification = Notification.Name("donutgram.presence.lastOnlineDidChange")
 
     public enum TranscriptionBackend: String, CaseIterable {
         case telegram
@@ -110,6 +111,7 @@ public final class DGSimpleSettings {
         static let chatListHideEmojiStatus = "donutgram.chats.appearance.hideEmojiStatus"
         static let chatListCenteredTitle = "donutgram.chats.appearance.centeredTitle"
         static let chatListHideSearch = "donutgram.chats.appearance.hideSearch"
+        static let chatListFoldersAtBottom = "donutgram.chats.appearance.foldersAtBottom"
         static let chatListTitleMode = "donutgram.chats.appearance.titleMode"
         static let islandStyle = "donutgram.appearance.islandStyle"
         static let islandFollowsIcon = "donutgram.appearance.islandFollowsIcon"
@@ -138,6 +140,7 @@ public final class DGSimpleSettings {
         static let autoPause = "donutgram.chats.autoPause"
         static let doubleTapSeekSeconds = "donutgram.chats.doubleTapSeekSeconds"
         static let showPollResultsBeforeVoting = "donutgram.chats.showPollResultsBeforeVoting"
+        static let showChannelForwardCount = "donutgram.chats.showChannelForwardCount"
         static let autoPauseMedia = "donutgram.chats.autoPauseMedia"
         static let editedIcon = "donutgram.chats.editedIcon"
         static let showOnlineIndicator = "donutgram.chats.showOnlineIndicator"
@@ -272,6 +275,9 @@ public final class DGSimpleSettings {
     public var ghostSendOnline: Bool { get { bool(Key.ghostSendOnline) } set { setBool(newValue, Key.ghostSendOnline) } }
     public var ghostSendTyping: Bool { get { bool(Key.ghostSendTyping) } set { setBool(newValue, Key.ghostSendTyping) } }
     public var ghostAutomaticOffline: Bool { get { bool(Key.ghostAutomaticOffline) } set { setBool(newValue, Key.ghostAutomaticOffline) } }
+    public var ghostHidesOnline: Bool {
+        return ghostModeEnabled && (!ghostSendOnline || ghostAutomaticOffline)
+    }
     public var ghostReadOnAction: Bool { get { bool(Key.ghostReadOnAction) } set { setBool(newValue, Key.ghostReadOnAction) } }
     public var ghostUseScheduledMessages: Bool { get { bool(Key.ghostUseScheduledMessages) } set { setBool(newValue, Key.ghostUseScheduledMessages) } }
     public var ghostSendWithoutSound: Int { get { integer(Key.ghostSendWithoutSound) } set { setInteger(newValue, Key.ghostSendWithoutSound) } }
@@ -317,6 +323,20 @@ public final class DGSimpleSettings {
         case 2: return 22.0
         default: return 0.0
         }
+    }
+
+    public func lastOnlineTimestamp(accountId: Int64) -> Int32? {
+        let value = integer(accountKey("lastOnlineTimestamp", accountId: accountId))
+        guard value > 0, let timestamp = Int32(exactly: value) else { return nil }
+        return timestamp
+    }
+
+    public func setLastOnlineTimestamp(_ timestamp: Int32, accountId: Int64) {
+        let key = accountKey("lastOnlineTimestamp", accountId: accountId)
+        guard timestamp > 0, integer(key) != Int(timestamp) else { return }
+        self.defaults.set(Int(timestamp), forKey: key)
+        // Presence updates must not trigger another account.updateStatus request.
+        NotificationCenter.default.post(name: DGSimpleSettings.lastOnlineDidChangeNotification, object: self)
     }
 
     public func visualProfileId(accountId: Int64) -> String {
@@ -415,6 +435,7 @@ public final class DGSimpleSettings {
     public var chatListHideEmojiStatus: Bool { get { bool(Key.chatListHideEmojiStatus) } set { setBool(newValue, Key.chatListHideEmojiStatus) } }
     public var chatListCenteredTitle: Bool { get { bool(Key.chatListCenteredTitle) } set { setBool(newValue, Key.chatListCenteredTitle) } }
     public var chatListHideSearch: Bool { get { bool(Key.chatListHideSearch) } set { setBool(newValue, Key.chatListHideSearch) } }
+    public var chatListFoldersAtBottom: Bool { get { bool(Key.chatListFoldersAtBottom) } set { setBool(newValue, Key.chatListFoldersAtBottom) } }
     public var chatListTitleMode: ChatListTitleMode {
         get { ChatListTitleMode(rawValue: integer(Key.chatListTitleMode)) ?? .chats }
         set { setInteger(newValue.rawValue, Key.chatListTitleMode) }
@@ -547,6 +568,7 @@ public final class DGSimpleSettings {
     }
 
     public var showPollResultsBeforeVoting: Bool { get { bool(Key.showPollResultsBeforeVoting) } set { setBool(newValue, Key.showPollResultsBeforeVoting) } }
+    public var showChannelForwardCount: Bool { get { bool(Key.showChannelForwardCount) } set { setBool(newValue, Key.showChannelForwardCount) } }
     /// Bitmask: video = 1, voice = 2, round video = 4.
     public var autoPauseMedia: Int {
         get { self.defaults.object(forKey: Key.autoPauseMedia) == nil ? 7 : integer(Key.autoPauseMedia) }

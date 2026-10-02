@@ -767,7 +767,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     return
                 }
                 
-                if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View {
+                if let tabsView = strongSelf.chatListDisplayNode.folderTabsView {
                     tabsView.updateTabSwitchFraction(fraction: fraction, isDragging: strongSelf.chatListDisplayNode.mainContainerNode.isSwitchingCurrentItemFilterByDragging, transition: ComponentTransition(transition))
                 }
             }
@@ -3663,7 +3663,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         let _ = defaultFilterIds
         
         var reorderedFilterIdsValue: [Int32]?
-        if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View, let reorderedItemIds = tabsView.reorderedItemIds {
+        if let tabsView = self.chatListDisplayNode.folderTabsView, let reorderedItemIds = tabsView.reorderedItemIds {
             reorderedFilterIdsValue = reorderedItemIds.compactMap { item -> Int32? in
                 guard let value = item.base as? Int32 else {
                     return nil
@@ -6745,7 +6745,7 @@ private final class ChatListHeaderBarContextReferenceContentSource: ContextRefer
         return ContextControllerReferenceViewInfo(
             referenceView: self.sourceView.contentView,
             contentAreaInScreenSpace: UIScreen.main.bounds,
-            actionsPosition: .bottom
+            actionsPosition: DGSimpleSettings.shared.chatListFoldersAtBottom ? .top : .bottom
         )
     }
 }

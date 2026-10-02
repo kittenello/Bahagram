@@ -77,7 +77,7 @@ public enum ProxySettingsEntryTag: ItemListItemTag, Equatable {
 }
 
 private enum ProxySettingsControllerEntry: ItemListNodeEntry {
-    case enabled(PresentationTheme, String, Bool, Bool)
+    case enabled(PresentationTheme, String, Bool, Bool, Bool)
     case serversHeader(PresentationTheme, String)
     case addServer(PresentationTheme, String, Bool)
     case server(Int, PresentationTheme, PresentationStrings, ProxyServerSettings, Bool, DisplayProxyServerStatus, ProxySettingsServerItemEditing, Bool)
@@ -129,8 +129,8 @@ private enum ProxySettingsControllerEntry: ItemListNodeEntry {
                     return lhsIndex == rhsIndex && lhsTheme === rhsTheme && lhsKey == rhsKey && lhsTitle == rhsTitle && lhsLabel == rhsLabel && lhsValue == rhsValue
                 }
                 return false
-            case let .enabled(lhsTheme, lhsText, lhsValue, lhsCreatesNew):
-                if case let .enabled(rhsTheme, rhsText, rhsValue, rhsCreatesNew) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsValue == rhsValue, lhsCreatesNew == rhsCreatesNew {
+            case let .enabled(lhsTheme, lhsText, lhsValue, lhsCreatesNew, lhsAutomaticallyDisabled):
+                if case let .enabled(rhsTheme, rhsText, rhsValue, rhsCreatesNew, rhsAutomaticallyDisabled) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsValue == rhsValue, lhsCreatesNew == rhsCreatesNew, lhsAutomaticallyDisabled == rhsAutomaticallyDisabled {
                     return true
                 } else {
                     return false
@@ -251,8 +251,8 @@ private enum ProxySettingsControllerEntry: ItemListNodeEntry {
                 } else {
                     return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label ?? "", sectionId: self.section, style: .blocks, action: { arguments.openOption(key) })
                 }
-            case let .enabled(_, text, value, createsNew):
-                return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, enableInteractiveChanges: !createsNew, enabled: true, sectionId: self.section, style: .blocks, updated: { value in
+            case let .enabled(_, text, value, createsNew, automaticallyDisabled):
+                return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, enableInteractiveChanges: !createsNew && !automaticallyDisabled, enabled: !automaticallyDisabled, sectionId: self.section, style: .blocks, updated: { value in
                     if createsNew {
                         arguments.addNewServer()
                     } else {
@@ -292,7 +292,7 @@ private enum ProxySettingsControllerEntry: ItemListNodeEntry {
 private func proxySettingsControllerEntries(theme: PresentationTheme, strings: PresentationStrings, state: ProxySettingsControllerState, proxySettings: ProxySettings, statuses: [ProxyServerSettings: ProxyServerStatus], connectionStatus: ConnectionStatus, forceTcp: Bool) -> [ProxySettingsControllerEntry] {
     var entries: [ProxySettingsControllerEntry] = []
 
-    entries.append(.enabled(theme, strings.ChatSettings_ConnectionType_UseProxy, proxySettings.enabled, proxySettings.servers.isEmpty))
+    entries.append(.enabled(theme, strings.ChatSettings_ConnectionType_UseProxy, proxySettings.enabled && !proxySettings.automaticallyDisabled, proxySettings.servers.isEmpty, proxySettings.automaticallyDisabled))
     entries.append(.option(0, theme, "header", "ОСНОВНЫЕ", nil, nil))
     entries.append(.option(1, theme, "autoSwitch", "Автопереключение прокси", nil, proxySettings.autoSwitch))
     if proxySettings.autoSwitch {

@@ -12,10 +12,13 @@ public let donutgramDeletedMarker = "\u{E000}"
 // In front of the date of an edited message: an outline pencil. It replaces "✎", which came
 // from a fallback font and did not match the date's size and weight.
 public let donutgramEditedMarker = "\u{E001}"
+// In front of a channel post's forward count: a forward arrow.
+public let donutgramForwardCountMarker = "\u{E002}"
 
 private let donutgramMarkerSymbols: [(marker: String, symbolName: String)] = [
     (donutgramDeletedMarker, "trash"),
-    (donutgramEditedMarker, "pencil")
+    (donutgramEditedMarker, "pencil"),
+    (donutgramForwardCountMarker, "arrowshape.turn.up.right.fill")
 ]
 
 private final class DonutgramInlineIconRunDelegateData {
