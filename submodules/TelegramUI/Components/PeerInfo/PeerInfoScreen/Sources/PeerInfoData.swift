@@ -1221,7 +1221,7 @@ func peerInfoScreenData(
                     let data = statusManager.with { manager -> PeerInfoStatusData? in
                         let isOwnHiddenPresence = userPeerId == context.account.peerId && DGSimpleSettings.shared.ghostHidesOnline
                         if isOwnHiddenPresence && DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) == nil {
-                            return PeerInfoStatusData(text: strings.Common_Loading, isActivity: false, key: nil)
+                            return PeerInfoStatusData(text: strings.Channel_NotificationLoading, isActivity: false, key: nil)
                         }
                         if let presence = manager.currentValue {
                             let timestamp = context.account.network.globalTime
