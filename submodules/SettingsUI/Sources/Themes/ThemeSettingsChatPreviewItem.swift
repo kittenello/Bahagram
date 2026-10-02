@@ -34,6 +34,9 @@ struct ChatPreviewMessageItem: Equatable {
         if lhs.backgroundEmojiId != rhs.backgroundEmojiId {
             return false
         }
+        if lhs.sticker != rhs.sticker || lhs.replySticker != rhs.replySticker {
+            return false
+        }
         return true
     }
     
@@ -44,8 +47,10 @@ struct ChatPreviewMessageItem: Equatable {
     let edited: Bool
     let nameColor: PeerColor
     let backgroundEmojiId: Int64?
+    let sticker: TelegramMediaFile?
+    let replySticker: TelegramMediaFile?
 
-    init(outgoing: Bool, reply: (String, String)?, text: String, timestamp: Int32 = 66000, edited: Bool = false, nameColor: PeerColor, backgroundEmojiId: Int64?) {
+    init(outgoing: Bool, reply: (String, String)?, text: String, timestamp: Int32 = 66000, edited: Bool = false, nameColor: PeerColor, backgroundEmojiId: Int64?, sticker: TelegramMediaFile? = nil, replySticker: TelegramMediaFile? = nil) {
         self.outgoing = outgoing
         self.reply = reply
         self.text = text
@@ -53,6 +58,8 @@ struct ChatPreviewMessageItem: Equatable {
         self.edited = edited
         self.nameColor = nameColor
         self.backgroundEmojiId = backgroundEmojiId
+        self.sticker = sticker
+        self.replySticker = replySticker
     }
 }
 
@@ -140,11 +147,35 @@ public func donutgramMessagePreviewItem(context: AccountContext, sectionId: Item
     )
 }
 
+public func donutgramStickerPreviewItem(context: AccountContext, sectionId: ItemListSectionId, sticker: TelegramMediaFile?) -> ListViewItem {
+    let current = context.sharedContext.currentPresentationData.with { $0 }
+    return ThemeSettingsChatPreviewItem(
+        context: context,
+        systemStyle: .glass,
+        theme: current.theme,
+        componentTheme: current.theme,
+        strings: current.strings,
+        sectionId: sectionId,
+        fontSize: current.chatFontSize,
+        chatBubbleCorners: current.chatBubbleCorners,
+        wallpaper: current.chatWallpaper,
+        dateTimeFormat: current.dateTimeFormat,
+        nameDisplayOrder: current.nameDisplayOrder,
+        messageItems: [
+            ChatPreviewMessageItem(outgoing: false, reply: nil, text: "Вау!", nameColor: .preset(.blue), backgroundEmojiId: nil),
+            ChatPreviewMessageItem(outgoing: true, reply: nil, text: sticker == nil ? current.strings.Channel_NotificationLoading : "", nameColor: .preset(.blue), backgroundEmojiId: nil, sticker: sticker),
+            ChatPreviewMessageItem(outgoing: false, reply: ("Donutgram", "Стикер"), text: "Ого, какой милый!", nameColor: .preset(.blue), backgroundEmojiId: nil, replySticker: sticker)
+        ]
+    )
+}
+
 class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
     private var backgroundNode: WallpaperBackgroundNode?
     private let topStripeNode: ASDisplayNode
     private let bottomStripeNode: ASDisplayNode
     private let maskNode: ASImageNode
+    private let leftInsetNode: ASDisplayNode
+    private let rightInsetNode: ASDisplayNode
     
     private let containerNode: ASDisplayNode
     private var messageNodes: [ListViewItemNode]?
@@ -162,6 +193,10 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
         self.bottomStripeNode.isLayerBacked = true
         
         self.maskNode = ASImageNode()
+        self.leftInsetNode = ASDisplayNode()
+        self.leftInsetNode.isLayerBacked = true
+        self.rightInsetNode = ASDisplayNode()
+        self.rightInsetNode.isLayerBacked = true
         
         self.containerNode = ASDisplayNode()
         self.containerNode.subnodeTransform = CATransform3DMakeRotation(CGFloat.pi, 0.0, 0.0, 1.0)
@@ -171,6 +206,8 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
         self.clipsToBounds = true
         
         self.addSubnode(self.containerNode)
+        self.addSubnode(self.leftInsetNode)
+        self.addSubnode(self.rightInsetNode)
     }
     
     deinit {
@@ -179,6 +216,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
     
     func asyncLayout() -> (_ item: ThemeSettingsChatPreviewItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         let currentNodes = self.messageNodes
+        let currentMessages = self.item?.messageItems
 
         var currentBackgroundNode = self.backgroundNode
         
@@ -195,14 +233,14 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
             let peerId = EnginePeer.Id(namespace: Namespaces.Peer.CloudUser, id: EnginePeer.Id.Id._internalFromInt64Value(1))
             let otherPeerId = EnginePeer.Id(namespace: Namespaces.Peer.CloudUser, id: EnginePeer.Id.Id._internalFromInt64Value(2))
             var items: [ListViewItem] = []
-            for messageItem in item.messageItems.reversed() {
+            for (messageIndex, messageItem) in item.messageItems.reversed().enumerated() {
                 var peers = EngineSimpleDictionary<EnginePeer.Id, EngineRawPeer>()
                 var messages = EngineSimpleDictionary<EngineMessage.Id, EngineRawMessage>()
                 
-                let replyMessageId = EngineMessage.Id(peerId: peerId, namespace: 0, id: 3)
+                let replyMessageId = EngineMessage.Id(peerId: peerId, namespace: 0, id: Int32(100 + messageIndex))
                 if let (author, text) = messageItem.reply {
                     peers[peerId] = TelegramUser(id: peerId, accessHash: nil, firstName: author, lastName: "", username: nil, phone: nil, photo: [], botInfo: nil, restrictionInfo: nil, flags: [], emojiStatus: nil, usernames: [], storiesHidden: nil, nameColor: messageItem.nameColor, backgroundEmojiId: messageItem.backgroundEmojiId, profileColor: nil, profileBackgroundEmojiId: nil, subscriberCount: nil, verificationIconFileId: nil)
-                    messages[replyMessageId] = EngineRawMessage(stableId: 3, stableVersion: 0, id: replyMessageId, globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: 66000, flags: [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: peers[peerId], text: text, attributes: [], media: [], peers: peers, associatedMessages: EngineSimpleDictionary(), associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
+                    messages[replyMessageId] = EngineRawMessage(stableId: UInt32(100 + messageIndex), stableVersion: 0, id: replyMessageId, globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: 66000, flags: [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: peers[peerId], text: text, attributes: [], media: messageItem.replySticker.map { [$0 as Media] } ?? [], peers: peers, associatedMessages: EngineSimpleDictionary(), associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
                 }
                 
                 var attributes: [MessageAttribute] = []
@@ -212,12 +250,12 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                 if messageItem.edited {
                     attributes.append(EditedMessageAttribute(date: messageItem.timestamp, isHidden: false))
                 }
-                let message = EngineRawMessage(stableId: 1, stableVersion: 0, id: EngineMessage.Id(peerId: messageItem.outgoing ? otherPeerId : peerId, namespace: 0, id: 1), globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: messageItem.timestamp, flags: messageItem.outgoing ? [] : [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: messageItem.outgoing ? TelegramUser(id: otherPeerId, accessHash: nil, firstName: "", lastName: "", username: nil, phone: nil, photo: [], botInfo: nil, restrictionInfo: nil, flags: [], emojiStatus: nil, usernames: [], storiesHidden: nil, nameColor: nil, backgroundEmojiId: nil, profileColor: nil, profileBackgroundEmojiId: nil, subscriberCount: nil, verificationIconFileId: nil) : nil, text: messageItem.text, attributes: attributes, media: [], peers: peers, associatedMessages: messages, associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
+                let message = EngineRawMessage(stableId: UInt32(messageIndex + 1), stableVersion: 0, id: EngineMessage.Id(peerId: messageItem.outgoing ? otherPeerId : peerId, namespace: 0, id: Int32(messageIndex + 1)), globallyUniqueId: nil, groupingKey: nil, groupInfo: nil, threadId: nil, timestamp: messageItem.timestamp, flags: messageItem.outgoing ? [] : [.Incoming], tags: [], globalTags: [], localTags: [], customTags: [], forwardInfo: nil, author: messageItem.outgoing ? TelegramUser(id: otherPeerId, accessHash: nil, firstName: "", lastName: "", username: nil, phone: nil, photo: [], botInfo: nil, restrictionInfo: nil, flags: [], emojiStatus: nil, usernames: [], storiesHidden: nil, nameColor: nil, backgroundEmojiId: nil, profileColor: nil, profileBackgroundEmojiId: nil, subscriberCount: nil, verificationIconFileId: nil) : nil, text: messageItem.text, attributes: attributes, media: messageItem.sticker.map { [$0 as Media] } ?? [], peers: peers, associatedMessages: messages, associatedMessageIds: [], associatedMedia: [:], associatedThreadInfo: nil, associatedStories: [:])
                 items.append(item.context.sharedContext.makeChatMessagePreviewItem(context: item.context, messages: [message], theme: item.componentTheme, strings: item.strings, wallpaper: item.wallpaper, fontSize: item.fontSize, chatBubbleCorners: item.chatBubbleCorners, dateTimeFormat: item.dateTimeFormat, nameOrder: item.nameDisplayOrder, forcedResourceStatus: nil, tapMessage: nil, clickThroughMessage: nil, backgroundNode: currentBackgroundNode, availableReactions: nil, accountPeer: nil, isCentered: false, isPreview: true, isStandalone: false, rank: nil, rankRole: nil))
             }
             
             var nodes: [ListViewItemNode] = []
-            if let messageNodes = currentNodes {
+            if let messageNodes = currentNodes, currentMessages == item.messageItems, messageNodes.count == items.count {
                 nodes = messageNodes
                 for i in 0 ..< items.count {
                     let itemNode = messageNodes[i]
@@ -263,6 +301,9 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                     
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: contentSize)
                     
+                    for oldNode in strongSelf.messageNodes ?? [] where !nodes.contains(where: { $0 === oldNode }) {
+                        oldNode.removeFromSupernode()
+                    }
                     strongSelf.messageNodes = nodes
                     var topOffset: CGFloat = 4.0
                     for node in nodes {
@@ -339,6 +380,13 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                         backgroundNode.updateLayout(size: backgroundNode.bounds.size, displayMode: displayMode, transition: .immediate)
                     }
                     strongSelf.maskNode.frame = backgroundFrame.insetBy(dx: params.leftInset, dy: 0.0)
+                    // The wallpaper fills the preview, while grouped glass rows keep their horizontal margins.
+                    strongSelf.leftInsetNode.isHidden = item.systemStyle != .glass
+                    strongSelf.rightInsetNode.isHidden = item.systemStyle != .glass
+                    strongSelf.leftInsetNode.backgroundColor = item.theme.list.blocksBackgroundColor
+                    strongSelf.rightInsetNode.backgroundColor = item.theme.list.blocksBackgroundColor
+                    strongSelf.leftInsetNode.frame = CGRect(x: 0.0, y: 0.0, width: params.leftInset, height: contentSize.height)
+                    strongSelf.rightInsetNode.frame = CGRect(x: params.width - params.rightInset, y: 0.0, width: params.rightInset, height: contentSize.height)
                     strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                     strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset), size: CGSize(width: layoutSize.width - bottomStripeInset, height: separatorHeight))
                 }

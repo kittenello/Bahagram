@@ -204,6 +204,27 @@ private func dgDialogIdFormatController(context: AccountContext, focusKey: Strin
 
 func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     let s = DGSimpleSettings.shared
+    var previewSticker: TelegramMediaFile?
+    let stickerSource: Signal<TelegramMediaFile?, NoError> = context.account.postbox.transaction { transaction -> TelegramMediaFile? in
+        for entry in transaction.getOrderedListItems(collectionId: Namespaces.OrderedItemList.CloudSavedStickers) {
+            if let file = entry.contents.get(SavedStickerItem.self)?.file._parse(), file.isSticker, !file.isPremiumSticker {
+                return file
+            }
+        }
+        for entry in transaction.getOrderedListItems(collectionId: Namespaces.OrderedItemList.CloudRecentStickers) {
+            if let file = entry.contents.get(RecentMediaItem.self)?.media._parse(), file.isSticker, !file.isPremiumSticker {
+                return file
+            }
+        }
+        return nil
+    }
+    |> mapToSignal { file -> Signal<TelegramMediaFile?, NoError> in
+        if let file { return .single(file) }
+        return context.engine.stickers.randomGreetingSticker() |> map { $0?.file }
+    }
+    let previewUpdates = (Signal<TelegramMediaFile?, NoError>.single(nil) |> then(stickerSource))
+    |> deliverOnMainQueue
+    |> map { file -> Void in previewSticker = file }
     return dgController(context: context, page: .chats, title: "Чаты", focusKey: focusKey, entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
         let transcription = dgTranscriptionBackendTitle(s.transcriptionBackend)
@@ -214,20 +235,13 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case .ask: cameraTitle = "Спрашивать"
         }
         let musicOptions: [DGSimpleSettings.MusicPlaybackExceptions] = [.roundVideos, .voiceRecording, .voicePlayback]
-        let replyCount = [1, 2, 4].filter { s.stickerReplyOptions & $0 != 0 }.count
         var result: [DGListEntry] = [
             .header(-30, 0, "СТИКЕРЫ"),
-            .stickerPreview(-29, 0, s.stickerSize, s.hideStickerTime, s.stickerReplyOptions, s.stickerShape),
-            .toggle(-28, 0, "hideStickerTime", "Скрыть время на стикерах", s.hideStickerTime, true),
-            .toggle(-27, 0, "stickerReplies", "Ответы (\(replyCount)/3)", s.stickerReplyOptions != 0, true)
+            .stickerSizeSlider(-29, 0, s.stickerSize),
+            .stickerPreview(-28, 0, s.stickerSize, s.hideStickerTime, s.stickerReplyOptions, s.stickerShape, previewSticker),
+            .toggle(-27, 0, "hideStickerTime", "Скрыть время на стикерах", s.hideStickerTime, true),
+            .stickerReplies(-26, 0, s.stickerReplyOptions)
         ]
-        if s.stickerReplyOptions != 0 {
-            result.append(contentsOf: [
-                .checkbox(-26, 0, "stickerReply:1", "Цвета", s.stickerReplyOptions & 1 != 0),
-                .checkbox(-25, 0, "stickerReply:2", "Эмодзи", s.stickerReplyOptions & 2 != 0),
-                .checkbox(-24, 0, "stickerReply:4", "Фон", s.stickerReplyOptions & 4 != 0)
-            ])
-        }
         result.append(contentsOf: [
             .header(-23, 1, "ФОРМА СТИКЕРОВ"),
             .stickerShape(-22, 1, s.stickerShape),
@@ -269,7 +283,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             result.append(.toggle(52, 8, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
         return result
-    }, toggle: { key, value in
+    }, additionalUpdates: previewUpdates, toggle: { key, value in
         switch key {
         case "onlyAdded": s.onlyAddedStickers = value
         case "recent": s.infiniteRecentStickers = value
@@ -308,11 +322,11 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         } else if let value = Int(key.split(separator: ":").last ?? "") {
             if key.hasPrefix("stickerSize:") { s.stickerSize = value }
             else if key.hasPrefix("stickerShape:") { s.stickerShape = value }
-            else if key.hasPrefix("stickerReply:"), [1, 2, 4].contains(value) { s.stickerReplyOptions ^= value }
         }
     }, open: { key in
         switch key {
         case "reactions": return dgHiddenReactionsController(context: context)
+        case "stickerReplyOptions": return dgStickerRepliesController(context: context)
         case "transcription": return dgTranscriptionController(context: context)
         case "camera": return dgRoundVideoCameraController(context: context)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
@@ -321,6 +335,17 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "pauseMusicOnRecording": return dgMusicPlaybackExceptionsController(context: context)
         default: return nil
         }
+    })
+}
+
+private func dgStickerRepliesController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    return dgController(context: context, page: .stickerReplies, title: "Ответы на стикеры", focusKey: focusKey, entries: {
+        [.checkbox(0, 0, "1", "Цвета", settings.stickerReplyOptions & 1 != 0),
+         .checkbox(1, 0, "2", "Эмодзи", settings.stickerReplyOptions & 2 != 0),
+         .checkbox(2, 0, "4", "Фон", settings.stickerReplyOptions & 4 != 0)]
+    }, select: { key in
+        if let option = Int(key), [1, 2, 4].contains(option) { settings.stickerReplyOptions ^= option }
     })
 }
 
@@ -500,6 +525,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .downloads: makeController = dgDownloadsSettingsController
     case .transcription: makeController = dgTranscriptionController
     case .reactions: makeController = dgHiddenReactionsController
+    case .stickerReplies: makeController = dgStickerRepliesController
     case .visualId: makeController = dgVisualIdController
     case .visualRating: makeController = dgVisualRatingController
     case .visualUsernames: makeController = dgVisualUsernamesController
