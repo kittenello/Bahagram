@@ -225,7 +225,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
     let previewUpdates = (Signal<TelegramMediaFile?, NoError>.single(nil) |> then(stickerSource))
     |> deliverOnMainQueue
     |> map { file -> Void in previewSticker = file }
-    return dgController(context: context, page: .chats, title: "Чаты", focusKey: focusKey, entries: {
+    return dgController(context: context, page: .chats, title: "Внешний вид", focusKey: focusKey, entries: {
         let hiddenCount = [1, 2, 4].filter { s.hiddenReactions & $0 != 0 }.count
         let transcription = dgTranscriptionBackendTitle(s.transcriptionBackend)
         let cameraTitle: String
@@ -272,7 +272,6 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .toggle(34, 6, "staticZoom", "Оставлять зум после щипка", s.staticRoundVideoZoom, true),
             .disclosure(35, 6, "pauseMusicOnRecording", "Пауза музыки при записи", "\(musicOptions.filter { s.musicPlaybackExceptions.contains($0) }.count)/3"),
             .toggle(36, 6, "builtInMic", "Встроенный микрофон", s.forceBuiltInMicrophone, true),
-            .info(37, 6, "Голосовые, кружки и видео с камеры записываются встроенным микрофоном, даже если подключены AirPods или другая гарнитура. На звонки не влияет."),
             .header(40, 7, "ВИДЕО"),
             .disclosure(41, 7, "doubleTapSeek", "Перемотка двойным нажатием", s.doubleTapSeekSeconds == 0 ? "Отключено" : "\(s.doubleTapSeekSeconds) сек."),
             .toggle(42, 7, "autoPause", "Авто пауза", s.autoPause, true),
@@ -283,6 +282,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         if s.hideArchive {
             result.append(.toggle(52, 8, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
+        result.append(contentsOf: [.header(70, 9, "ЭФФЕКТЫ"), .disclosure(71, 9, "glow", "Свечение", "\([s.avatarGlow, s.reactionGlow].filter { $0 }.count)/2")])
         return result
     }, additionalUpdates: previewUpdates, toggle: { key, value in
         switch key {
@@ -330,6 +330,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         switch key {
         case "reactions": return dgHiddenReactionsController(context: context)
         case "stickerReplyOptions": return dgStickerRepliesController(context: context)
+        case "glow": return dgGlowController(context: context)
         case "transcription": return dgTranscriptionController(context: context)
         case "camera": return dgRoundVideoCameraController(context: context)
         case "autoPauseMedia": return dgAutoPauseMediaController(context: context)
@@ -338,6 +339,17 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "pauseMusicOnRecording": return dgMusicPlaybackExceptionsController(context: context)
         default: return nil
         }
+    })
+}
+
+private func dgGlowController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    return dgController(context: context, page: .glow, title: "Свечение", focusKey: focusKey, entries: {
+        [.toggle(0, 0, "avatarGlow", "Свечение аватарок", settings.avatarGlow, true),
+         .toggle(1, 0, "reactionGlow", "Свечение реакций", settings.reactionGlow, true)]
+    }, toggle: { key, value in
+        if key == "avatarGlow" { settings.avatarGlow = value }
+        else if key == "reactionGlow" { settings.reactionGlow = value }
     })
 }
 
@@ -528,6 +540,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .transcription: makeController = dgTranscriptionController
     case .reactions: makeController = dgHiddenReactionsController
     case .stickerReplies: makeController = dgStickerRepliesController
+    case .glow: makeController = dgGlowController
     case .visualId: makeController = dgVisualIdController
     case .visualRating: makeController = dgVisualRatingController
     case .visualUsernames: makeController = dgVisualUsernamesController
