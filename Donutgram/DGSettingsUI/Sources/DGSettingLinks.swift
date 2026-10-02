@@ -30,6 +30,7 @@ enum DGSettingsPage: String {
     case dialogId = "dialog-id"
     case chats
     case glow
+    case stickerReplies = "sticker-replies"
     case chatListAppearance = "chat-list-appearance"
     case chatListTitle = "chat-list-title"
     case doubleTapSeek = "double-tap-seek"

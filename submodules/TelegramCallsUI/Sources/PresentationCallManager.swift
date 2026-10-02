@@ -289,7 +289,7 @@ public final class PresentationCallManagerImpl: PresentationCallManager {
         |> deliverOnMainQueue).start(next: { [weak self] sharedData in
             if let strongSelf = self, let settings = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) {
                 if settings.enabled && settings.useForCalls {
-                    strongSelf.proxyServer = settings.activeServer
+                    strongSelf.proxyServer = settings.effectiveActiveServer
                 } else {
                     strongSelf.proxyServer = nil
                 }

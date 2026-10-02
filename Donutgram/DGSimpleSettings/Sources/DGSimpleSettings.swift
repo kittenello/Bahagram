@@ -72,6 +72,7 @@ public final class DGSimpleSettings {
         static let semiTransparentDeletedMessages = "donutgram.spy.semiTransparentDeletedMessages"
         static let saveEditHistory = "donutgram.spy.saveEditHistory"
         static let saveViewOnceMedia = "donutgram.spy.saveViewOnceMedia"
+        static let saveProtectedStories = "donutgram.spy.saveProtectedStories"
         static let saveInBotChats = "donutgram.spy.saveInBotChats"
         static let showDisappearedGifts = "donutgram.spy.showDisappearedGifts"
 
@@ -228,6 +229,11 @@ public final class DGSimpleSettings {
         set { setBool(newValue, Key.showDisappearedGifts) }
     }
 
+    public var saveProtectedStories: Bool {
+        get { bool(Key.saveProtectedStories) }
+        set { setBool(newValue, Key.saveProtectedStories) }
+    }
+
     public var avatarGlow: Bool {
         get { bool("donutgram.appearance.avatarGlow") }
         set { setBool(newValue, "donutgram.appearance.avatarGlow") }
@@ -297,6 +303,45 @@ public final class DGSimpleSettings {
 
     private func accountKey(_ suffix: String, accountId: Int64) -> String {
         return "donutgram.profile.\(accountId).\(suffix)"
+    }
+
+    public var stickerSize: Int {
+        get {
+            let key = "donutgram.chats.stickers.size"
+            return defaults.object(forKey: key) == nil ? 11 : min(20, max(1, integer(key)))
+        }
+        set { setInteger(min(20, max(1, newValue)), "donutgram.chats.stickers.size") }
+    }
+    public var stickerScale: Double {
+        let size = Double(stickerSize)
+        return size <= 11 ? 0.25 + (size - 1) * 0.075 : 1.0 + (size - 11) / 12.0
+    }
+    public var hideStickerTime: Bool {
+        get { bool("donutgram.chats.stickers.hideTime") }
+        set { setBool(newValue, "donutgram.chats.stickers.hideTime") }
+    }
+    // Reply decorations: colors = 1, emoji pattern = 2, background = 4.
+    public var stickerReplyOptions: Int {
+        get {
+            let key = "donutgram.chats.stickers.replyOptions"
+            return defaults.object(forKey: key) == nil ? 7 : integer(key) & 7
+        }
+        set { setInteger(newValue & 7, "donutgram.chats.stickers.replyOptions") }
+    }
+    public var stickerShape: Int {
+        get { min(2, max(0, integer("donutgram.chats.stickers.shape"))) }
+        set { setInteger(min(2, max(0, newValue)), "donutgram.chats.stickers.shape") }
+    }
+    public var stickerCornerRadius: Double {
+        switch stickerShape {
+        case 1: return 12.0
+        case 2: return 22.0
+        default: return 0.0
+        }
+    }
+    public var hideStickerChecks: Bool {
+        get { bool("donutgram.chats.stickers.hideChecks") }
+        set { setBool(newValue, "donutgram.chats.stickers.hideChecks") }
     }
 
     public func lastOnlineTimestamp(accountId: Int64) -> Int32? {

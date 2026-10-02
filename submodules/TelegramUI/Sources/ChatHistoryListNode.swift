@@ -755,6 +755,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     
     private var donutgramSettingsObserver: NSObjectProtocol?
     private var donutgramTranscriptionBackend = DGSimpleSettings.shared.transcriptionBackend
+    private var donutgramStickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape, DGSimpleSettings.shared.hideStickerChecks)
     private var donutgramShowChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
     
     private var visibleMessageRange = Atomic<VisibleMessageRange?>(value: nil)
@@ -1291,12 +1292,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 return
             }
             let transcriptionBackend = DGSimpleSettings.shared.transcriptionBackend
+            let stickerAppearance = (DGSimpleSettings.shared.stickerSize, DGSimpleSettings.shared.hideStickerTime, DGSimpleSettings.shared.stickerReplyOptions, DGSimpleSettings.shared.stickerShape, DGSimpleSettings.shared.hideStickerChecks)
+            let stickerAppearanceChanged = self.donutgramStickerAppearance != stickerAppearance
+            let stickerRepliesChanged = self.donutgramStickerAppearance.2 != stickerAppearance.2
             let showChannelForwardCount = DGSimpleSettings.shared.showChannelForwardCount
             let forwardCountChanged = self.donutgramShowChannelForwardCount != showChannelForwardCount
-            if self.donutgramTranscriptionBackend != transcriptionBackend || forwardCountChanged {
+            if self.donutgramTranscriptionBackend != transcriptionBackend || stickerAppearanceChanged || forwardCountChanged {
                 self.donutgramTranscriptionBackend = transcriptionBackend
+                self.donutgramStickerAppearance = stickerAppearance
                 self.donutgramShowChannelForwardCount = showChannelForwardCount
-                self.updateLoadedMessageItems(includeChannelPosts: forwardCountChanged)
+                self.updateLoadedMessageItems(includeChannelPosts: forwardCountChanged, includeStickers: stickerAppearanceChanged, includeAllMessages: stickerRepliesChanged)
             }
         })
     }
@@ -4848,8 +4853,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
-    // Refresh voice/round-video transcription controls and, when requested, channel post counters.
-    private func updateLoadedMessageItems(includeChannelPosts: Bool = false) {
+    // Refresh loaded media and reply decorations when their settings change.
+    private func updateLoadedMessageItems(includeChannelPosts: Bool = false, includeStickers: Bool = false, includeAllMessages: Bool = false) {
         var messageIds: [MessageId] = []
         self.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item {
@@ -4863,11 +4868,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                         return false
                     }
                 })
+                let hasSticker = includeStickers && message.media.contains { ($0 as? TelegramMediaFile)?.isSticker == true }
                 var isChannelPost = false
                 if includeChannelPosts, let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info {
                     isChannelPost = true
                 }
-                if hasTranscribableMedia || isChannelPost {
+                if hasTranscribableMedia || isChannelPost || hasSticker || includeAllMessages {
                     messageIds.append(message.id)
                 }
             }

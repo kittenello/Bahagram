@@ -205,6 +205,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
         var animationCache: AnimationCache
         var animationRenderer: MultiAnimationRenderer
         var hideSentStatus: Bool
+        var hideDate: Bool
         
         public init(
             context: AccountContext,
@@ -231,7 +232,8 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             canViewReactionList: Bool,
             animationCache: AnimationCache,
             animationRenderer: MultiAnimationRenderer,
-            hideSentStatus: Bool = false
+            hideSentStatus: Bool = false,
+            hideDate: Bool = false
         ) {
             self.context = context
             self.presentationData = presentationData
@@ -258,6 +260,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             self.animationCache = animationCache
             self.animationRenderer = animationRenderer
             self.hideSentStatus = hideSentStatus
+            self.hideDate = hideDate
         }
     }
     
@@ -560,6 +563,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             let dateFont = Font.regular(floor(arguments.presentationData.fontSize.baseDisplaySize * 11.0 / 17.0))
             let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: donutgramDateAttributedString(updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
+            let dateSize = CGSize(width: arguments.hideDate ? 0.0 : date.size.width, height: date.size.height)
             let checkOffset = floor(arguments.presentationData.fontSize.baseDisplaySize * 6.0 / 17.0)
             
             let statusWidth: CGFloat
@@ -647,7 +651,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                         clockMinNode?.displayWithoutProcessing = true
                         clockMinNode?.frame = CGRect(origin: CGPoint(), size: clockMinImage?.size ?? CGSize())
                     }
-                    clockPosition = CGPoint(x: leftInset + date.size.width + 8.5, y: 7.5 + offset)
+                    clockPosition = CGPoint(x: leftInset + dateSize.width + 8.5, y: 7.5 + offset)
                 case let .Sent(read):
                     let hideStatus: Bool
                     switch arguments.type {
@@ -687,9 +691,9 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                         let checkSize = loadedCheckFullImage!.size
                         
                         if read {
-                            checkReadFrame = CGRect(origin: CGPoint(x: leftInset + impressionWidth + date.size.width + 5.0 + statusWidth - checkSize.width, y: 3.0 + offset), size: checkSize)
+                            checkReadFrame = CGRect(origin: CGPoint(x: leftInset + impressionWidth + dateSize.width + 5.0 + statusWidth - checkSize.width, y: 3.0 + offset), size: checkSize)
                         }
-                        checkSentFrame = CGRect(origin: CGPoint(x: leftInset + impressionWidth + date.size.width + 5.0 + statusWidth - checkSize.width - checkOffset, y: 3.0 + offset), size: checkSize)
+                        checkSentFrame = CGRect(origin: CGPoint(x: leftInset + impressionWidth + dateSize.width + 5.0 + statusWidth - checkSize.width - checkOffset, y: 3.0 + offset), size: checkSize)
                     }
                 case .Failed:
                     statusWidth = 0.0
@@ -778,7 +782,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             
             leftInset += reactionInset
             
-            let layoutSize = CGSize(width: leftInset + impressionWidth + date.size.width + statusWidth + backgroundInsets.left + backgroundInsets.right, height: date.size.height + backgroundInsets.top + backgroundInsets.bottom)
+            let layoutSize = CGSize(width: leftInset + impressionWidth + dateSize.width + statusWidth + backgroundInsets.left + backgroundInsets.right, height: dateSize.height + backgroundInsets.top + backgroundInsets.bottom)
             
             let verticalReactionsInset: CGFloat
             let verticalInset: CGFloat
@@ -1102,9 +1106,12 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                         }
                         
                         let _ = dateApply()
+                        strongSelf.dateNode.isHidden = arguments.hideDate
+                        strongSelf.backgroundNode?.isHidden = arguments.hideDate && statusWidth == 0.0 && impressionWidth == 0.0
+                        strongSelf.blurredBackgroundNode?.isHidden = arguments.hideDate && statusWidth == 0.0 && impressionWidth == 0.0
                         
                         if let currentImpressionIcon = currentImpressionIcon {
-                            let impressionIconFrame = CGRect(origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left, y: backgroundInsets.top + 1.0 + offset + verticalInset + floor((date.size.height - impressionSize.height) / 2.0)), size: impressionSize)
+                            let impressionIconFrame = CGRect(origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left, y: backgroundInsets.top + 1.0 + offset + verticalInset + floor((dateSize.height - impressionSize.height) / 2.0)), size: impressionSize)
                             currentImpressionIcon.displaysAsynchronously = false
                             if currentImpressionIcon.image !== impressionImage {
                                 currentImpressionIcon.image = impressionImage
@@ -1121,7 +1128,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                             strongSelf.impressionIcon = nil
                         }
                         
-                        animation.animator.updateFrame(layer: strongSelf.dateNode.layer, frame: CGRect(origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth, y: backgroundInsets.top + 1.0 + offset + verticalInset), size: date.size), completion: nil)
+                        animation.animator.updateFrame(layer: strongSelf.dateNode.layer, frame: CGRect(origin: CGPoint(x: leftOffset + leftInset + backgroundInsets.left + impressionWidth, y: backgroundInsets.top + 1.0 + offset + verticalInset), size: dateSize), completion: nil)
                         
                         if let clockFrameNode = clockFrameNode {
                             let clockPosition = CGPoint(x: leftOffset + backgroundInsets.left + clockPosition.x + reactionInset, y: backgroundInsets.top + clockPosition.y + verticalInset)
@@ -1329,7 +1336,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                                     currentRepliesIcon.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.15)
                                 }
                             }
-                            let repliesIconFrame = CGRect(origin: CGPoint(x: reactionOffset - 2.0, y: backgroundInsets.top + offset + verticalInset + floor((date.size.height - repliesIconSize.height) / 2.0)), size: repliesIconSize)
+                            let repliesIconFrame = CGRect(origin: CGPoint(x: reactionOffset - 2.0, y: backgroundInsets.top + offset + verticalInset + floor((dateSize.height - repliesIconSize.height) / 2.0)), size: repliesIconSize)
                             animation.animator.updateFrame(layer: currentRepliesIcon.layer, frame: repliesIconFrame, completion: nil)
                             reactionOffset += 9.0
                         } else if let repliesIcon = strongSelf.repliesIcon {
@@ -1382,7 +1389,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                                     currentStarsIcon.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.15)
                                 }
                             }
-                            let starsIconFrame = CGRect(origin: CGPoint(x: reactionOffset - 2.0, y: backgroundInsets.top + offset + verticalInset + floor((date.size.height - starsIconSize.height) / 2.0)), size: starsIconSize)
+                            let starsIconFrame = CGRect(origin: CGPoint(x: reactionOffset - 2.0, y: backgroundInsets.top + offset + verticalInset + floor((dateSize.height - starsIconSize.height) / 2.0)), size: starsIconSize)
                             animation.animator.updateFrame(layer: currentStarsIcon.layer, frame: starsIconFrame, completion: nil)
                             reactionOffset += 9.0
                         } else if let starsIcon = strongSelf.starsIcon {
