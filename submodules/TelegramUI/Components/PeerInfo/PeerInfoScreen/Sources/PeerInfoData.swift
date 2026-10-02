@@ -1260,7 +1260,7 @@ func peerInfoScreenData(
                     }
                     if user.id == context.account.peerId {
                         guard DGSimpleSettings.shared.ghostHidesOnline else { return .none }
-                        if let timestamp = DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.rawValue) {
+                        if let timestamp = DGSimpleSettings.shared.lastOnlineTimestamp(accountId: context.account.id.int64) {
                             // Self presence in Postbox is permanently online. Use
                             // the last acknowledged visible session instead.
                             let now = Int32(Date().timeIntervalSince1970)
