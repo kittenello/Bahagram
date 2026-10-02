@@ -19,6 +19,7 @@ final class StoryItemImageView: UIView {
     private var captureProtectedInfo: ComponentView<Empty>?
     
     private var currentMedia: EngineMedia?
+    private var currentCaptureProtected: Bool?
     private var disposable: Disposable?
     private var fetchDisposable: Disposable?
     
@@ -43,7 +44,7 @@ final class StoryItemImageView: UIView {
     private func updateImage(image: UIImage, isCaptureProtected: Bool) {
         self.contentView.image = image
         
-        if isCaptureProtected {
+        if self.currentCaptureProtected ?? isCaptureProtected {
             let captureProtectedView: UITextField
             if let current = self.captureProtectedView {
                 captureProtectedView = current
@@ -66,6 +67,12 @@ final class StoryItemImageView: UIView {
     }
     
     func update(context: AccountContext, strings: PresentationStrings, peer: EnginePeer, storyId: Int32, media: EngineMedia, size: CGSize, isCaptureProtected: Bool, attemptSynchronous: Bool, transition: ComponentTransition) {
+        if self.currentCaptureProtected != isCaptureProtected {
+            self.currentCaptureProtected = isCaptureProtected
+            if let image = self.contentView.image {
+                self.updateImage(image: image, isCaptureProtected: isCaptureProtected)
+            }
+        }
         self.backgroundColor = isCaptureProtected ? UIColor(rgb: 0x181818) : nil
         
         var dimensions: CGSize?

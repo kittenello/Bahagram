@@ -72,6 +72,7 @@ public final class DGSimpleSettings {
         static let semiTransparentDeletedMessages = "donutgram.spy.semiTransparentDeletedMessages"
         static let saveEditHistory = "donutgram.spy.saveEditHistory"
         static let saveViewOnceMedia = "donutgram.spy.saveViewOnceMedia"
+        static let saveProtectedStories = "donutgram.spy.saveProtectedStories"
         static let saveInBotChats = "donutgram.spy.saveInBotChats"
         static let showDisappearedGifts = "donutgram.spy.showDisappearedGifts"
 
@@ -226,6 +227,11 @@ public final class DGSimpleSettings {
     public var showDisappearedGifts: Bool {
         get { bool(Key.showDisappearedGifts) }
         set { setBool(newValue, Key.showDisappearedGifts) }
+    }
+
+    public var saveProtectedStories: Bool {
+        get { bool(Key.saveProtectedStories) }
+        set { setBool(newValue, Key.saveProtectedStories) }
     }
 
     private func bool(_ key: String) -> Bool { self.defaults.bool(forKey: key) }

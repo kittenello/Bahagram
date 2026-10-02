@@ -43,7 +43,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "readOnAction": return "checkmark.message"
     case "scheduled": return "calendar"
     case "silent": return "speaker.slash"
-    case "stories", "hideStories": return "play.rectangle"
+    case "stories", "hideStories", "saveProtectedStories": return "play.rectangle"
     case "premiumStatuses": return "star.slash"
     case "hideTabBar", "wideTabBar": return "rectangle.split.3x1"
     case "contacts", "mutualContact": return "person.2"
