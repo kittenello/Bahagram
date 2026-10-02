@@ -1,4 +1,5 @@
 import Foundation
+import DGSimpleSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -1155,6 +1156,23 @@ public final class AvatarNode: ASDisplayNode {
     }
     
     public let contentNode: ContentNode
+    private var glowObserver: NSObjectProtocol?
+    private var glowColor: UIColor = .systemIndigo
+
+    private func updateGlow(theme: PresentationTheme? = nil) {
+        if !Thread.isMainThread {
+            Queue.mainQueue().async { [weak self] in self?.updateGlow(theme: theme) }
+            return
+        }
+        if let theme { self.glowColor = theme.list.itemAccentColor }
+        guard self.isNodeLoaded else { return }
+        let enabled = DGSimpleSettings.shared.avatarGlow && !self.bounds.isEmpty
+        self.layer.shadowColor = self.glowColor.cgColor
+        self.layer.shadowOffset = .zero
+        self.layer.shadowRadius = min(12.0, self.bounds.width * 0.18)
+        self.layer.shadowOpacity = enabled ? 0.8 : 0.0
+        self.layer.shadowPath = enabled ? UIBezierPath(ovalIn: self.bounds).cgPath : nil
+    }
     private var storyIndicator: ComponentView<Empty>?
     public private(set) var storyPresentationParams: StoryPresentationParams?
     
@@ -1234,6 +1252,10 @@ public final class AvatarNode: ASDisplayNode {
                 return
             }
             self.updateStoryIndicator(transition: .immediate)
+            self.updateGlow()
+            self.glowObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.updateGlow()
+            }
         }
         
         self.addSubnode(self.contentNode)
@@ -1241,6 +1263,7 @@ public final class AvatarNode: ASDisplayNode {
     
     deinit {
         self.cancelLoading()
+        if let glowObserver = self.glowObserver { NotificationCenter.default.removeObserver(glowObserver) }
     }
     
     override public var frame: CGRect {
@@ -1258,6 +1281,12 @@ public final class AvatarNode: ASDisplayNode {
     
     override public func nodeDidLoad() {
         super.nodeDidLoad()
+        self.updateGlow()
+    }
+
+    override public func layout() {
+        super.layout()
+        self.updateGlow()
     }
     
     public func updateSize(size: CGSize) {
@@ -1265,6 +1294,7 @@ public final class AvatarNode: ASDisplayNode {
         self.contentNode.bounds = CGRect(origin: CGPoint(), size: size)
         
         self.contentNode.updateSize(size: size)
+        self.updateGlow()
         
         self.updateStoryIndicator(transition: .immediate)
     }
@@ -1296,6 +1326,7 @@ public final class AvatarNode: ASDisplayNode {
         displayDimensions: CGSize = CGSize(width: 60.0, height: 60.0),
         storeUnrounded: Bool = false
     ) {
+        self.updateGlow(theme: theme)
         self.contentNode.setPeer(
             accountPeerId: accountPeerId,
             postbox: postbox,
@@ -1325,6 +1356,7 @@ public final class AvatarNode: ASDisplayNode {
         displayDimensions: CGSize = CGSize(width: 60.0, height: 60.0),
         storeUnrounded: Bool = false
     ) {
+        self.updateGlow(theme: theme)
         self.contentNode.setPeerV2(
             context: genericContext,
             theme: theme,
@@ -1353,6 +1385,7 @@ public final class AvatarNode: ASDisplayNode {
         storeUnrounded: Bool = false,
         cutoutRect: CGRect? = nil
     ) {
+        self.updateGlow(theme: theme)
         self.contentNode.setPeer(
             context: context,
             account: account,

@@ -34,6 +34,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "spy", "ghost", "options", "offline": return "eye.slash"
     case "chats", "messages", "tails", "replies": return "bubble.left.and.bubble.right"
     case "appearance", "customBackgrounds": return "paintbrush"
+    case "glow", "avatarGlow", "reactionGlow": return "sparkles"
     case "support": return "questionmark.circle"
     case "saveDeleted", "transparentDeleted": return "tray.full"
     case "saveEdits": return "pencil"
@@ -262,7 +263,7 @@ func dgController(context: AccountContext, page: DGSettingsPage, title: String, 
 
 public func dgSettingsController(context: AccountContext, focusKey: String? = nil) -> ViewController {
     return dgController(context: context, page: .root, title: "Настройки Donutgram", focusKey: focusKey, entries: {
-        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Чаты", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", "")]
+        [.header(0, 0, "DONUTGRAM"), .disclosure(1, 0, "spy", "Основные", ""), .disclosure(2, 0, "downloads", "Скачивание", ""), .disclosure(3, 0, "chats", "Внешний вид", ""), .disclosure(4, 0, "appearance", "Оформление", ""), .disclosure(5, 0, "support", "Поддержка", "")]
     }, open: { key in
         switch key {
         case "downloads": return dgDownloadsSettingsController(context: context)

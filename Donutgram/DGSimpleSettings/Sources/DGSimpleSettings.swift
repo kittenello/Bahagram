@@ -228,6 +228,15 @@ public final class DGSimpleSettings {
         set { setBool(newValue, Key.showDisappearedGifts) }
     }
 
+    public var avatarGlow: Bool {
+        get { bool("donutgram.appearance.avatarGlow") }
+        set { setBool(newValue, "donutgram.appearance.avatarGlow") }
+    }
+    public var reactionGlow: Bool {
+        get { bool("donutgram.appearance.reactionGlow") }
+        set { setBool(newValue, "donutgram.appearance.reactionGlow") }
+    }
+
     private func bool(_ key: String) -> Bool { self.defaults.bool(forKey: key) }
     private func setBool(_ value: Bool, _ key: String) {
         if self.defaults.object(forKey: key) != nil && self.defaults.bool(forKey: key) == value {
