@@ -43,6 +43,12 @@ public final class DGSimpleSettings {
         case ask = 2
     }
 
+    public enum ChannelBottomButton: Int, CaseIterable {
+        case discuss = 0
+        case mute = 1
+        case hidden = 2
+    }
+
     public struct MusicPlaybackExceptions: OptionSet {
         public let rawValue: Int
 
@@ -68,6 +74,8 @@ public final class DGSimpleSettings {
     }
 
     private enum Key {
+        static let wideChannelPosts = "donutgram.channels.widePosts"
+        static let channelBottomButton = "donutgram.channels.bottomButton"
         static let saveDeletedMessages = "donutgram.spy.saveDeletedMessages"
         static let semiTransparentDeletedMessages = "donutgram.spy.semiTransparentDeletedMessages"
         static let saveEditHistory = "donutgram.spy.saveEditHistory"
@@ -435,6 +443,11 @@ public final class DGSimpleSettings {
     public var hideTabBar: Bool { get { bool(Key.hideTabBar) } set { setBool(newValue, Key.hideTabBar) } }
     public var showContactsTab: Bool { get { bool(Key.showContactsTab) } set { setBool(newValue, Key.showContactsTab) } }
     public var showCallsTab: Bool { get { bool(Key.showCallsTab) } set { setBool(newValue, Key.showCallsTab) } }
+    public var wideChannelPosts: Bool { get { bool(Key.wideChannelPosts) } set { setBool(newValue, Key.wideChannelPosts) } }
+    public var channelBottomButton: ChannelBottomButton {
+        get { ChannelBottomButton(rawValue: (self.defaults.object(forKey: Key.channelBottomButton) as? Int) ?? 1) ?? .mute }
+        set { setInteger(newValue.rawValue, Key.channelBottomButton) }
+    }
     public var wideTabBar: Bool { get { bool(Key.wideTabBar) } set { setBool(newValue, Key.wideTabBar) } }
     public var showProfileId: Bool { get { bool(Key.showProfileId) } set { setBool(newValue, Key.showProfileId) } }
     public var dialogIdFormat: DialogIdFormat { get { DialogIdFormat(rawValue: integer(Key.dialogIdFormat)) ?? .telegramApi } set { setInteger(newValue.rawValue, Key.dialogIdFormat) } }

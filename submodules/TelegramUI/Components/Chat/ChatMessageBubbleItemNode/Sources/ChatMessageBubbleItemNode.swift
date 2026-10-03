@@ -1703,6 +1703,15 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         
         var allowFullWidth = false
         let chatLocationPeerId: PeerId = item.chatLocation.peerId ?? item.content.firstMessage.id.peerId
+        let wideChannelPost: Bool
+        if DGSimpleSettings.shared.wideChannelPosts, firstMessage.id.peerId == chatLocationPeerId,
+           let channel = item.chatLocation.peerId.flatMap({ firstMessage.peers[$0] }) as? TelegramChannel,
+           case .broadcast = channel.info, firstMessage.adAttribute == nil {
+            wideChannelPost = true
+            allowFullWidth = true
+        } else {
+            wideChannelPost = false
+        }
         
         /*let isInlinePage = false
         for attribute in item.message.attributes {
@@ -3082,6 +3091,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         var contentNodePropertiesAndFinalize: [(ChatMessageBubbleContentProperties, ChatMessageBubbleContentPosition?, (CGFloat) -> (CGSize, (ListViewItemUpdateAnimation, Bool, ListViewItemApply?) -> Void), UInt32?, Bool?)] = []
         
         var maxContentWidth: CGFloat = headerSize.width
+        if wideChannelPost && !hideBackground && !hasInstantVideo {
+            maxContentWidth = max(maxContentWidth, maximumNodeWidth)
+        }
         
         var actionButtonsFinalize: ((CGFloat) -> (CGSize, (_ animation: ListViewItemUpdateAnimation) -> ChatMessageActionButtonsNode))?
         if let additionalContent = item.additionalContent, case let .eventLogGroupedMessages(messages, hasButton) = additionalContent, hasButton {

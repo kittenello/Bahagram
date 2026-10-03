@@ -283,7 +283,12 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         if s.hideArchive {
             result.append(.toggle(52, 8, "openArchiveOnPull", "Открывать архив при вытягивании", s.openArchiveOnPull, true))
         }
-        result.append(contentsOf: [.header(70, 9, "ЭФФЕКТЫ"), .disclosure(71, 9, "glow", "Свечение", "\([s.avatarGlow, s.reactionGlow].filter { $0 }.count)/2")])
+        result.append(contentsOf: [
+            .header(60, 9, "КАНАЛЫ"),
+            .toggle(61, 9, "wideChannelPosts", "Широкие посты в каналах", s.wideChannelPosts, true),
+            .disclosure(62, 9, "channelBottomButton", "Нижняя кнопка", dgChannelBottomButtonTitle(s.channelBottomButton)),
+            .header(70, 10, "ЭФФЕКТЫ"), .disclosure(71, 10, "glow", "Свечение", "\([s.avatarGlow, s.reactionGlow].filter { $0 }.count)/2")
+        ])
         return result
     }, additionalUpdates: previewUpdates, toggle: { key, value in
         switch key {
@@ -302,6 +307,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "mentionAvatars": s.mentionAvatars = value
         case "pollResultsBeforeVoting": s.showPollResultsBeforeVoting = value
         case "channelForwardCount": s.showChannelForwardCount = value
+        case "wideChannelPosts": s.wideChannelPosts = value
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value
         case "staticZoom": s.staticRoundVideoZoom = value
@@ -331,6 +337,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
     }, open: { key in
         switch key {
         case "reactions": return dgHiddenReactionsController(context: context)
+        case "channelBottomButton": return dgChannelBottomButtonController(context: context)
         case "stickerReplyOptions": return dgStickerRepliesController(context: context)
         case "glow": return dgGlowController(context: context)
         case "transcription": return dgTranscriptionController(context: context)
@@ -341,6 +348,25 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "pauseMusicOnRecording": return dgMusicPlaybackExceptionsController(context: context)
         default: return nil
         }
+    })
+}
+
+private func dgChannelBottomButtonTitle(_ value: DGSimpleSettings.ChannelBottomButton) -> String {
+    switch value {
+    case .discuss: return "Обсудить"
+    case .mute: return "Убрать звук"
+    case .hidden: return "Скрыть"
+    }
+}
+
+private func dgChannelBottomButtonController(context: AccountContext, focusKey: String? = nil) -> ViewController {
+    let settings = DGSimpleSettings.shared
+    return dgController(context: context, page: .channelBottomButton, title: "Нижняя кнопка", focusKey: focusKey, entries: {
+        DGSimpleSettings.ChannelBottomButton.allCases.enumerated().map { index, value in
+            .checkbox(Int32(index), 0, String(value.rawValue), dgChannelBottomButtonTitle(value), settings.channelBottomButton == value)
+        } + [.info(3, 0, "«Обсудить» открывает группу обсуждения канала. В каналах без обсуждения кнопка скрыта.")]
+    }, select: { key in
+        settings.channelBottomButton = DGSimpleSettings.ChannelBottomButton(rawValue: Int(key) ?? 1) ?? .mute
     })
 }
 
@@ -532,6 +558,7 @@ public func dgSettingsControllerForLink(context: AccountContext, page: String, k
     case .iconAndIsland: makeController = dgIconAndIslandController
     case .dialogId: makeController = dgDialogIdFormatController
     case .chats: makeController = dgChatsSettingsController
+    case .channelBottomButton: makeController = dgChannelBottomButtonController
     case .chatListAppearance: makeController = dgChatListAppearanceController
     case .chatListTitle: makeController = dgChatListTitleModeController
     case .doubleTapSeek: makeController = dgDoubleTapSeekController
