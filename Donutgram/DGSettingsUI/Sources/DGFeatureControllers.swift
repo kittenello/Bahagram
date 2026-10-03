@@ -264,8 +264,9 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
             .toggle(19, 4, "mentionAvatars", "Аватарки в упоминаниях", s.mentionAvatars, true),
             .toggle(20, 4, "pollResultsBeforeVoting", "Итоги до голосования", s.showPollResultsBeforeVoting, true),
             .toggle(21, 4, "channelForwardCount", "Счетчик пересылок в каналах", s.showChannelForwardCount, true),
-            .header(22, 5, "ГОЛОС В ТЕКСТ"),
-            .disclosure(23, 5, "transcription", "Сервис", transcription),
+            .toggle(22, 4, "forwardDate", "Время пересылки", s.showForwardDate, true),
+            .header(24, 5, "ГОЛОС В ТЕКСТ"),
+            .disclosure(25, 5, "transcription", "Сервис", transcription),
             .header(30, 6, "ЗАПИСЬ"),
             .disclosure(31, 6, "camera", "Камера в кружках", cameraTitle),
             .toggle(32, 6, "rememberCamera", "Запоминать последнюю камеру", s.rememberRoundVideoCamera, true),
@@ -307,6 +308,7 @@ func dgChatsSettingsController(context: AccountContext, focusKey: String? = nil)
         case "mentionAvatars": s.mentionAvatars = value
         case "pollResultsBeforeVoting": s.showPollResultsBeforeVoting = value
         case "channelForwardCount": s.showChannelForwardCount = value
+        case "forwardDate": s.showForwardDate = value
         case "wideChannelPosts": s.wideChannelPosts = value
         case "rememberCamera": s.rememberRoundVideoCamera = value
         case "zoomSlider": s.roundVideoZoomSlider = value

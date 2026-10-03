@@ -60,7 +60,7 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "disableAds": return "xmark.rectangle"
     case "onlyAdded", "recent": return "face.smiling"
     case "reactions": return "heart"
-    case "seconds", "hideStickerTime": return "clock"
+    case "seconds", "hideStickerTime", "forwardDate": return "clock"
     case "hideStickerChecks": return "checkmark"
     case "foldersAtBottom": return "folder"
     case "transcription": return "waveform"

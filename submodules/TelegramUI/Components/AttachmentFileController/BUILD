@@ -9,7 +9,6 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    sdk_frameworks = ["AVFoundation", "CoreMedia", "AudioToolbox"],
     deps = [
         "//Donutgram/DGSimpleSettings",
         "//submodules/OpusBinding",

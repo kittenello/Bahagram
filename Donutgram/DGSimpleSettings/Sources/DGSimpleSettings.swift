@@ -135,6 +135,7 @@ public final class DGSimpleSettings {
         static let hideShareButton = "donutgram.chats.hideShareButton"
         static let disableColoredReplies = "donutgram.chats.disableColoredReplies"
         static let showMessageSeconds = "donutgram.chats.showMessageSeconds"
+        static let showForwardDate = "donutgram.chats.showForwardDate"
         static let transcriptionBackend = "donutgram.chats.transcriptionBackend"
         static let downloadTikTok = "donutgram.chats.downloadTikTok"
         static let downloadYouTubeShorts = "donutgram.chats.downloadYouTubeShorts"
@@ -560,6 +561,7 @@ public final class DGSimpleSettings {
     public var removeMessageTails: Bool { get { bool(Key.removeMessageTails) } set { setBool(newValue, Key.removeMessageTails) } }
     public var hideShareButton: Bool { get { false } set { } }
     public var disableColoredReplies: Bool { get { bool(Key.disableColoredReplies) } set { setBool(newValue, Key.disableColoredReplies) } }
+    public var showForwardDate: Bool { get { bool(Key.showForwardDate) } set { setBool(newValue, Key.showForwardDate) } }
     public var showMessageSeconds: Bool { get { bool(Key.showMessageSeconds) } set { setBool(newValue, Key.showMessageSeconds) } }
     public var downloadTikTok: Bool { get { bool(Key.downloadTikTok) } set { setBool(newValue, Key.downloadTikTok) } }
     public var downloadYouTubeShorts: Bool { get { bool(Key.downloadYouTubeShorts) } set { setBool(newValue, Key.downloadYouTubeShorts) } }

@@ -20,6 +20,10 @@ public func dgLocalized(_ text: String, languageCode: String) -> String {
 private let dgEnglishStrings: [String: String] = [
     "Настройки Donutgram": "Donutgram Settings",
     "Настройки сообщений": "Message Settings",
+    "Время пересылки": "Forwarded Message Date",
+    "Копировать название": "Copy Button Text",
+    "Копировать Callback-данные": "Copy Callback Data",
+    "Меню ссылки": "Link Options",
     "Так будет выглядеть входящее сообщение": "This is how incoming messages will look",
     "И исходящее сообщение": "And an outgoing message",
     "Вау!": "Wow!",
