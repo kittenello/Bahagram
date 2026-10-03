@@ -31,7 +31,7 @@ func donutgramAudioToVoice(context: AccountContext, reference: AnyMediaReference
                 let id = Int64.random(in: Int64.min ... Int64.max)
                 let resource = LocalFileMediaResource(fileId: id)
                 context.account.postbox.mediaBox.storeResourceData(resource.id, data: result.data)
-                let converted = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: Int64(result.data.count), attributes: [.Audio(isVoice: true, duration: result.duration, title: nil, performer: nil, waveform: MemoryBuffer(data: result.waveform))], alternativeRepresentations: [])
+                let converted = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: Int64(result.data.count), attributes: [.Audio(isVoice: true, duration: result.duration, title: nil, performer: nil, waveform: result.waveform)], alternativeRepresentations: [])
                 subscriber.putNext(converted)
                 subscriber.putCompletion()
             }
