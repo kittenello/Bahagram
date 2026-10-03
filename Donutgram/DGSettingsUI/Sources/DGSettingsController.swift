@@ -70,6 +70,8 @@ private func dgSettingsSymbol(key: String, title: String) -> String {
     case "onlineIndicator": return "circle.fill"
     case "greetingSticker": return "hand.wave"
     case "mentionComma": return "at"
+    case "mentionAvatars": return "person.crop.circle"
+    case "gifUnlock": return "film"
     case "snow": return "snowflake"
     case "islandFollowsIcon": return "link"
     case "pollResultsBeforeVoting": return "chart.bar"

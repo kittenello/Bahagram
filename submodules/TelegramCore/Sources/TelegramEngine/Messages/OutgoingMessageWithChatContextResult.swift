@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import SwiftSignalKit
+import DGSimpleSettings
 
 func _internal_enqueueOutgoingMessageWithChatContextResult(account: Account, to peerId: PeerId, threadId: Int64?, botId: PeerId, result: ChatContextResult, replyToMessageId: EngineMessageReplySubject?, replyToStoryId: StoryId?, hideVia: Bool, silentPosting: Bool, scheduleTime: Int32?, sendPaidMessageStars: StarsAmount?, postpone: Bool, correlationId: Int64?) -> Bool {
     guard let message = _internal_outgoingMessageWithChatContextResult(to: peerId, threadId: threadId, botId: botId, result: result, replyToMessageId: replyToMessageId, replyToStoryId: replyToStoryId, hideVia: hideVia, silentPosting: silentPosting, scheduleTime: scheduleTime, sendPaidMessageStars: sendPaidMessageStars, postpone: postpone, correlationId: correlationId) else {
@@ -133,7 +134,9 @@ func _internal_outgoingMessageWithChatContextResult(to peerId: PeerId, threadId:
                 arc4random_buf(&randomId, 8)
                 
                 let resource: TelegramMediaResource
-                if peerId.namespace == Namespaces.Peer.SecretChat, let webResource = externalReference.content?.resource as? WebFileReferenceMediaResource {
+                if DGSimpleSettings.shared.gifUnlock, externalReference.type == "gif", let contentResource = externalReference.content?.resource {
+                    resource = contentResource
+                } else if peerId.namespace == Namespaces.Peer.SecretChat, let webResource = externalReference.content?.resource as? WebFileReferenceMediaResource {
                     resource = webResource
                 } else {
                     resource = EmptyMediaResource()

@@ -73,6 +73,7 @@ public final class DGSimpleSettings {
         static let saveEditHistory = "donutgram.spy.saveEditHistory"
         static let saveViewOnceMedia = "donutgram.spy.saveViewOnceMedia"
         static let saveProtectedStories = "donutgram.spy.saveProtectedStories"
+        static let gifUnlock = "donutgram.general.gifUnlock"
         static let saveInBotChats = "donutgram.spy.saveInBotChats"
         static let showDisappearedGifts = "donutgram.spy.showDisappearedGifts"
 
@@ -147,6 +148,7 @@ public final class DGSimpleSettings {
         static let showOnlineIndicator = "donutgram.chats.showOnlineIndicator"
         static let hideGreetingSticker = "donutgram.chats.hideGreetingSticker"
         static let commaAfterMention = "donutgram.chats.commaAfterMention"
+        static let mentionAvatars = "donutgram.chats.mentionAvatars"
         static let hideArchive = "donutgram.chats.hideArchive"
         static let openArchiveOnPull = "donutgram.chats.openArchiveOnPull"
         static let downloadAcceleration = "donutgram.network.downloadAcceleration"
@@ -597,6 +599,8 @@ public final class DGSimpleSettings {
     public var showOnlineIndicator: Bool { get { bool(Key.showOnlineIndicator) } set { setBool(newValue, Key.showOnlineIndicator) } }
     public var hideGreetingSticker: Bool { get { bool(Key.hideGreetingSticker) } set { setBool(newValue, Key.hideGreetingSticker) } }
     public var commaAfterMention: Bool { get { bool(Key.commaAfterMention) } set { setBool(newValue, Key.commaAfterMention) } }
+    public var mentionAvatars: Bool { get { bool(Key.mentionAvatars) } set { setBool(newValue, Key.mentionAvatars) } }
+    public var gifUnlock: Bool { get { bool(Key.gifUnlock) } set { setBool(newValue, Key.gifUnlock) } }
     public var hideArchive: Bool { get { bool(Key.hideArchive) } set { setBool(newValue, Key.hideArchive) } }
     public var openArchiveOnPull: Bool { get { bool(Key.openArchiveOnPull) } set { setBool(newValue, Key.openArchiveOnPull) } }
     /// 0: standard, 1: fast, 2: ultra. Values outside this range fall back to standard.

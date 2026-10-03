@@ -1,11 +1,13 @@
 import Foundation
 import UIKit
+import ImageIO
 import TelegramCore
 import Postbox
 import SwiftSignalKit
 import Display
 import PhotoResources
 import ImageCompression
+import LocalMediaResources
 
 public func transformOutgoingMessageMedia(postbox: Postbox, network: Network, media: AnyMediaReference, opportunistic: Bool) -> Signal<AnyMediaReference?, NoError> {
     if let paidContent = media.media as? TelegramMediaPaidContent {
@@ -53,6 +55,23 @@ public func transformOutgoingMessageMedia(postbox: Postbox, network: Network, me
             return result
             |> mapToSignal { data -> Signal<AnyMediaReference?, NoError> in
                 if data.complete {
+                    if file.mimeType == "image/gif", file.isVideo, donutgramIsGifVideo(file) {
+                        let resource = LocalFileGifMediaResource(randomId: Int64.random(in: Int64.min ... Int64.max), path: data.path)
+                        var attributes = file.attributes
+                        if let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: data.path) as CFURL, nil), let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any], let width = properties[kCGImagePropertyPixelWidth] as? NSNumber, let height = properties[kCGImagePropertyPixelHeight] as? NSNumber {
+                            var duration = 0.0
+                            for index in 0 ..< CGImageSourceGetCount(source) {
+                                let frame = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+                                let gif = frame?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+                                let delay = (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? NSNumber)?.doubleValue ?? (gif?[kCGImagePropertyGIFDelayTime] as? NSNumber)?.doubleValue ?? 0.1
+                                duration += delay < 0.02 ? 0.1 : delay
+                            }
+                            attributes = attributes.filter { if case .Video = $0 { return false }; return true }
+                            attributes.append(.Video(duration: duration, size: PixelDimensions(width: width.int32Value, height: height.int32Value), flags: [.isSilent, .supportsStreaming], preloadSize: nil, coverTime: nil, videoCodec: nil))
+                        }
+                        let converted = TelegramMediaFile(fileId: file.fileId, partialReference: nil, resource: resource, previewRepresentations: file.previewRepresentations, videoThumbnails: [], immediateThumbnailData: file.immediateThumbnailData, mimeType: "video/mp4", size: nil, attributes: attributes, alternativeRepresentations: [])
+                        return transformOutgoingMessageMedia(postbox: postbox, network: network, media: .standalone(media: converted), opportunistic: false)
+                    }
                     if file.mimeType.hasPrefix("image/") && !file.mimeType.hasSuffix("/webp") {
                         return Signal { subscriber in
                             if let fullSizeData = try? Data(contentsOf: URL(fileURLWithPath: data.path)) {

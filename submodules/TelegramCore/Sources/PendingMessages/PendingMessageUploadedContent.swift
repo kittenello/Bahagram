@@ -1326,6 +1326,10 @@ public func statsCategoryForFileWithAttributes(_ attributes: [TelegramMediaFileA
 }
 
 private func uploadedMediaFileContent(network: Network, postbox: Postbox, auxiliaryMethods: AccountAuxiliaryMethods, transformOutgoingMessageMedia: TransformOutgoingMessageMedia?, messageMediaPreuploadManager: MessageMediaPreuploadManager, forceReupload: Bool, isGrouped: Bool, isPaid: Bool, passFetchProgress: Bool, forceNoBigParts: Bool, peerId: PeerId, messageId: MessageId?, text: String, attributes: [MessageAttribute], autoremoveMessageAttribute: AutoremoveTimeoutMessageAttribute?, autoclearMessageAttribute: AutoclearTimeoutMessageAttribute?, file: TelegramMediaFile) -> Signal<PendingMessageUploadedContentResult, PendingMessageUploadError> {
+    // Identical bytes may already be cached as a GIF. A silent local video must
+    // be uploaded with its own attributes and must not overwrite that GIF cache.
+    let uploadAsSilentVideo = file.fileId.namespace == Namespaces.Media.LocalFile && donutgramIsGifVideo(file)
+    let forceReupload = forceReupload || uploadAsSilentVideo
     return maybePredownloadedFileResource(postbox: postbox, auxiliaryMethods: auxiliaryMethods, peerId: peerId, resource: file.resource, autoRemove: autoremoveMessageAttribute != nil || autoclearMessageAttribute != nil, forceRefresh: forceReupload)
     |> mapToSignal { result -> Signal<PendingMessageUploadedContentResult, PendingMessageUploadError> in
         var referenceKey: CachedSentMediaReferenceKey?
@@ -1391,6 +1395,9 @@ private func uploadedMediaFileContent(network: Network, postbox: Postbox, auxili
                 referenceKey = nil
         }
         
+        if uploadAsSilentVideo {
+            referenceKey = nil
+        }
         var hintFileIsLarge = false
         var hintSize: Int64?
         if let size = file.size {

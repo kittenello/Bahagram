@@ -31,6 +31,7 @@ import Pasteboard
 import EntityKeyboardGifContent
 import LegacyMessageInputPanelInputView
 import GlassBackgroundComponent
+import DGSimpleSettings
 
 private let keyboardCornerRadius: CGFloat = 30.0
 
@@ -437,6 +438,8 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
     public var switchToTextInput: (() -> Void)?
 
     private var currentState: (width: CGFloat, leftInset: CGFloat, rightInset: CGFloat, bottomInset: CGFloat, standardInputHeight: CGFloat, inputHeight: CGFloat, maximumHeight: CGFloat, inputPanelHeight: CGFloat, interfaceState: ChatPresentationInterfaceState, layoutMetrics: LayoutMetrics, deviceMetrics: DeviceMetrics, isVisible: Bool, isExpanded: Bool)?
+    private var donutgramSettingsObserver: NSObjectProtocol?
+    private var donutgramGifUnlock = DGSimpleSettings.shared.gifUnlock
 
     private var scheduledContentAnimationHint: EmojiPagerContentComponent.ContentAnimation?
     private var scheduledInnerTransition: ComponentTransition?
@@ -1755,9 +1758,17 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
                 self.interaction?.updateChoosingSticker(value)
             }
         })
+        self.donutgramSettingsObserver = NotificationCenter.default.addObserver(forName: DGSimpleSettings.didChangeNotification, object: nil, queue: .main, using: { [weak self] _ in
+            guard let self, self.donutgramGifUnlock != DGSimpleSettings.shared.gifUnlock else { return }
+            self.donutgramGifUnlock = DGSimpleSettings.shared.gifUnlock
+            self.performLayout(transition: .immediate)
+        })
     }
 
     deinit {
+        if let observer = self.donutgramSettingsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         self.inputDataDisposable?.dispose()
         self.hasRecentGifsDisposable?.dispose()
         self.emojiSearchDisposable.dispose()
@@ -1872,7 +1883,13 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
             }
         }
 
-        if !stickersEnabled || interfaceState.interfaceState.editMessage != nil {
+        if !stickersEnabled {
+            stickerContent = nil
+            if !donutgramCanSendGifAsVideo(peer: interfaceState.renderedPeer?.peer) {
+                gifContent = nil
+            }
+        }
+        if interfaceState.interfaceState.editMessage != nil {
             stickerContent = nil
             gifContent = nil
         }
